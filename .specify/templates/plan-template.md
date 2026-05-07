@@ -31,7 +31,15 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+| Principle | Gate Question | Status |
+|-----------|--------------|--------|
+| I. Code Quality | Are functions single-responsibility and below complexity limits? | ☐ |
+| II. Test-First | Are failing tests written before implementation begins? | ☐ |
+| III. UX Consistency | Do all UI surfaces follow the design language and handle loading/empty/error states? | ☐ |
+| IV. Performance | Do API responses meet p95 ≤ 200 ms read / ≤ 500 ms write and TTI ≤ 3 s? | ☐ |
+| Quality Gates | Do all CI checks (lint, coverage ≥ 80%, benchmarks) pass? | ☐ |
+
+> Fill in Status as ✅ (pass), ⚠ (violation with justification below), or ❌ (blocker — must fix).
 
 ## Project Structure
 
