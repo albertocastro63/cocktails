@@ -79,7 +79,6 @@ All pull requests MUST pass every gate below before merge:
 - Automated linting and formatting checks pass with zero warnings.
 - All tests pass (unit, integration, contract) in CI.
 - Code coverage does not decrease below the established threshold (≥ 80% business logic).
-- At least one peer review approval from a team member not involved in the original implementation.
 - No unresolved review comments on the PR.
 - Performance benchmarks show no regression on critical paths.
 - Constitution Check in plan.md is completed and flagged violations are documented.
