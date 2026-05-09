@@ -1,0 +1,219 @@
+package sqlite
+
+import (
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/almc/cocktails/internal/model"
+)
+
+type RecipeStore struct{ db *sql.DB }
+
+func (s *RecipeStore) Create(r *model.Recipe) error {
+	ing, err := json.Marshal(r.Ingredients)
+	if err != nil {
+		return err
+	}
+	steps, err := json.Marshal(r.Steps)
+	if err != nil {
+		return err
+	}
+	props, err := json.Marshal(r.Properties)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(
+		`INSERT INTO recipes (id, name, ingredients, steps, properties, creator_id, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		r.ID, r.Name, ing, steps, props, r.CreatorID,
+		r.CreatedAt.UTC().Format(time.RFC3339Nano),
+		r.UpdatedAt.UTC().Format(time.RFC3339Nano),
+	)
+	if err != nil {
+		return err
+	}
+	return s.upsertFTS(r)
+}
+
+func (s *RecipeStore) GetByID(id string) (*model.Recipe, error) {
+	row := s.db.QueryRow(
+		`SELECT id, name, ingredients, steps, properties, creator_id, created_at, updated_at
+		 FROM recipes WHERE id = ?`, id)
+	r, err := scanRecipe(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("recipe %q not found", id)
+	}
+	return r, err
+}
+
+func (s *RecipeStore) List(page, limit int) ([]*model.Recipe, int, error) {
+	offset := (page - 1) * limit
+	var total int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM recipes`).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	rows, err := s.db.Query(
+		`SELECT id, name, ingredients, steps, properties, creator_id, created_at, updated_at
+		 FROM recipes ORDER BY created_at DESC LIMIT ? OFFSET ?`, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	return scanRecipes(rows, total)
+}
+
+func (s *RecipeStore) Search(query string, page, limit int) ([]*model.Recipe, int, error) {
+	if strings.TrimSpace(query) == "" {
+		return s.List(page, limit)
+	}
+	offset := (page - 1) * limit
+	var total int
+	if err := s.db.QueryRow(
+		`SELECT COUNT(*) FROM recipes_fts WHERE search_text MATCH ?`, query+"*",
+	).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	rows, err := s.db.Query(
+		`SELECT r.id, r.name, r.ingredients, r.steps, r.properties, r.creator_id, r.created_at, r.updated_at
+		 FROM recipes r
+		 JOIN recipes_fts fts ON fts.recipe_id = r.id
+		 WHERE fts.search_text MATCH ?
+		 ORDER BY rank
+		 LIMIT ? OFFSET ?`, query+"*", limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	return scanRecipes(rows, total)
+}
+
+func (s *RecipeStore) Random() (*model.Recipe, error) {
+	row := s.db.QueryRow(
+		`SELECT id, name, ingredients, steps, properties, creator_id, created_at, updated_at
+		 FROM recipes ORDER BY RANDOM() LIMIT 1`)
+	r, err := scanRecipe(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return r, err
+}
+
+func (s *RecipeStore) Update(r *model.Recipe) error {
+	ing, err := json.Marshal(r.Ingredients)
+	if err != nil {
+		return err
+	}
+	steps, err := json.Marshal(r.Steps)
+	if err != nil {
+		return err
+	}
+	props, err := json.Marshal(r.Properties)
+	if err != nil {
+		return err
+	}
+	r.UpdatedAt = time.Now().UTC()
+	res, err := s.db.Exec(
+		`UPDATE recipes SET name=?, ingredients=?, steps=?, properties=?, updated_at=? WHERE id=?`,
+		r.Name, ing, steps, props, r.UpdatedAt.UTC().Format(time.RFC3339Nano), r.ID,
+	)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("recipe %q not found", r.ID)
+	}
+	return s.upsertFTS(r)
+}
+
+func (s *RecipeStore) Delete(id string) error {
+	_, err := s.db.Exec(`DELETE FROM recipes_fts WHERE recipe_id = ?`, id)
+	if err != nil {
+		return err
+	}
+	res, err := s.db.Exec(`DELETE FROM recipes WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("recipe %q not found", id)
+	}
+	return nil
+}
+
+func (s *RecipeStore) ExistsByName(name string) (bool, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM recipes WHERE name = ?`, name).Scan(&n)
+	return n > 0, err
+}
+
+func (s *RecipeStore) upsertFTS(r *model.Recipe) error {
+	var parts []string
+	parts = append(parts, r.Name)
+	for _, ing := range r.Ingredients {
+		parts = append(parts, ing.Name)
+	}
+	parts = append(parts, r.Steps...)
+	for _, v := range r.Properties {
+		parts = append(parts, v)
+	}
+	searchText := strings.Join(parts, " ")
+	_, err := s.db.Exec(`DELETE FROM recipes_fts WHERE recipe_id = ?`, r.ID)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`INSERT INTO recipes_fts (recipe_id, search_text) VALUES (?, ?)`, r.ID, searchText)
+	return err
+}
+
+func scanRecipe(row *sql.Row) (*model.Recipe, error) {
+	var r model.Recipe
+	var ing, steps, props []byte
+	var createdAt, updatedAt string
+	err := row.Scan(&r.ID, &r.Name, &ing, &steps, &props, &r.CreatorID, &createdAt, &updatedAt)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(ing, &r.Ingredients); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(steps, &r.Steps); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(props, &r.Properties); err != nil {
+		return nil, err
+	}
+	r.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+	r.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
+	return &r, nil
+}
+
+func scanRecipes(rows *sql.Rows, total int) ([]*model.Recipe, int, error) {
+	var results []*model.Recipe
+	for rows.Next() {
+		var r model.Recipe
+		var ing, steps, props []byte
+		var createdAt, updatedAt string
+		if err := rows.Scan(&r.ID, &r.Name, &ing, &steps, &props, &r.CreatorID, &createdAt, &updatedAt); err != nil {
+			return nil, 0, err
+		}
+		if err := json.Unmarshal(ing, &r.Ingredients); err != nil {
+			return nil, 0, err
+		}
+		if err := json.Unmarshal(steps, &r.Steps); err != nil {
+			return nil, 0, err
+		}
+		if err := json.Unmarshal(props, &r.Properties); err != nil {
+			return nil, 0, err
+		}
+		r.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+		r.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
+		results = append(results, &r)
+	}
+	return results, total, rows.Err()
+}

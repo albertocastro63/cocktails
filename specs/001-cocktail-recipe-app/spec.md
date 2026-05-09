@@ -117,7 +117,7 @@ An external service or developer queries the app's data interface to retrieve re
 - **FR-011**: The system MUST handle the case where no recipes exist by displaying an appropriate message on the homepage rather than an error.
 - **FR-012**: The system MUST require users to be authenticated (registered and logged in) before they can create, edit, or delete recipes. Unauthenticated visitors may browse, search, and view recipes but cannot modify content.
 - **FR-013**: User accounts MUST be created by an administrator; there is no self-registration flow for end users.
-- **FR-014**: Only the authenticated user who originally created a recipe MUST be permitted to delete it.
+- **FR-014**: Only the authenticated user who originally created a recipe MUST be permitted to edit or delete it.
 - **FR-015**: The system MUST record the creator of each recipe at the time it is submitted.
 
 ### Key Entities
@@ -151,6 +151,7 @@ An external service or developer queries the app's data interface to retrieve re
 ## Assumptions
 
 - The app is intended for personal or small-group use; it does not need to support thousands of concurrent users at launch.
+- An initial administrator account is seeded on first run via environment variable (`ADMIN_BOOTSTRAP_PASSWORD`); this is the only path to obtaining the first admin account on a fresh deployment.
 - The external data interface exposes read access to recipe data; write access for external services is out of scope unless explicitly requested.
 - Mobile-responsive design is expected but a dedicated native mobile app is out of scope.
 - Recipe images are out of scope for the initial version; the app handles text-based recipe data only.

@@ -222,3 +222,56 @@ Stack traces and internal error details are never included in responses (Constit
 ## Versioning
 
 The `/v1` prefix reserves the right to introduce `/v2` endpoints without breaking existing consumers (FR-010 specifies the external interface must remain stable).
+
+---
+
+## curl Usage Examples
+
+```bash
+BASE=http://localhost:8080
+
+# List all recipes (paginated)
+curl "$BASE/api/v1/recipes"
+
+# Search recipes by any field
+curl "$BASE/api/v1/recipes?q=lime"
+curl "$BASE/api/v1/recipes?q=tequila&page=1&limit=10"
+
+# Get a random recipe (204 when DB is empty)
+curl "$BASE/api/v1/recipes/random"
+
+# Get a recipe by ID
+curl "$BASE/api/v1/recipes/<id>"
+
+# Log in and capture JWT
+TOKEN=$(curl -s -X POST "$BASE/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"yourpassword"}' | jq -r .token)
+
+# Create a recipe (requires auth)
+curl -X POST "$BASE/api/v1/recipes" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "name": "Mojito",
+    "ingredients": [{"name":"rum","quantity":"50","unit":"ml"},{"name":"mint","quantity":"10","unit":"leaves"}],
+    "steps": ["Muddle mint with sugar","Add rum and lime juice","Top with soda water"],
+    "properties": {"style":"refreshing","base_spirit":"rum","garnish":"lime wedge"}
+  }'
+
+# Update a recipe (partial — only fields provided are changed)
+curl -X PUT "$BASE/api/v1/recipes/<id>" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"properties":{"occasion":"Summer party"}}'
+
+# Delete a recipe
+curl -X DELETE "$BASE/api/v1/recipes/<id>" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Create a user account (admin only)
+curl -X POST "$BASE/api/v1/admin/users" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"username":"alice","password":"s3cur3pass"}'
+```

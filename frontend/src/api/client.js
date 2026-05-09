@@ -1,0 +1,55 @@
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+async function request(method, path, body, token) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (res.status === 204) return null;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: { message: 'Request failed' } }));
+    const e = new Error(err.error?.message || 'Request failed');
+    e.status = res.status;
+    e.code = err.error?.code;
+    throw e;
+  }
+  return res.json();
+}
+
+export function getRecipes(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request('GET', `/api/v1/recipes${qs ? '?' + qs : ''}`);
+}
+
+export function getRandomRecipe() {
+  return request('GET', '/api/v1/recipes/random');
+}
+
+export function getRecipe(id) {
+  return request('GET', `/api/v1/recipes/${id}`);
+}
+
+export function login(username, password) {
+  return request('POST', '/api/v1/auth/login', { username, password });
+}
+
+export function createRecipe(recipe, token) {
+  return request('POST', '/api/v1/recipes', recipe, token);
+}
+
+export function updateRecipe(id, recipe, token) {
+  return request('PUT', `/api/v1/recipes/${id}`, recipe, token);
+}
+
+export function deleteRecipe(id, token) {
+  return request('DELETE', `/api/v1/recipes/${id}`, null, token);
+}
+
+export function createUser(username, password, token) {
+  return request('POST', '/api/v1/admin/users', { username, password }, token);
+}
