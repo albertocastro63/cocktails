@@ -1,0 +1,219 @@
+package sqlite_test
+
+import (
+	"testing"
+	"time"
+
+	"github.com/almc/cocktails/internal/model"
+	sqstore "github.com/almc/cocktails/internal/store/sqlite"
+	"github.com/google/uuid"
+)
+
+func newTestStores(t *testing.T) (*sqstore.RecipeStore, *sqstore.UserStore) {
+	t.Helper()
+	rs, us, err := sqstore.Open(":memory:")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	return rs, us
+}
+
+func seedUser(t *testing.T, us *sqstore.UserStore) string {
+	t.Helper()
+	id := uuid.NewString()
+	err := us.Create(&model.User{
+		ID:           id,
+		Username:     "testuser-" + id[:8],
+		PasswordHash: "$2a$12$placeholder",
+		CreatedAt:    time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	return id
+}
+
+func sampleRecipe(creatorID string) *model.Recipe {
+	return &model.Recipe{
+		ID:   uuid.NewString(),
+		Name: "Margarita",
+		Ingredients: []model.Ingredient{
+			{Name: "tequila", Quantity: "50", Unit: "ml"},
+			{Name: "lime juice", Quantity: "25", Unit: "ml"},
+		},
+		Steps:      []string{"Combine ingredients", "Shake with ice", "Strain into glass"},
+		Properties: map[string]string{"base_spirit": "Tequila", "style": "Sour"},
+		CreatorID:  creatorID,
+		CreatedAt:  time.Now().UTC(),
+		UpdatedAt:  time.Now().UTC(),
+	}
+}
+
+func TestCreate_and_GetByID(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	r := sampleRecipe(uid)
+	if err := rs.Create(r); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	got, err := rs.GetByID(r.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Name != r.Name {
+		t.Errorf("name: got %q want %q", got.Name, r.Name)
+	}
+	if got.Properties["base_spirit"] != "Tequila" {
+		t.Errorf("property base_spirit: got %q", got.Properties["base_spirit"])
+	}
+}
+
+func TestGetByID_NotFound(t *testing.T) {
+	rs, _ := newTestStores(t)
+	_, err := rs.GetByID("nonexistent")
+	if err == nil {
+		t.Fatal("expected error for missing ID")
+	}
+}
+
+func TestList(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	for i := 0; i < 3; i++ {
+		r := sampleRecipe(uid)
+		r.ID = uuid.NewString()
+		r.Name = "Recipe " + string(rune('A'+i))
+		if err := rs.Create(r); err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+	}
+	recipes, total, err := rs.List(1, 10)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if total != 3 {
+		t.Errorf("total: got %d want 3", total)
+	}
+	if len(recipes) != 3 {
+		t.Errorf("len: got %d want 3", len(recipes))
+	}
+}
+
+func TestSearch_ByIngredient(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	if err := rs.Create(sampleRecipe(uid)); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	results, total, err := rs.Search("lime juice", 1, 10)
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if total == 0 || len(results) == 0 {
+		t.Error("expected results for 'lime juice'")
+	}
+}
+
+func TestSearch_ByPropertyValue(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	if err := rs.Create(sampleRecipe(uid)); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	results, _, err := rs.Search("Tequila", 1, 10)
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(results) == 0 {
+		t.Error("expected results for property value 'Tequila'")
+	}
+}
+
+func TestSearch_ByStep(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	if err := rs.Create(sampleRecipe(uid)); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	results, _, err := rs.Search("Shake", 1, 10)
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(results) == 0 {
+		t.Error("expected results for step text 'Shake'")
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	r := sampleRecipe(uid)
+	if err := rs.Create(r); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	r.Name = "Updated Margarita"
+	r.Properties["occasion"] = "Brunch"
+	if err := rs.Update(r); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	got, err := rs.GetByID(r.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Name != "Updated Margarita" {
+		t.Errorf("name: got %q", got.Name)
+	}
+	if got.Properties["occasion"] != "Brunch" {
+		t.Errorf("new property not persisted")
+	}
+}
+
+func TestDelete(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	r := sampleRecipe(uid)
+	if err := rs.Create(r); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := rs.Delete(r.ID); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	_, err := rs.GetByID(r.ID)
+	if err == nil {
+		t.Fatal("expected error after delete")
+	}
+}
+
+func TestExistsByName(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	r := sampleRecipe(uid)
+	if err := rs.Create(r); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	exists, err := rs.ExistsByName(r.Name)
+	if err != nil {
+		t.Fatalf("ExistsByName: %v", err)
+	}
+	if !exists {
+		t.Error("expected true for existing name")
+	}
+	exists, err = rs.ExistsByName("Nonexistent")
+	if err != nil {
+		t.Fatalf("ExistsByName: %v", err)
+	}
+	if exists {
+		t.Error("expected false for nonexistent name")
+	}
+}
+
+func TestRandom_EmptyDB(t *testing.T) {
+	rs, _ := newTestStores(t)
+	r, err := rs.Random()
+	if err != nil {
+		t.Fatalf("Random on empty DB: %v", err)
+	}
+	if r != nil {
+		t.Error("expected nil from empty DB")
+	}
+}

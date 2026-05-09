@@ -1,0 +1,27 @@
+{
+  "name": "cocktails-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "lighthouse http://localhost:4173 --output json --output-path ./lighthouse-report.json --chrome-flags='--headless' --only-categories=performance"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "autoprefixer": "^10.4.0",
+    "jsdom": "^25.0.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "vite": "^5.0.0",
+    "vitest": "^2.0.0"
+  }
+}
