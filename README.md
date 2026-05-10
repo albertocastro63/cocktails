@@ -1,6 +1,6 @@
 # Cocktails
 
-A web app to store, browse, and search cocktail recipes. Every page load shows a randomly selected recipe on the homepage. Recipes support a flexible schema — any key-value properties can be attached (base spirit, style, garnish, occasion, etc.) and are fully searchable.
+A web app to store, browse, and search cocktail recipes. Every page load shows a randomly selected recipe on the homepage. Recipes support a flexible schema — any key-value properties can be attached (base spirit, style, garnish, occasion, etc.) and are fully searchable. For more details [read here](MOTIVATION.md) for my motivation and decisions.
 
 Built with Go (net/http) on the backend and Vite + TailwindCSS on the frontend. Runs locally with SQLite; deployable to AWS via Lambda + API Gateway + S3 + CloudFront + DynamoDB.
 
