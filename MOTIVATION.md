@@ -24,6 +24,7 @@ Here is a summary of the choices I have made:
 #### AI
 - Claude Code for programming
 - Spec-kit for specification
+- Terrashark skill to create Terraform code
 
 #### Languages:
 - Go for the backend and lambda
