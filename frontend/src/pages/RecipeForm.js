@@ -31,6 +31,20 @@ export function RecipeForm({ id, onSave } = {}) {
 
   form.appendChild(field('Name *', 'name', 'e.g. Mojito'));
 
+  // Notes field
+  const notesWrap = document.createElement('div');
+  const notesLbl = document.createElement('label');
+  notesLbl.className = 'block text-sm font-medium text-gray-700 mb-1';
+  notesLbl.textContent = 'Notes';
+  const notesArea = document.createElement('textarea');
+  notesArea.name = 'notes';
+  notesArea.rows = 3;
+  notesArea.placeholder = 'Personal notes, substitutions, tips…';
+  notesArea.className = 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none';
+  notesWrap.appendChild(notesLbl);
+  notesWrap.appendChild(notesArea);
+  form.appendChild(notesWrap);
+
   // Ingredients section
   const ingredientsSection = buildDynamicSection(
     'Ingredients',
@@ -114,6 +128,7 @@ export function RecipeForm({ id, onSave } = {}) {
         row.querySelector('[name="prop_key"]').value = k;
         row.querySelector('[name="prop_val"]').value = v;
       });
+      form.querySelector('[name="notes"]').value = recipe.notes || '';
     }).catch(() => {});
   }
 
@@ -146,7 +161,8 @@ export function RecipeForm({ id, onSave } = {}) {
       if (k) properties[k] = v;
     });
 
-    const payload = { name, ingredients, steps, properties };
+    const notes = (form.querySelector('[name="notes"]') || {}).value?.trim() || '';
+    const payload = { name, ingredients, steps, properties, notes };
     const token = getToken();
 
     try {

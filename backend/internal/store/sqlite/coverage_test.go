@@ -103,6 +103,42 @@ func TestCreate_WithProperties(t *testing.T) {
 	}
 }
 
+// T004: notes persisted and returned by GetByID
+func TestCreate_WithNotes(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	r := sampleRecipe(uid)
+	r.Notes = "Great with aged rum.\nAlso good with mint."
+	if err := rs.Create(r); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	got, err := rs.GetByID(r.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Notes != r.Notes {
+		t.Errorf("Notes: got %q want %q", got.Notes, r.Notes)
+	}
+}
+
+// T004: search query matching only notes returns no results
+func TestSearch_NotesExcludedFromFTS(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	r := sampleRecipe(uid)
+	r.Notes = "secretkeyword"
+	if err := rs.Create(r); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	results, total, err := rs.Search("secretkeyword", 1, 10)
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if total != 0 || len(results) != 0 {
+		t.Errorf("expected 0 results for notes-only keyword, got %d", len(results))
+	}
+}
+
 func TestUserCreate_Duplicate(t *testing.T) {
 	_, us := newTestStores(t)
 	u := &model.User{

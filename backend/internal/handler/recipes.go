@@ -79,10 +79,11 @@ func (h *RecipeHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims := ClaimsFromContext(r.Context())
 
 	var body struct {
-		Name        string            `json:"name"`
+		Name        string             `json:"name"`
 		Ingredients []model.Ingredient `json:"ingredients"`
-		Steps       []string          `json:"steps"`
-		Properties  map[string]string `json:"properties"`
+		Steps       []string           `json:"steps"`
+		Properties  map[string]string  `json:"properties"`
+		Notes       *string            `json:"notes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
@@ -99,6 +100,11 @@ func (h *RecipeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		warnings = append(warnings, "a recipe with this name already exists")
 	}
 
+	notes := ""
+	if body.Notes != nil {
+		notes = *body.Notes
+	}
+
 	now := time.Now().UTC()
 	recipe := &model.Recipe{
 		ID:          uuid.NewString(),
@@ -106,6 +112,7 @@ func (h *RecipeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Ingredients: body.Ingredients,
 		Steps:       body.Steps,
 		Properties:  body.Properties,
+		Notes:       notes,
 		CreatorID:   claims.UserID,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -147,8 +154,9 @@ func (h *RecipeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Name        *string            `json:"name"`
 		Ingredients []model.Ingredient `json:"ingredients"`
-		Steps       []string          `json:"steps"`
-		Properties  map[string]string `json:"properties"`
+		Steps       []string           `json:"steps"`
+		Properties  map[string]string  `json:"properties"`
+		Notes       *string            `json:"notes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
@@ -169,6 +177,9 @@ func (h *RecipeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Properties != nil {
 		existing.Properties = body.Properties
+	}
+	if body.Notes != nil {
+		existing.Notes = *body.Notes
 	}
 
 	if err := h.recipes.Update(existing); err != nil {

@@ -59,6 +59,26 @@ describe('RecipeDetail page', () => {
     });
   });
 
+  it('renders notes when recipe has notes', async () => {
+    getRecipe.mockResolvedValue({ ...fullRecipe, notes: 'Try with aged rum.' });
+    const el = RecipeDetail({ id: 'r1' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('Try with aged rum.');
+    });
+  });
+
+  it('does not render a notes section when notes is empty', async () => {
+    getRecipe.mockResolvedValue({ ...fullRecipe, notes: '' });
+    const el = RecipeDetail({ id: 'r1' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => {
+      expect(document.body.querySelector('h2')).not.toBeNull(); // some h2 exists
+      const h2s = [...document.body.querySelectorAll('h2')].map(h => h.textContent);
+      expect(h2s).not.toContain('Notes');
+    });
+  });
+
   it('renders error state on failure', async () => {
     getRecipe.mockRejectedValue(new Error('not found'));
     const el = RecipeDetail({ id: 'r1' });

@@ -50,6 +50,12 @@ describe('RecipeForm page', () => {
     expect(found).toBe(true);
   });
 
+  it('renders a textarea for notes', () => {
+    const el = RecipeForm({});
+    document.body.appendChild(el);
+    expect(document.body.querySelector('textarea[name="notes"]')).not.toBeNull();
+  });
+
   it('calls createRecipe on submit for new recipe', async () => {
     createRecipe.mockResolvedValue({ data: { id: 'r1', name: 'New' }, warnings: [] });
     const onSave = vi.fn();

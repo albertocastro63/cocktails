@@ -9,14 +9,15 @@ type Ingredient struct {
 }
 
 type Recipe struct {
-	ID         string            `json:"id"`
-	Name       string            `json:"name"`
-	Ingredients []Ingredient     `json:"ingredients"`
-	Steps      []string          `json:"steps"`
-	Properties map[string]string `json:"properties,omitempty"`
-	CreatorID  string            `json:"creator_id"`
-	CreatedAt  time.Time         `json:"created_at"`
-	UpdatedAt  time.Time         `json:"updated_at"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Ingredients []Ingredient      `json:"ingredients"`
+	Steps       []string          `json:"steps"`
+	Properties  map[string]string `json:"properties,omitempty"`
+	Notes       string            `json:"notes"`
+	CreatorID   string            `json:"creator_id"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
 type User struct {
