@@ -3,6 +3,7 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -44,6 +45,16 @@ func migrate(db *sql.DB) error {
 			created_at  TEXT NOT NULL,
 			updated_at  TEXT NOT NULL
 		);
+	`)
+	if err != nil {
+		return err
+	}
+	// Idempotent: add notes column to existing databases.
+	_, err = db.Exec(`ALTER TABLE recipes ADD COLUMN notes TEXT NOT NULL DEFAULT ''`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+	_, err = db.Exec(`
 
 		CREATE VIRTUAL TABLE IF NOT EXISTS recipes_fts USING fts5(
 			recipe_id UNINDEXED,

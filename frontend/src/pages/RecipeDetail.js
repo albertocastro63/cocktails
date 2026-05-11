@@ -80,6 +80,17 @@ export function RecipeDetail({ id }) {
       content.appendChild(h2);
       content.appendChild(PropertyTable({ properties: recipe.properties }));
     }
+
+    if (recipe.notes) {
+      const h2 = document.createElement('h2');
+      h2.className = 'text-xl font-semibold text-gray-700 mt-6 mb-2';
+      h2.textContent = 'Notes';
+      content.appendChild(h2);
+      const p = document.createElement('p');
+      p.className = 'text-gray-700 whitespace-pre-wrap';
+      p.textContent = recipe.notes;
+      content.appendChild(p);
+    }
   }).catch((err) => {
     content.textContent = `Failed to load recipe: ${err.message}`;
   });

@@ -60,6 +60,7 @@ List all recipes, optionally filtered by a search query.
       ],
       "steps": ["string"],
       "properties": { "key": "value" },
+      "notes": "string",
       "creator_id": "uuid",
       "created_at": "ISO 8601",
       "updated_at": "ISO 8601"
@@ -111,7 +112,8 @@ Create a new recipe. `creator_id` is set from the authenticated user's identity.
     { "name": "string (required)", "quantity": "string (required)", "unit": "string (optional)" }
   ],
   "steps": ["string"],
-  "properties": { "key": "value" }
+  "properties": { "key": "value" },
+  "notes": "string (optional, plain text, not searchable)"
 }
 ```
 
@@ -256,7 +258,8 @@ curl -X POST "$BASE/api/v1/recipes" \
     "name": "Mojito",
     "ingredients": [{"name":"rum","quantity":"50","unit":"ml"},{"name":"mint","quantity":"10","unit":"leaves"}],
     "steps": ["Muddle mint with sugar","Add rum and lime juice","Top with soda water"],
-    "properties": {"style":"refreshing","base_spirit":"rum","garnish":"lime wedge"}
+    "properties": {"style":"refreshing","base_spirit":"rum","garnish":"lime wedge"},
+    "notes": "Best enjoyed on a summer evening."
   }'
 
 # Update a recipe (partial — only fields provided are changed)

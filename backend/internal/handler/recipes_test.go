@@ -265,6 +265,101 @@ func TestRecipeDelete_OK(t *testing.T) {
 	}
 }
 
+// T003: Create with notes returns notes in response
+func TestRecipeCreate_WithNotes(t *testing.T) {
+	rs := newStubRecipeStore()
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Create))
+
+	token := validToken(t, "u1", "alice", false)
+	body := `{"name":"Mojito","notes":"Try with aged rum."}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/recipes", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("got %d want 201: %s", rec.Code, rec.Body)
+	}
+	var resp map[string]any
+	json.NewDecoder(rec.Body).Decode(&resp)
+	data := resp["data"].(map[string]any)
+	if data["notes"] != "Try with aged rum." {
+		t.Errorf("notes: got %v want 'Try with aged rum.'", data["notes"])
+	}
+}
+
+// T003: Update setting notes is reflected in response
+func TestRecipeUpdate_SetsNotes(t *testing.T) {
+	rs := newStubRecipeStore(sampleRecipe("r1", "Mojito", "u1"))
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Update))
+
+	token := validToken(t, "u1", "alice", false)
+	body := `{"notes":"A new note."}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/recipes/r1", strings.NewReader(body))
+	req.SetPathValue("id", "r1")
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d want 200: %s", rec.Code, rec.Body)
+	}
+	var resp map[string]any
+	json.NewDecoder(rec.Body).Decode(&resp)
+	if resp["notes"] != "A new note." {
+		t.Errorf("notes: got %v want 'A new note.'", resp["notes"])
+	}
+}
+
+// T003: Update omitting notes preserves existing notes
+func TestRecipeUpdate_PreservesNotes(t *testing.T) {
+	existing := sampleRecipe("r1", "Mojito", "u1")
+	existing.Notes = "Original note."
+	rs := newStubRecipeStore(existing)
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Update))
+
+	token := validToken(t, "u1", "alice", false)
+	body := `{"name":"Mojito Updated"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/recipes/r1", strings.NewReader(body))
+	req.SetPathValue("id", "r1")
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d want 200: %s", rec.Code, rec.Body)
+	}
+	var resp map[string]any
+	json.NewDecoder(rec.Body).Decode(&resp)
+	if resp["notes"] != "Original note." {
+		t.Errorf("notes: got %v want 'Original note.'", resp["notes"])
+	}
+}
+
+// T003: Update notes as non-creator returns 403
+func TestRecipeUpdate_NotesNonCreator_Forbidden(t *testing.T) {
+	existing := sampleRecipe("r1", "Mojito", "u1")
+	existing.Notes = "Secret note."
+	rs := newStubRecipeStore(existing)
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Update))
+
+	token := validToken(t, "u2", "bob", false)
+	body := `{"notes":"Trying to change notes."}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/recipes/r1", strings.NewReader(body))
+	req.SetPathValue("id", "r1")
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("got %d want 403", rec.Code)
+	}
+}
+
 // T058: 403 if not creator
 func TestRecipeDelete_NotCreator(t *testing.T) {
 	rs := newStubRecipeStore(sampleRecipe("r1", "Mojito", "u1"))

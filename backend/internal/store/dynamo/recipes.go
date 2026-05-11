@@ -30,6 +30,7 @@ type recipeItem struct {
 	Ingredients []ingItem         `dynamodbav:"ingredients"`
 	Steps       []string          `dynamodbav:"steps"`
 	Properties  map[string]string `dynamodbav:"properties"`
+	Notes       string            `dynamodbav:"notes"`
 	CreatorID   string            `dynamodbav:"creator_id"`
 	CreatedAt   string            `dynamodbav:"created_at"`
 	UpdatedAt   string            `dynamodbav:"updated_at"`
@@ -183,6 +184,7 @@ func toItem(r *model.Recipe) recipeItem {
 		Ingredients: ings,
 		Steps:       r.Steps,
 		Properties:  r.Properties,
+		Notes:       r.Notes,
 		CreatorID:   r.CreatorID,
 		CreatedAt:   r.CreatedAt.UTC().Format(time.RFC3339Nano),
 		UpdatedAt:   r.UpdatedAt.UTC().Format(time.RFC3339Nano),
@@ -206,6 +208,7 @@ func unmarshalRecipe(av map[string]types.AttributeValue) (*model.Recipe, error) 
 		Ingredients: ings,
 		Steps:       item.Steps,
 		Properties:  item.Properties,
+		Notes:       item.Notes,
 		CreatorID:   item.CreatorID,
 		CreatedAt:   createdAt,
 		UpdatedAt:   updatedAt,
