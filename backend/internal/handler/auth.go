@@ -38,7 +38,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, expiresAt, err := auth.Issue(user.ID, user.Username, user.IsAdmin)
+	token, expiresAt, err := auth.Issue(user.ID, user.Username, user.IsAdmin, user.TokenVersion)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to issue token")
 		return

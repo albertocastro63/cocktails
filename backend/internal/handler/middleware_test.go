@@ -9,6 +9,7 @@ import (
 
 	"github.com/almc/cocktails/internal/auth"
 	"github.com/almc/cocktails/internal/handler"
+	"github.com/almc/cocktails/internal/model"
 )
 
 func init() {
@@ -17,7 +18,7 @@ func init() {
 
 func validToken(t *testing.T, userID, username string, isAdmin bool) string {
 	t.Helper()
-	token, _, err := auth.Issue(userID, username, isAdmin)
+	token, _, err := auth.Issue(userID, username, isAdmin, 0)
 	if err != nil {
 		t.Fatalf("Issue token: %v", err)
 	}
@@ -117,5 +118,56 @@ func TestRequireAuth_ExpiredToken(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("got %d want 401", rec.Code)
+	}
+}
+
+func TestRequireAuthWithStore_UserNotFound(t *testing.T) {
+	us := newStubUserStore()
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	h := handler.RequireAuthWithStore(us)(next)
+	token := validToken(t, "nonexistent-id", "ghost", false)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("got %d want 401", rec.Code)
+	}
+}
+
+func TestRequireAuthWithStore_TokenVersionMismatch(t *testing.T) {
+	u := &model.User{ID: "user-1", Username: "alice", TokenVersion: 1}
+	us := newStubUserStore(u)
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	h := handler.RequireAuthWithStore(us)(next)
+	// validToken issues with version 0 (default); stored version is 1 → mismatch
+	token := validToken(t, "user-1", "alice", false)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("got %d want 401", rec.Code)
+	}
+}
+
+func TestRequireAuthWithStore_ValidToken(t *testing.T) {
+	u := &model.User{ID: "user-1", Username: "alice", TokenVersion: 0}
+	us := newStubUserStore(u)
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	h := handler.RequireAuthWithStore(us)(next)
+	token := validToken(t, "user-1", "alice", false)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("got %d want 200", rec.Code)
 	}
 }

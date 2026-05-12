@@ -62,12 +62,21 @@ func buildHandler(rs store.RecipeStore, us store.UserStore) http.Handler {
 	mux.HandleFunc("GET /api/v1/recipes", recipes.List)
 	mux.HandleFunc("GET /api/v1/recipes/random", recipes.Random)
 	mux.HandleFunc("GET /api/v1/recipes/{id}", recipes.GetByID)
-	mux.Handle("POST /api/v1/recipes", handler.RequireAuth(http.HandlerFunc(recipes.Create)))
-	mux.Handle("PUT /api/v1/recipes/{id}", handler.RequireAuth(http.HandlerFunc(recipes.Update)))
-	mux.Handle("DELETE /api/v1/recipes/{id}", handler.RequireAuth(http.HandlerFunc(recipes.Delete)))
+	requireAuth := handler.RequireAuthWithStore(us)
+	mux.Handle("POST /api/v1/recipes", requireAuth(http.HandlerFunc(recipes.Create)))
+	mux.Handle("PUT /api/v1/recipes/{id}", requireAuth(http.HandlerFunc(recipes.Update)))
+	mux.Handle("DELETE /api/v1/recipes/{id}", requireAuth(http.HandlerFunc(recipes.Delete)))
 	mux.HandleFunc("POST /api/v1/auth/login", authH.Login)
+	mux.Handle("GET /api/v1/admin/users",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.ListUsers))))
 	mux.Handle("POST /api/v1/admin/users",
-		handler.RequireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.CreateUser))))
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.CreateUser))))
+	mux.Handle("GET /api/v1/admin/users/{id}",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.GetUser))))
+	mux.Handle("PUT /api/v1/admin/users/{id}",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.UpdateUser))))
+	mux.Handle("DELETE /api/v1/admin/users/{id}",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.DeleteUser))))
 
 	return handler.CORSMiddleware(mux)
 }

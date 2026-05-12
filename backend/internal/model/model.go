@@ -25,5 +25,9 @@ type User struct {
 	Username     string    `json:"username"`
 	PasswordHash string    `json:"-"`
 	IsAdmin      bool      `json:"is_admin"`
+	FirstName    string    `json:"first_name"`
+	LastName     string    `json:"last_name"`
+	Email        string    `json:"email"`
+	TokenVersion int       `json:"token_version"`
 	CreatedAt    time.Time `json:"created_at"`
 }

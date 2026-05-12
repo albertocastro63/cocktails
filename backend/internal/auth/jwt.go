@@ -11,9 +11,10 @@ import (
 const tokenDuration = 24 * time.Hour
 
 type Claims struct {
-	UserID   string `json:"user_id"`
-	Username string `json:"username"`
-	IsAdmin  bool   `json:"is_admin"`
+	UserID       string `json:"user_id"`
+	Username     string `json:"username"`
+	IsAdmin      bool   `json:"is_admin"`
+	TokenVersion int    `json:"token_version"`
 	jwt.RegisteredClaims
 }
 
@@ -25,12 +26,13 @@ func secret() []byte {
 	return []byte(s)
 }
 
-func Issue(userID, username string, isAdmin bool) (string, time.Time, error) {
+func Issue(userID, username string, isAdmin bool, tokenVersion int) (string, time.Time, error) {
 	exp := time.Now().Add(tokenDuration)
 	claims := Claims{
-		UserID:   userID,
-		Username: username,
-		IsAdmin:  isAdmin,
+		UserID:       userID,
+		Username:     username,
+		IsAdmin:      isAdmin,
+		TokenVersion: tokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(exp),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

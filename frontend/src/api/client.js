@@ -50,6 +50,22 @@ export function deleteRecipe(id, token) {
   return request('DELETE', `/api/v1/recipes/${id}`, null, token);
 }
 
-export function createUser(username, password, token) {
-  return request('POST', '/api/v1/admin/users', { username, password }, token);
+export function listUsers(token) {
+  return request('GET', '/api/v1/admin/users', undefined, token);
+}
+
+export function createUser(data, token) {
+  return request('POST', '/api/v1/admin/users', data, token);
+}
+
+export function getUser(id, token) {
+  return request('GET', `/api/v1/admin/users/${id}`, undefined, token);
+}
+
+export function updateUser(id, data, token) {
+  return request('PUT', `/api/v1/admin/users/${id}`, data, token);
+}
+
+export function deleteUser(id, token) {
+  return request('DELETE', `/api/v1/admin/users/${id}`, undefined, token);
 }

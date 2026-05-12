@@ -12,7 +12,7 @@ func init() {
 }
 
 func TestIssue_and_Parse(t *testing.T) {
-	token, expiresAt, err := auth.Issue("user-1", "alice", false)
+	token, expiresAt, err := auth.Issue("user-1", "alice", false, 0)
 	if err != nil {
 		t.Fatalf("Issue: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestIssue_and_Parse(t *testing.T) {
 }
 
 func TestIssue_AdminClaim(t *testing.T) {
-	token, _, err := auth.Issue("admin-1", "admin", true)
+	token, _, err := auth.Issue("admin-1", "admin", true, 0)
 	if err != nil {
 		t.Fatalf("Issue: %v", err)
 	}
@@ -64,5 +64,33 @@ func TestParse_ExpiredToken(t *testing.T) {
 	_, err := auth.Parse("eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjF9.bad")
 	if err == nil {
 		t.Error("expected error for expired token")
+	}
+}
+
+func TestIssue_EmbedTokenVersion(t *testing.T) {
+	token, _, err := auth.Issue("user-1", "alice", false, 3)
+	if err != nil {
+		t.Fatalf("Issue: %v", err)
+	}
+	claims, err := auth.Parse(token)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if claims.TokenVersion != 3 {
+		t.Errorf("TokenVersion: got %d want 3", claims.TokenVersion)
+	}
+}
+
+func TestParse_ReturnsTokenVersion(t *testing.T) {
+	token, _, err := auth.Issue("user-2", "bob", false, 7)
+	if err != nil {
+		t.Fatalf("Issue: %v", err)
+	}
+	claims, err := auth.Parse(token)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if claims.TokenVersion != 7 {
+		t.Errorf("TokenVersion: got %d want 7", claims.TokenVersion)
 	}
 }

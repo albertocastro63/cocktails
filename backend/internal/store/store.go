@@ -24,4 +24,8 @@ type UserStore interface {
 	GetByID(id string) (*model.User, error)
 	GetByUsername(username string) (*model.User, error)
 	Count() (int, error)
+	List() ([]*model.User, error)
+	Update(user *model.User) error
+	Delete(id string) error
+	GetByEmail(email string) (*model.User, error)
 }

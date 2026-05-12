@@ -159,3 +159,44 @@ func (s *stubUserStore) GetByID(id string) (*model.User, error) {
 func (s *stubUserStore) Count() (int, error) {
 	return len(s.byUsername), nil
 }
+
+func (s *stubUserStore) List() ([]*model.User, error) {
+	var users []*model.User
+	for _, u := range s.byID {
+		if !u.IsAdmin {
+			users = append(users, u)
+		}
+	}
+	if users == nil {
+		users = []*model.User{}
+	}
+	return users, nil
+}
+
+func (s *stubUserStore) Update(u *model.User) error {
+	if _, exists := s.byID[u.ID]; !exists {
+		return errors.New("not found")
+	}
+	s.byID[u.ID] = u
+	s.byUsername[u.Username] = u
+	return nil
+}
+
+func (s *stubUserStore) Delete(id string) error {
+	u, exists := s.byID[id]
+	if !exists {
+		return errors.New("not found")
+	}
+	delete(s.byID, id)
+	delete(s.byUsername, u.Username)
+	return nil
+}
+
+func (s *stubUserStore) GetByEmail(email string) (*model.User, error) {
+	for _, u := range s.byID {
+		if u.Email == email {
+			return u, nil
+		}
+	}
+	return nil, errors.New("not found")
+}
