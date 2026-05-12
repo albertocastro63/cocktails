@@ -50,10 +50,35 @@ describe('RecipeForm page', () => {
     expect(found).toBe(true);
   });
 
-  it('renders a textarea for notes', () => {
+  it('renders a textarea for notes with a preview toggle button', () => {
     const el = RecipeForm({});
     document.body.appendChild(el);
     expect(document.body.querySelector('textarea[name="notes"]')).not.toBeNull();
+    const btns = [...document.body.querySelectorAll('button')];
+    const previewBtn = btns.find(b => b.textContent === 'Preview');
+    expect(previewBtn).not.toBeUndefined();
+  });
+
+  it('submitting the form while notes editor is in preview mode sends raw markdown in the payload', async () => {
+    createRecipe.mockResolvedValue({ data: { id: 'r1', name: 'New' }, warnings: [] });
+    const el = RecipeForm({});
+    document.body.appendChild(el);
+
+    document.body.querySelector('input[name="name"]').value = 'My Cocktail';
+    const textarea = document.body.querySelector('textarea[name="notes"]');
+    textarea.value = '**raw markdown**';
+
+    const previewBtn = [...document.body.querySelectorAll('button')].find(b => b.textContent === 'Preview');
+    previewBtn.click();
+
+    document.body.querySelector('form').dispatchEvent(new Event('submit'));
+
+    await vi.waitFor(() => {
+      expect(createRecipe).toHaveBeenCalledWith(
+        expect.objectContaining({ notes: '**raw markdown**' }),
+        expect.anything(),
+      );
+    });
   });
 
   it('calls createRecipe on submit for new recipe', async () => {
