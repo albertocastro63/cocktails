@@ -51,8 +51,18 @@ function renderPage() {
 
   // Admin route guard
   if (/^\/admin/.test(path)) {
-    renderAdminRoute(root);
-    return;
+    if (!isLoggedIn()) {
+      root.appendChild(Login({ onSuccess: () => renderPage() }));
+      return;
+    }
+    if (!isAdmin()) {
+      const p = document.createElement('p');
+      p.className = 'text-center py-16 text-red-600';
+      p.textContent = 'Access denied. Admin only.';
+      root.appendChild(p);
+      return;
+    }
+    // Fall through to route matching for the specific admin page
   }
 
   // Auth guard for write routes
