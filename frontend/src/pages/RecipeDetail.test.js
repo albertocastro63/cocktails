@@ -59,12 +59,12 @@ describe('RecipeDetail page', () => {
     });
   });
 
-  it('renders notes when recipe has notes', async () => {
-    getRecipe.mockResolvedValue({ ...fullRecipe, notes: 'Try with aged rum.' });
+  it('renders notes as markdown HTML when recipe has notes', async () => {
+    getRecipe.mockResolvedValue({ ...fullRecipe, notes: '**bold notes**' });
     const el = RecipeDetail({ id: 'r1' });
     document.body.appendChild(el);
     await vi.waitFor(() => {
-      expect(document.body.textContent).toContain('Try with aged rum.');
+      expect(document.body.querySelector('strong')).not.toBeNull();
     });
   });
 

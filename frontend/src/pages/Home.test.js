@@ -65,19 +65,19 @@ describe('Home page', () => {
     });
   });
 
-  it('renders notes when recipe has notes', async () => {
+  it('renders notes as markdown HTML when recipe has notes', async () => {
     getRandomRecipe.mockResolvedValue({
       id: 'r1',
       name: 'Mojito',
       ingredients: [],
       steps: [],
       properties: {},
-      notes: 'Best served cold',
+      notes: '**bold notes**',
     });
     const el = Home();
     document.body.appendChild(el);
     await vi.waitFor(() => {
-      expect(document.body.textContent).toContain('Best served cold');
+      expect(document.body.querySelector('strong')).not.toBeNull();
     });
   });
 

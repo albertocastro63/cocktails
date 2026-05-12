@@ -2,6 +2,7 @@ import { getRecipe, deleteRecipe } from '../api/client.js';
 import { getToken, isLoggedIn } from '../api/auth.js';
 import { IngredientList } from '../components/IngredientList.js';
 import { PropertyTable } from '../components/PropertyTable.js';
+import { renderMarkdown } from '../utils/markdown.js';
 
 export function RecipeDetail({ id }) {
   const el = document.createElement('div');
@@ -86,10 +87,10 @@ export function RecipeDetail({ id }) {
       h2.className = 'text-xl font-semibold text-gray-700 mt-6 mb-2';
       h2.textContent = 'Notes';
       content.appendChild(h2);
-      const p = document.createElement('p');
-      p.className = 'text-gray-700 whitespace-pre-wrap';
-      p.textContent = recipe.notes;
-      content.appendChild(p);
+      const div = document.createElement('div');
+      div.className = 'text-gray-700';
+      div.innerHTML = renderMarkdown(recipe.notes);
+      content.appendChild(div);
     }
   }).catch((err) => {
     content.textContent = `Failed to load recipe: ${err.message}`;

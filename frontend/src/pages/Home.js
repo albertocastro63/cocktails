@@ -2,6 +2,7 @@ import { getRandomRecipe } from '../api/client.js';
 import { EmptyState } from '../components/EmptyState.js';
 import { IngredientList } from '../components/IngredientList.js';
 import { PropertyTable } from '../components/PropertyTable.js';
+import { renderMarkdown } from '../utils/markdown.js';
 
 export function Home() {
   const el = document.createElement('div');
@@ -64,10 +65,10 @@ export function Home() {
       h3.className = 'text-lg font-semibold text-gray-700 mt-4 mb-2';
       h3.textContent = 'Notes';
       content.appendChild(h3);
-      const p = document.createElement('p');
-      p.className = 'text-gray-700 whitespace-pre-wrap';
-      p.textContent = recipe.notes;
-      content.appendChild(p);
+      const div = document.createElement('div');
+      div.className = 'text-gray-700';
+      div.innerHTML = renderMarkdown(recipe.notes);
+      content.appendChild(div);
     }
   }).catch(() => {
     content.textContent = 'Failed to load recipe.';

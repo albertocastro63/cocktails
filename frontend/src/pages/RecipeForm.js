@@ -1,5 +1,6 @@
 import { createRecipe, updateRecipe, getRecipe } from '../api/client.js';
 import { getToken } from '../api/auth.js';
+import { MarkdownEditor } from '../components/MarkdownEditor.js';
 
 export function RecipeForm({ id, onSave } = {}) {
   const el = document.createElement('div');
@@ -31,19 +32,8 @@ export function RecipeForm({ id, onSave } = {}) {
 
   form.appendChild(field('Name *', 'name', 'e.g. Mojito'));
 
-  // Notes field
-  const notesWrap = document.createElement('div');
-  const notesLbl = document.createElement('label');
-  notesLbl.className = 'block text-sm font-medium text-gray-700 mb-1';
-  notesLbl.textContent = 'Notes';
-  const notesArea = document.createElement('textarea');
-  notesArea.name = 'notes';
-  notesArea.rows = 3;
-  notesArea.placeholder = 'Personal notes, substitutions, tips…';
-  notesArea.className = 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none';
-  notesWrap.appendChild(notesLbl);
-  notesWrap.appendChild(notesArea);
-  form.appendChild(notesWrap);
+  let editorEl = MarkdownEditor({ name: 'notes', placeholder: 'Personal notes, substitutions, tips…', value: '' });
+  form.appendChild(editorEl);
 
   // Ingredients section
   const ingredientsSection = buildDynamicSection(
@@ -128,7 +118,9 @@ export function RecipeForm({ id, onSave } = {}) {
         row.querySelector('[name="prop_key"]').value = k;
         row.querySelector('[name="prop_val"]').value = v;
       });
-      form.querySelector('[name="notes"]').value = recipe.notes || '';
+      const newEditor = MarkdownEditor({ name: 'notes', placeholder: 'Personal notes, substitutions, tips…', value: recipe.notes || '' });
+      form.replaceChild(newEditor, editorEl);
+      editorEl = newEditor;
     }).catch(() => {});
   }
 
