@@ -4,9 +4,14 @@ import { RecipeList } from './pages/RecipeList.js';
 import { RecipeDetail } from './pages/RecipeDetail.js';
 import { Login } from './pages/Login.js';
 import { RecipeForm } from './pages/RecipeForm.js';
-import { isLoggedIn, clearToken } from './api/auth.js';
+import { AdminUserList } from './pages/AdminUserList.js';
+import { AdminUserForm } from './pages/AdminUserForm.js';
+import { isLoggedIn, isAdmin, clearToken } from './api/auth.js';
 
 const routes = [
+  { pattern: /^\/admin\/users\/([^/]+)\/edit$/, factory: (m) => AdminUserForm({ id: m[1], onSave: () => navigate('#/admin/users') }) },
+  { pattern: /^\/admin\/users\/new$/, factory: () => AdminUserForm({ onSave: () => navigate('#/admin/users') }) },
+  { pattern: /^\/admin\/users$/, factory: () => AdminUserList() },
   { pattern: /^\/recipes\/([^/]+)\/edit$/, factory: (m) => RecipeForm({ id: m[1], onSave: () => navigate(`#/recipes/${m[1]}`) }) },
   { pattern: /^\/recipes\/new$/, factory: () => RecipeForm({ onSave: (r) => navigate(`#/recipes/${r?.data?.id || ''}`) }) },
   { pattern: /^\/recipes\/([^/]+)$/, factory: (m) => RecipeDetail({ id: m[1] }) },
@@ -23,11 +28,42 @@ function getPath() {
   return location.hash.replace(/^#/, '') || '/';
 }
 
+export function renderAdminRoute(root) {
+  if (!isLoggedIn()) {
+    root.appendChild(Login({ onSuccess: () => { root.innerHTML = ''; root.appendChild(AdminUserList()); } }));
+    return;
+  }
+  if (!isAdmin()) {
+    const p = document.createElement('p');
+    p.className = 'text-center py-16 text-red-600';
+    p.textContent = 'Access denied. Admin only.';
+    root.appendChild(p);
+    return;
+  }
+  root.appendChild(AdminUserList());
+}
+
 function renderPage() {
   const path = getPath();
   const root = document.getElementById('app');
   root.innerHTML = '';
   root.appendChild(buildNav());
+
+  // Admin route guard
+  if (/^\/admin/.test(path)) {
+    if (!isLoggedIn()) {
+      root.appendChild(Login({ onSuccess: () => renderPage() }));
+      return;
+    }
+    if (!isAdmin()) {
+      const p = document.createElement('p');
+      p.className = 'text-center py-16 text-red-600';
+      p.textContent = 'Access denied. Admin only.';
+      root.appendChild(p);
+      return;
+    }
+    // Fall through to route matching for the specific admin page
+  }
 
   // Auth guard for write routes
   const writeRoutes = /^\/(recipes\/new|recipes\/.+\/edit)/;
@@ -53,7 +89,7 @@ function renderPage() {
   }
 }
 
-function buildNav() {
+export function buildNav() {
   const nav = document.createElement('nav');
   nav.className = 'bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-6';
   nav.innerHTML = `
@@ -61,6 +97,14 @@ function buildNav() {
     <a href="#/recipes" class="text-gray-600 hover:text-indigo-600">All Recipes</a>
   `;
   if (isLoggedIn()) {
+    if (isAdmin()) {
+      const adminLink = document.createElement('a');
+      adminLink.href = '#/admin/users';
+      adminLink.className = 'text-gray-600 hover:text-indigo-600';
+      adminLink.textContent = 'Admin';
+      nav.appendChild(adminLink);
+    }
+
     const createLink = document.createElement('a');
     createLink.href = '#/recipes/new';
     createLink.className = 'ml-auto bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 text-sm';
@@ -85,5 +129,7 @@ function buildNav() {
   return nav;
 }
 
-window.addEventListener('hashchange', renderPage);
-renderPage();
+if (document.getElementById('app')) {
+  window.addEventListener('hashchange', renderPage);
+  renderPage();
+}

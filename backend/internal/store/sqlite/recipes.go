@@ -174,11 +174,13 @@ func (s *RecipeStore) upsertFTS(r *model.Recipe) error {
 func scanRecipe(row *sql.Row) (*model.Recipe, error) {
 	var r model.Recipe
 	var ing, steps, props []byte
+	var creatorID sql.NullString
 	var createdAt, updatedAt string
-	err := row.Scan(&r.ID, &r.Name, &ing, &steps, &props, &r.Notes, &r.CreatorID, &createdAt, &updatedAt)
+	err := row.Scan(&r.ID, &r.Name, &ing, &steps, &props, &r.Notes, &creatorID, &createdAt, &updatedAt)
 	if err != nil {
 		return nil, err
 	}
+	r.CreatorID = creatorID.String
 	if err := json.Unmarshal(ing, &r.Ingredients); err != nil {
 		return nil, err
 	}
@@ -198,10 +200,12 @@ func scanRecipes(rows *sql.Rows, total int) ([]*model.Recipe, int, error) {
 	for rows.Next() {
 		var r model.Recipe
 		var ing, steps, props []byte
+		var creatorID sql.NullString
 		var createdAt, updatedAt string
-		if err := rows.Scan(&r.ID, &r.Name, &ing, &steps, &props, &r.Notes, &r.CreatorID, &createdAt, &updatedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.Name, &ing, &steps, &props, &r.Notes, &creatorID, &createdAt, &updatedAt); err != nil {
 			return nil, 0, err
 		}
+		r.CreatorID = creatorID.String
 		if err := json.Unmarshal(ing, &r.Ingredients); err != nil {
 			return nil, 0, err
 		}
