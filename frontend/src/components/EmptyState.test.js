@@ -11,4 +11,9 @@ describe('EmptyState', () => {
     const el = EmptyState({});
     expect(el.textContent.trim().length).toBeGreaterThan(0);
   });
+
+  it('uses text-stone-500 class not legacy text-gray-400', () => {
+    const el = EmptyState({ message: 'Nothing here' });
+    expect(el.className).toContain('text-stone-500');
+  });
 });

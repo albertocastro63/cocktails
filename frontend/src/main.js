@@ -83,7 +83,7 @@ function renderPage() {
   }
   if (!matched) {
     const el = document.createElement('p');
-    el.className = 'text-center py-16 text-gray-400';
+    el.className = 'text-center py-16 text-stone-400';
     el.textContent = 'Page not found.';
     root.appendChild(el);
   }
@@ -91,29 +91,29 @@ function renderPage() {
 
 export function buildNav() {
   const nav = document.createElement('nav');
-  nav.className = 'bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-6';
+  nav.className = 'bg-stone-900 px-6 py-3 flex items-center gap-6';
   nav.innerHTML = `
-    <a href="#/" class="text-gray-700 hover:text-indigo-600 font-semibold text-lg">Cocktails</a>
-    <a href="#/recipes" class="text-gray-600 hover:text-indigo-600">All Recipes</a>
+    <a href="#/" class="text-stone-100 hover:text-amber-400 font-semibold text-lg">Cocktails</a>
+    <a href="#/recipes" class="text-stone-100 hover:text-amber-400">All Recipes</a>
   `;
   if (isLoggedIn()) {
     if (isAdmin()) {
       const adminLink = document.createElement('a');
       adminLink.href = '#/admin/users';
-      adminLink.className = 'text-gray-600 hover:text-indigo-600';
+      adminLink.className = 'text-stone-100 hover:text-amber-400';
       adminLink.textContent = 'Admin';
       nav.appendChild(adminLink);
     }
 
     const createLink = document.createElement('a');
     createLink.href = '#/recipes/new';
-    createLink.className = 'ml-auto bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 text-sm';
+    createLink.className = 'ml-auto bg-amber-500 text-stone-900 font-semibold px-3 py-1 rounded-xl hover:bg-amber-600 text-sm';
     createLink.textContent = '+ New Recipe';
     nav.appendChild(createLink);
 
     const logoutBtn = document.createElement('button');
     logoutBtn.textContent = 'Sign Out';
-    logoutBtn.className = 'text-sm text-gray-500 hover:text-gray-700';
+    logoutBtn.className = 'text-sm text-stone-400 hover:text-stone-200';
     logoutBtn.addEventListener('click', () => {
       clearToken();
       navigate('#/');
@@ -122,7 +122,7 @@ export function buildNav() {
   } else {
     const loginLink = document.createElement('a');
     loginLink.href = '#/login';
-    loginLink.className = 'ml-auto text-sm text-indigo-600 hover:text-indigo-800';
+    loginLink.className = 'ml-auto text-sm text-amber-400 hover:text-amber-300';
     loginLink.textContent = 'Sign In';
     nav.appendChild(loginLink);
   }

@@ -60,4 +60,12 @@ describe('Login page', () => {
       expect(document.body.textContent.toLowerCase()).toMatch(/invalid|error|failed/);
     });
   });
+
+  it('submit button has bg-amber-500 class', () => {
+    const el = Login({ onSuccess: vi.fn() });
+    document.body.appendChild(el);
+    const submitBtn = document.body.querySelector('button[type="submit"]');
+    expect(submitBtn).not.toBeNull();
+    expect(submitBtn.className).toContain('bg-amber-500');
+  });
 });

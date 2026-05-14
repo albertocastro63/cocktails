@@ -10,6 +10,18 @@ const recipe = {
   ],
 };
 
+describe('RecipeCard - visual redesign', () => {
+  it('card wrapper has rounded-2xl class', () => {
+    const el = RecipeCard({ recipe });
+    expect(el.className).toContain('rounded-2xl');
+  });
+
+  it('card has amber left border accent class border-l-amber-400', () => {
+    const el = RecipeCard({ recipe });
+    expect(el.className).toContain('border-l-amber-400');
+  });
+});
+
 describe('RecipeCard', () => {
   it('renders the recipe name', () => {
     const el = RecipeCard({ recipe });

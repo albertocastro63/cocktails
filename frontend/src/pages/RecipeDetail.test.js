@@ -87,4 +87,15 @@ describe('RecipeDetail page', () => {
       expect(document.body.textContent.toLowerCase()).toMatch(/error|not found|failed/);
     });
   });
+
+  it('recipe title h1 has text-stone-900 class', async () => {
+    getRecipe.mockResolvedValue(fullRecipe);
+    const el = RecipeDetail({ id: 'r1' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => {
+      const h1 = document.body.querySelector('h1');
+      expect(h1).not.toBeNull();
+      expect(h1.className).toContain('text-stone-900');
+    });
+  });
 });

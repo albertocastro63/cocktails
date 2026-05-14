@@ -8,7 +8,7 @@ export function RecipeList() {
   el.className = 'max-w-4xl mx-auto px-4 py-8';
 
   const heading = document.createElement('h1');
-  heading.className = 'text-3xl font-bold text-gray-900 mb-6';
+  heading.className = 'text-3xl font-bold text-stone-900 mb-6';
   heading.textContent = 'All Recipes';
   el.appendChild(heading);
 
@@ -23,7 +23,11 @@ export function RecipeList() {
   let currentQ = '';
 
   function loadRecipes(q = '') {
-    content.textContent = 'Loading…';
+    content.innerHTML = '';
+    const loadingP = document.createElement('p');
+    loadingP.className = 'text-stone-500 animate-pulse py-4 text-center';
+    loadingP.textContent = 'Loading…';
+    content.appendChild(loadingP);
     const params = q ? { q } : {};
     getRecipes(params).then(({ data }) => {
       content.textContent = '';

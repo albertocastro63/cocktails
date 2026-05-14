@@ -27,4 +27,11 @@ describe('IngredientList', () => {
     const el = IngredientList({ ingredients: [] });
     expect(el).not.toBeNull();
   });
+
+  it('ingredient name span has text-stone-800 class not legacy text-gray-800', () => {
+    const el = IngredientList({ ingredients });
+    const nameSpan = el.querySelector('span.font-medium');
+    expect(nameSpan).not.toBeNull();
+    expect(nameSpan.className).toContain('text-stone-800');
+  });
 });

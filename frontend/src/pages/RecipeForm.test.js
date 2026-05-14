@@ -96,4 +96,12 @@ describe('RecipeForm page', () => {
       expect(createRecipe).toHaveBeenCalled();
     });
   });
+
+  it('submit button has bg-amber-500 class', () => {
+    const el = RecipeForm({});
+    document.body.appendChild(el);
+    const submitBtn = document.body.querySelector('button[type="submit"]');
+    expect(submitBtn).not.toBeNull();
+    expect(submitBtn.className).toContain('bg-amber-500');
+  });
 });
