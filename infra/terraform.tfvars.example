@@ -1,0 +1,19 @@
+# Copy this file to terraform.tfvars and fill in the values before running terraform apply.
+# terraform.tfvars is gitignored — never commit secrets.
+
+# Short prefix applied to all resource names (default: "cocktails")
+project_name = "cocktails"
+
+# Deployment environment label; used in resource names and tags (default: "prod")
+environment = "prod"
+
+# AWS region where all resources are created (default: "us-east-1")
+aws_region = "us-east-1"
+
+# Path to the pre-compiled Go binary zip.
+# Build it first: cd backend && GOOS=linux GOARCH=arm64 go build -o bootstrap ./cmd/lambda && zip bootstrap.zip bootstrap
+lambda_binary_path = "../backend/bootstrap.zip"
+
+# JWT signing secret for the API — keep this secret and at least 32 characters.
+# Generate one: openssl rand -base64 32
+jwt_secret = "change-me-use-openssl-rand-base64-32"

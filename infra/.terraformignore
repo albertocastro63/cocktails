@@ -1,0 +1,16 @@
+# Exclude large directories and sensitive files from Terraform Cloud/Enterprise uploads.
+# Not required for local terraform apply runs.
+
+.git
+.gitignore
+specs/
+frontend/node_modules/
+frontend/dist/
+backend/
+*.md
+*.zip
+env.json
+terraform.tfvars
+.terraform/
+*.tfstate
+*.tfstate.backup
