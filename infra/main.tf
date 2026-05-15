@@ -52,18 +52,6 @@ module "artifact_bucket" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
-
-  lifecycle_rule = [
-    {
-      id      = "expire-old-versions"
-      enabled = true
-
-      noncurrent_version_expiration = {
-        newer_noncurrent_versions = 3
-        noncurrent_days           = 30
-      }
-    }
-  ]
 }
 
 # ─────────────────────────────────────────────
