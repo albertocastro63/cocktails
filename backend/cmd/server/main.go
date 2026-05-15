@@ -78,6 +78,14 @@ func buildHandler(rs store.RecipeStore, us store.UserStore) http.Handler {
 	mux.Handle("DELETE /api/v1/admin/users/{id}",
 		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.DeleteUser))))
 
+	adminRecipesH := handler.NewAdminRecipeHandler(rs)
+	mux.Handle("GET /api/v1/admin/schema",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminRecipesH.ExportSchema))))
+	mux.Handle("GET /api/v1/admin/recipes/export",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminRecipesH.ExportRecipes))))
+	mux.Handle("POST /api/v1/admin/recipes/import",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminRecipesH.ImportRecipes))))
+
 	return handler.CORSMiddleware(mux)
 }
 

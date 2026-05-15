@@ -69,3 +69,29 @@ export function updateUser(id, data, token) {
 export function deleteUser(id, token) {
   return request('DELETE', `/api/v1/admin/users/${id}`, undefined, token);
 }
+
+async function fetchBlob(path, token) {
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${BASE_URL}${path}`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: { message: 'Request failed' } }));
+    const e = new Error(err.error?.message || 'Request failed');
+    e.status = res.status;
+    e.code = err.error?.code;
+    throw e;
+  }
+  return res.blob();
+}
+
+export function downloadRecipeSchema(token) {
+  return fetchBlob('/api/v1/admin/schema', token);
+}
+
+export function exportRecipes(token) {
+  return fetchBlob('/api/v1/admin/recipes/export', token);
+}
+
+export function importRecipes(recipes, token) {
+  return request('POST', '/api/v1/admin/recipes/import', recipes, token);
+}

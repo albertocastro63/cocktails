@@ -173,6 +173,44 @@ func (s *RecipeStore) ExistsByName(name string) (bool, error) {
 	return false, nil
 }
 
+func (s *RecipeStore) ListAll() ([]*model.Recipe, error) {
+	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
+		TableName: aws.String(s.tableName),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return scanToRecipes(out.Items)
+}
+
+func (s *RecipeStore) ImportBatch(recipes []*model.Recipe, _ string) (int, int, error) {
+	created, skipped := 0, 0
+	var createdIDs []string
+	for _, r := range recipes {
+		exists, err := s.ExistsByName(r.Name)
+		if err != nil {
+			// Best-effort compensation: delete items created so far
+			for _, id := range createdIDs {
+				_ = s.Delete(id)
+			}
+			return 0, 0, err
+		}
+		if exists {
+			skipped++
+			continue
+		}
+		if err := s.Create(r); err != nil {
+			for _, id := range createdIDs {
+				_ = s.Delete(id)
+			}
+			return 0, 0, err
+		}
+		createdIDs = append(createdIDs, r.ID)
+		created++
+	}
+	return created, skipped, nil
+}
+
 func toItem(r *model.Recipe) recipeItem {
 	ings := make([]ingItem, len(r.Ingredients))
 	for i, ing := range r.Ingredients {

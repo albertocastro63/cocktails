@@ -217,3 +217,76 @@ func TestRandom_EmptyDB(t *testing.T) {
 		t.Error("expected nil from empty DB")
 	}
 }
+
+func TestListAll(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+
+	all, err := rs.ListAll()
+	if err != nil {
+		t.Fatalf("ListAll on empty DB: %v", err)
+	}
+	if len(all) != 0 {
+		t.Errorf("expected 0 recipes, got %d", len(all))
+	}
+
+	for i := 0; i < 3; i++ {
+		r := sampleRecipe(uid)
+		r.ID = uuid.NewString()
+		r.Name = "Recipe " + string(rune('A'+i))
+		if err := rs.Create(r); err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+	}
+
+	all, err = rs.ListAll()
+	if err != nil {
+		t.Fatalf("ListAll: %v", err)
+	}
+	if len(all) != 3 {
+		t.Errorf("expected 3 recipes, got %d", len(all))
+	}
+}
+
+func TestImportBatch(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+
+	existing := sampleRecipe(uid)
+	existing.Name = "Existing"
+	if err := rs.Create(existing); err != nil {
+		t.Fatalf("seed Create: %v", err)
+	}
+
+	toImport := []*model.Recipe{
+		{ID: uuid.NewString(), Name: "New Cocktail", CreatorID: uid},
+		{ID: uuid.NewString(), Name: "Existing", CreatorID: uid},
+	}
+	created, skipped, err := rs.ImportBatch(toImport, uid)
+	if err != nil {
+		t.Fatalf("ImportBatch: %v", err)
+	}
+	if created != 1 {
+		t.Errorf("created: got %d want 1", created)
+	}
+	if skipped != 1 {
+		t.Errorf("skipped: got %d want 1", skipped)
+	}
+
+	all, _ := rs.ListAll()
+	if len(all) != 2 {
+		t.Errorf("total recipes: got %d want 2", len(all))
+	}
+}
+
+func TestImportBatch_EmptyInput(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	created, skipped, err := rs.ImportBatch([]*model.Recipe{}, uid)
+	if err != nil {
+		t.Fatalf("ImportBatch empty: %v", err)
+	}
+	if created != 0 || skipped != 0 {
+		t.Errorf("expected 0/0 got %d/%d", created, skipped)
+	}
+}
