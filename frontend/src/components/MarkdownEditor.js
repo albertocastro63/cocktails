@@ -28,7 +28,7 @@ export function MarkdownEditor({ name = 'notes', placeholder = '', value = '' } 
 
   const preview = document.createElement('div');
   preview.setAttribute('data-preview', '');
-  preview.className = 'prose w-full border border-gray-200 rounded-lg px-3 py-2 min-h-[4.5rem] text-gray-700';
+  preview.className = 'prose prose-stone max-w-none overflow-x-auto w-full border border-gray-200 rounded-lg px-3 py-2 min-h-[4.5rem]';
   preview.style.display = 'none';
 
   toggleBtn.addEventListener('click', () => {

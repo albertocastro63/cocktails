@@ -90,7 +90,7 @@ export function RecipeDetail({ id }) {
       h2.textContent = 'Notes';
       content.appendChild(h2);
       const div = document.createElement('div');
-      div.className = 'text-stone-700';
+      div.className = 'prose prose-stone max-w-none overflow-x-auto';
       div.innerHTML = renderMarkdown(recipe.notes);
       content.appendChild(div);
     }

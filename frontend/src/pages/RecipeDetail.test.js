@@ -98,4 +98,19 @@ describe('RecipeDetail page', () => {
       expect(h1.className).toContain('text-stone-900');
     });
   });
+
+  it('notes container has prose prose-stone max-w-none overflow-x-auto classes for typography styling', async () => {
+    getRecipe.mockResolvedValue({ ...fullRecipe, notes: '## Tips\n**Shake well.**' });
+    const el = RecipeDetail({ id: 'r1' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => {
+      const strong = document.body.querySelector('strong');
+      expect(strong).not.toBeNull();
+      const notesContainer = strong.closest('div');
+      expect(notesContainer.className).toContain('prose');
+      expect(notesContainer.className).toContain('prose-stone');
+      expect(notesContainer.className).toContain('max-w-none');
+      expect(notesContainer.className).toContain('overflow-x-auto');
+    });
+  });
 });
