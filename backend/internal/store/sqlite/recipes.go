@@ -152,6 +152,55 @@ func (s *RecipeStore) ExistsByName(name string) (bool, error) {
 	return n > 0, err
 }
 
+func (s *RecipeStore) ListAll() ([]*model.Recipe, error) {
+	rows, err := s.db.Query(
+		`SELECT id, name, ingredients, steps, properties, notes, creator_id, created_at, updated_at
+		 FROM recipes ORDER BY created_at ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	recipes, _, err := scanRecipes(rows, 0)
+	return recipes, err
+}
+
+func (s *RecipeStore) ImportBatch(recipes []*model.Recipe, _ string) (int, int, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, 0, err
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	created, skipped := 0, 0
+	for _, r := range recipes {
+		var n int
+		if err := tx.QueryRow(`SELECT COUNT(*) FROM recipes WHERE name = ?`, r.Name).Scan(&n); err != nil {
+			return 0, 0, err
+		}
+		if n > 0 {
+			skipped++
+			continue
+		}
+		ing, _ := json.Marshal(r.Ingredients)
+		steps, _ := json.Marshal(r.Steps)
+		props, _ := json.Marshal(r.Properties)
+		if _, err := tx.Exec(
+			`INSERT INTO recipes (id, name, ingredients, steps, properties, notes, creator_id, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			r.ID, r.Name, ing, steps, props, r.Notes, r.CreatorID,
+			r.CreatedAt.UTC().Format(time.RFC3339Nano),
+			r.UpdatedAt.UTC().Format(time.RFC3339Nano),
+		); err != nil {
+			return 0, 0, err
+		}
+		created++
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, 0, err
+	}
+	return created, skipped, nil
+}
+
 func (s *RecipeStore) upsertFTS(r *model.Recipe) error {
 	var parts []string
 	parts = append(parts, r.Name)

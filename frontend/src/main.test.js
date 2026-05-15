@@ -15,6 +15,14 @@ vi.mock('./pages/AdminUserList.js', () => ({
   }),
 }));
 
+vi.mock('./pages/AdminRecipes.js', () => ({
+  AdminRecipes: vi.fn(() => {
+    const el = document.createElement('div');
+    el.textContent = 'AdminRecipes';
+    return el;
+  }),
+}));
+
 vi.mock('./pages/Login.js', () => ({
   Login: vi.fn(() => {
     const el = document.createElement('div');
@@ -73,5 +81,13 @@ describe('admin nav link', () => {
     isAdmin.mockReturnValue(true);
     const nav = buildNav();
     expect(nav.querySelector('[href="#/admin/users"]')).toBeTruthy();
+  });
+
+  it('admin nav renders both Users and Recipes links for admin user', () => {
+    isLoggedIn.mockReturnValue(true);
+    isAdmin.mockReturnValue(true);
+    const nav = buildNav();
+    expect(nav.querySelector('[href="#/admin/users"]')).toBeTruthy();
+    expect(nav.querySelector('[href="#/admin/recipes"]')).toBeTruthy();
   });
 });

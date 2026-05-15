@@ -106,6 +106,34 @@ func (s *stubRecipeStore) ExistsByName(name string) (bool, error) {
 	return false, nil
 }
 
+func (s *stubRecipeStore) ListAll() ([]*model.Recipe, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	all := make([]*model.Recipe, 0, len(s.recipes))
+	for _, r := range s.recipes {
+		all = append(all, r)
+	}
+	return all, nil
+}
+
+func (s *stubRecipeStore) ImportBatch(recipes []*model.Recipe, creatorID string) (int, int, error) {
+	if s.err != nil {
+		return 0, 0, s.err
+	}
+	created, skipped := 0, 0
+	for _, r := range recipes {
+		exists, _ := s.ExistsByName(r.Name)
+		if exists {
+			skipped++
+			continue
+		}
+		_ = s.Create(r)
+		created++
+	}
+	return created, skipped, nil
+}
+
 // compile-time interface checks
 var _ store.RecipeStore = (*stubRecipeStore)(nil)
 var _ store.UserStore = (*stubUserStore)(nil)

@@ -6,12 +6,14 @@ import { Login } from './pages/Login.js';
 import { RecipeForm } from './pages/RecipeForm.js';
 import { AdminUserList } from './pages/AdminUserList.js';
 import { AdminUserForm } from './pages/AdminUserForm.js';
+import { AdminRecipes } from './pages/AdminRecipes.js';
 import { isLoggedIn, isAdmin, clearToken } from './api/auth.js';
 
 const routes = [
   { pattern: /^\/admin\/users\/([^/]+)\/edit$/, factory: (m) => AdminUserForm({ id: m[1], onSave: () => navigate('#/admin/users') }) },
   { pattern: /^\/admin\/users\/new$/, factory: () => AdminUserForm({ onSave: () => navigate('#/admin/users') }) },
   { pattern: /^\/admin\/users$/, factory: () => AdminUserList() },
+  { pattern: /^\/admin\/recipes$/, factory: () => AdminRecipes() },
   { pattern: /^\/recipes\/([^/]+)\/edit$/, factory: (m) => RecipeForm({ id: m[1], onSave: () => navigate(`#/recipes/${m[1]}`) }) },
   { pattern: /^\/recipes\/new$/, factory: () => RecipeForm({ onSave: (r) => navigate(`#/recipes/${r?.data?.id || ''}`) }) },
   { pattern: /^\/recipes\/([^/]+)$/, factory: (m) => RecipeDetail({ id: m[1] }) },
@@ -98,11 +100,17 @@ export function buildNav() {
   `;
   if (isLoggedIn()) {
     if (isAdmin()) {
-      const adminLink = document.createElement('a');
-      adminLink.href = '#/admin/users';
-      adminLink.className = 'text-stone-100 hover:text-amber-400';
-      adminLink.textContent = 'Admin';
-      nav.appendChild(adminLink);
+      const usersLink = document.createElement('a');
+      usersLink.href = '#/admin/users';
+      usersLink.className = 'text-stone-100 hover:text-amber-400';
+      usersLink.textContent = 'Users';
+      nav.appendChild(usersLink);
+
+      const recipesLink = document.createElement('a');
+      recipesLink.href = '#/admin/recipes';
+      recipesLink.className = 'text-stone-100 hover:text-amber-400';
+      recipesLink.textContent = 'Recipes';
+      nav.appendChild(recipesLink);
     }
 
     const createLink = document.createElement('a');
