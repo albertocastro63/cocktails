@@ -31,7 +31,7 @@ locals {
 
 module "artifact_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "~> 4.0"
+  version = "~> 5.0"
 
   bucket = "${local.name_prefix}-artifacts"
 
@@ -72,7 +72,7 @@ module "artifact_bucket" {
 
 module "recipes_table" {
   source  = "terraform-aws-modules/dynamodb-table/aws"
-  version = "~> 4.0"
+  version = "~> 5.0"
 
   name         = "${var.project_name}-recipes"
   billing_mode = "PAY_PER_REQUEST"
@@ -95,7 +95,7 @@ module "recipes_table" {
 
 module "users_table" {
   source  = "terraform-aws-modules/dynamodb-table/aws"
-  version = "~> 4.0"
+  version = "~> 5.0"
 
   name         = "${var.project_name}-users"
   billing_mode = "PAY_PER_REQUEST"
@@ -137,7 +137,7 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
 
 module "lambda_function" {
   source  = "terraform-aws-modules/lambda/aws"
-  version = "~> 7.0"
+  version = "~> 8.0"
 
   function_name = "${local.name_prefix}-api"
   description   = "Cocktails API backend (Go, arm64)"
@@ -224,7 +224,7 @@ resource "aws_lambda_permission" "apigw" {
 
 module "api_gateway" {
   source  = "terraform-aws-modules/apigateway-v2/aws"
-  version = "~> 5.0"
+  version = "~> 6.0"
 
   name          = "${local.name_prefix}-api"
   protocol_type = "HTTP"
@@ -238,7 +238,7 @@ module "api_gateway" {
     max_age       = 300
   }
 
-  # v5.x uses 'routes' (not 'integrations'). Each route embeds its integration config.
+  # v6.x uses 'routes' (not 'integrations'). Each route embeds its integration config.
   routes = {
     "$default" = {
       integration = {
@@ -257,7 +257,7 @@ module "api_gateway" {
 
 module "frontend_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "~> 4.0"
+  version = "~> 5.0"
 
   bucket = "${local.name_prefix}-frontend"
 
@@ -275,7 +275,7 @@ module "frontend_bucket" {
 
 module "cdn" {
   source  = "terraform-aws-modules/cloudfront/aws"
-  version = "~> 3.4"
+  version = "~> 4.0"
 
   create_origin_access_control = true
 
@@ -288,7 +288,7 @@ module "cdn" {
     }
   }
 
-  # v3.x uses 'origin' (singular) as a map of origin objects.
+  # v4.x uses 'origin' (singular) as a map of origin objects.
   origin = {
     frontend = {
       domain_name           = module.frontend_bucket.s3_bucket_bucket_regional_domain_name
