@@ -79,4 +79,17 @@ describe('MarkdownEditor', () => {
     expect(textarea).not.toBeNull();
     expect(textarea.value).toBe('# heading');
   });
+
+  it('preview notes container has prose prose-stone max-w-none overflow-x-auto classes for typography styling', () => {
+    const el = MarkdownEditor({ name: 'notes', value: '## heading' });
+    document.body.appendChild(el);
+    const btn = document.body.querySelector('button');
+    btn.click();
+    const preview = document.body.querySelector('[data-preview]');
+    expect(preview).not.toBeNull();
+    expect(preview.className).toContain('prose');
+    expect(preview.className).toContain('prose-stone');
+    expect(preview.className).toContain('max-w-none');
+    expect(preview.className).toContain('overflow-x-auto');
+  });
 });

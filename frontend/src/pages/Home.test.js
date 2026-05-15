@@ -97,4 +97,26 @@ describe('Home page', () => {
     const hero = el.querySelector('.from-stone-900');
     expect(hero).not.toBeNull();
   });
+
+  it('notes container has prose prose-stone max-w-none overflow-x-auto classes for typography styling', async () => {
+    getRandomRecipe.mockResolvedValue({
+      id: 'r1',
+      name: 'Mojito',
+      ingredients: [],
+      steps: [],
+      properties: {},
+      notes: '## Tips\n**Shake well.**',
+    });
+    const el = Home();
+    document.body.appendChild(el);
+    await vi.waitFor(() => {
+      const strong = document.body.querySelector('strong');
+      expect(strong).not.toBeNull();
+      const notesContainer = strong.closest('div');
+      expect(notesContainer.className).toContain('prose');
+      expect(notesContainer.className).toContain('prose-stone');
+      expect(notesContainer.className).toContain('max-w-none');
+      expect(notesContainer.className).toContain('overflow-x-auto');
+    });
+  });
 });

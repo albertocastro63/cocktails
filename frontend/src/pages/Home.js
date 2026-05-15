@@ -92,7 +92,7 @@ export function Home() {
       h3.textContent = 'Notes';
       content.appendChild(h3);
       const div = document.createElement('div');
-      div.className = 'text-stone-700';
+      div.className = 'prose prose-stone max-w-none overflow-x-auto';
       div.innerHTML = renderMarkdown(recipe.notes);
       content.appendChild(div);
     }
