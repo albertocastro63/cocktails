@@ -6,29 +6,33 @@ export function Login({ onSuccess } = {}) {
   el.className = 'max-w-sm mx-auto px-4 py-16';
 
   const heading = document.createElement('h1');
-  heading.className = 'text-3xl font-bold text-gray-900 mb-8 text-center';
+  heading.className = 'text-3xl font-bold text-stone-900 mb-8 text-center';
   heading.textContent = 'Sign In';
   el.appendChild(heading);
+
+  const card = document.createElement('div');
+  card.className = 'bg-white rounded-2xl shadow-sm border border-stone-200 p-8';
 
   const form = document.createElement('form');
   form.className = 'space-y-4';
   form.innerHTML = `
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+      <label class="block text-sm font-medium text-stone-700 mb-1">Username</label>
       <input name="username" type="text" autocomplete="username"
-        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        class="w-full border border-stone-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
     </div>
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+      <label class="block text-sm font-medium text-stone-700 mb-1">Password</label>
       <input name="password" type="password" autocomplete="current-password"
-        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        class="w-full border border-stone-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent" />
     </div>
     <button type="submit"
-      class="w-full bg-indigo-600 text-white rounded-lg px-4 py-2 font-medium hover:bg-indigo-700 transition-colors">
+      class="w-full bg-amber-500 text-stone-900 rounded-xl px-4 py-2 font-semibold hover:bg-amber-600 transition-colors">
       Sign In
     </button>
   `;
-  el.appendChild(form);
+  card.appendChild(form);
+  el.appendChild(card);
 
   const errorMsg = document.createElement('p');
   errorMsg.className = 'mt-4 text-red-600 text-sm text-center hidden';

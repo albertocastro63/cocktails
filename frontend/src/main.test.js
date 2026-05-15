@@ -51,6 +51,15 @@ describe('admin route guard', () => {
   });
 });
 
+describe('navigation redesign', () => {
+  it('buildNav has bg-stone-900 class', () => {
+    isLoggedIn.mockReturnValue(false);
+    isAdmin.mockReturnValue(false);
+    const nav = buildNav();
+    expect(nav.className).toContain('bg-stone-900');
+  });
+});
+
 describe('admin nav link', () => {
   it('Admin nav link is not rendered when isAdmin() returns false', () => {
     isLoggedIn.mockReturnValue(true);

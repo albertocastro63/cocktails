@@ -89,4 +89,12 @@ describe('Home page', () => {
       expect(document.body.textContent.toLowerCase()).toMatch(/no recipe|empty|nothing|add one/);
     });
   });
+
+  it('renders hero band with from-stone-900 gradient class', () => {
+    getRandomRecipe.mockReturnValue(new Promise(() => {}));
+    const el = Home();
+    document.body.appendChild(el);
+    const hero = el.querySelector('.from-stone-900');
+    expect(hero).not.toBeNull();
+  });
 });

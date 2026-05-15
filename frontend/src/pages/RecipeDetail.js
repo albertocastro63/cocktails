@@ -9,7 +9,10 @@ export function RecipeDetail({ id }) {
   el.className = 'max-w-2xl mx-auto px-4 py-8';
 
   const content = document.createElement('div');
-  content.textContent = 'Loading…';
+  const loadingP = document.createElement('p');
+  loadingP.className = 'text-stone-500 animate-pulse py-4 text-center';
+  loadingP.textContent = 'Loading…';
+  content.appendChild(loadingP);
   el.appendChild(content);
 
   getRecipe(id).then((recipe) => {
@@ -19,22 +22,21 @@ export function RecipeDetail({ id }) {
     titleRow.className = 'flex items-center justify-between mb-6';
 
     const title = document.createElement('h1');
-    title.className = 'text-3xl font-bold text-gray-900';
+    title.className = 'text-3xl font-bold text-stone-900';
     title.textContent = recipe.name;
     titleRow.appendChild(title);
 
-    // Show Edit/Delete only to the creator (we check via JWT on server; client shows controls when logged in)
     if (isLoggedIn()) {
       const controls = document.createElement('div');
       controls.className = 'flex gap-2';
       const editBtn = document.createElement('a');
       editBtn.href = `#/recipes/${id}/edit`;
-      editBtn.className = 'text-sm text-indigo-600 hover:text-indigo-800 border border-indigo-300 rounded px-3 py-1';
+      editBtn.className = 'text-sm text-stone-700 hover:text-amber-700 border border-stone-300 hover:border-amber-500 rounded-xl px-3 py-1';
       editBtn.textContent = 'Edit';
       const deleteBtn = document.createElement('button');
       deleteBtn.type = 'button';
       deleteBtn.textContent = 'Delete';
-      deleteBtn.className = 'text-sm text-red-600 hover:text-red-800 border border-red-300 rounded px-3 py-1';
+      deleteBtn.className = 'text-sm text-red-600 hover:text-red-800 border border-red-300 hover:bg-red-50 rounded-xl px-3 py-1';
       deleteBtn.addEventListener('click', async () => {
         if (!confirm('Delete this recipe?')) return;
         try {
@@ -53,7 +55,7 @@ export function RecipeDetail({ id }) {
 
     if (recipe.ingredients && recipe.ingredients.length > 0) {
       const h2 = document.createElement('h2');
-      h2.className = 'text-xl font-semibold text-gray-700 mt-6 mb-2';
+      h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2';
       h2.textContent = 'Ingredients';
       content.appendChild(h2);
       content.appendChild(IngredientList({ ingredients: recipe.ingredients }));
@@ -61,11 +63,11 @@ export function RecipeDetail({ id }) {
 
     if (recipe.steps && recipe.steps.length > 0) {
       const h2 = document.createElement('h2');
-      h2.className = 'text-xl font-semibold text-gray-700 mt-6 mb-2';
+      h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2';
       h2.textContent = 'Steps';
       content.appendChild(h2);
       const ol = document.createElement('ol');
-      ol.className = 'list-decimal list-inside space-y-1 text-gray-700';
+      ol.className = 'list-decimal list-inside space-y-1 text-stone-700';
       recipe.steps.forEach((step) => {
         const li = document.createElement('li');
         li.textContent = step;
@@ -76,7 +78,7 @@ export function RecipeDetail({ id }) {
 
     if (recipe.properties && Object.keys(recipe.properties).length > 0) {
       const h2 = document.createElement('h2');
-      h2.className = 'text-xl font-semibold text-gray-700 mt-6 mb-2';
+      h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2';
       h2.textContent = 'Properties';
       content.appendChild(h2);
       content.appendChild(PropertyTable({ properties: recipe.properties }));
@@ -84,16 +86,20 @@ export function RecipeDetail({ id }) {
 
     if (recipe.notes) {
       const h2 = document.createElement('h2');
-      h2.className = 'text-xl font-semibold text-gray-700 mt-6 mb-2';
+      h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2';
       h2.textContent = 'Notes';
       content.appendChild(h2);
       const div = document.createElement('div');
-      div.className = 'text-gray-700';
+      div.className = 'text-stone-700';
       div.innerHTML = renderMarkdown(recipe.notes);
       content.appendChild(div);
     }
   }).catch((err) => {
-    content.textContent = `Failed to load recipe: ${err.message}`;
+    content.innerHTML = '';
+    const errP = document.createElement('p');
+    errP.className = 'text-stone-500 py-4 text-center';
+    errP.textContent = `Failed to load recipe: ${err.message}`;
+    content.appendChild(errP);
   });
 
   return el;

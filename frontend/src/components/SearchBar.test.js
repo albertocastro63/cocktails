@@ -27,4 +27,10 @@ describe('SearchBar', () => {
     const btn = el.querySelector('button');
     expect(btn).not.toBeNull();
   });
+
+  it('input has focus:ring-amber-400 class', () => {
+    const el = SearchBar({ onSearch: vi.fn() });
+    const input = el.querySelector('input');
+    expect(input.className).toContain('focus:ring-amber-400');
+  });
 });

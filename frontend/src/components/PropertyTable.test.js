@@ -24,4 +24,12 @@ describe('PropertyTable', () => {
     expect(el.textContent).toContain('unknown_field');
     expect(el.textContent).toContain('some value');
   });
+
+  it('key cell has text-stone-500 class not legacy text-gray-500', () => {
+    const properties = { style: 'tropical' };
+    const el = PropertyTable({ properties });
+    const keyCell = el.querySelector('td');
+    expect(keyCell).not.toBeNull();
+    expect(keyCell.className).toContain('text-stone-500');
+  });
 });

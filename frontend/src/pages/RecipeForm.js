@@ -7,7 +7,7 @@ export function RecipeForm({ id, onSave } = {}) {
   el.className = 'max-w-2xl mx-auto px-4 py-8';
 
   const heading = document.createElement('h1');
-  heading.className = 'text-3xl font-bold text-gray-900 mb-6';
+  heading.className = 'text-3xl font-bold text-stone-900 mb-6';
   heading.textContent = id ? 'Edit Recipe' : 'New Recipe';
   el.appendChild(heading);
 
@@ -18,13 +18,13 @@ export function RecipeForm({ id, onSave } = {}) {
   function field(label, name, placeholder = '') {
     const wrap = document.createElement('div');
     const lbl = document.createElement('label');
-    lbl.className = 'block text-sm font-medium text-gray-700 mb-1';
+    lbl.className = 'block text-sm font-medium text-stone-700 mb-1';
     lbl.textContent = label;
     const input = document.createElement('input');
     input.name = name;
     input.type = 'text';
     input.placeholder = placeholder;
-    input.className = 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+    input.className = 'w-full border border-stone-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent';
     wrap.appendChild(lbl);
     wrap.appendChild(input);
     return wrap;
@@ -95,7 +95,7 @@ export function RecipeForm({ id, onSave } = {}) {
 
   const submit = document.createElement('button');
   submit.type = 'submit';
-  submit.className = 'bg-indigo-600 text-white rounded-lg px-6 py-2 font-medium hover:bg-indigo-700 transition-colors';
+  submit.className = 'bg-amber-500 text-stone-900 rounded-xl px-6 py-2 font-semibold hover:bg-amber-600 transition-colors';
   submit.textContent = id ? 'Save Changes' : 'Create Recipe';
   form.appendChild(submit);
 
@@ -175,12 +175,12 @@ function buildDynamicSection(title, btnLabel, createRow) {
   const section = document.createElement('div');
   const lbl = document.createElement('div');
   lbl.className = 'flex items-center justify-between mb-2';
-  lbl.innerHTML = `<span class="text-sm font-medium text-gray-700">${title}</span>`;
+  lbl.innerHTML = `<span class="text-sm font-medium text-stone-700">${title}</span>`;
 
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.textContent = `+ ${btnLabel}`;
-  addBtn.className = 'text-sm text-indigo-600 hover:text-indigo-800';
+  addBtn.className = 'text-sm text-amber-700 hover:text-amber-900';
   lbl.appendChild(addBtn);
 
   const rows = document.createElement('div');

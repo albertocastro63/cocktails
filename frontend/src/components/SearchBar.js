@@ -7,7 +7,7 @@ export function SearchBar({ onSearch, value = '' } = {}) {
   input.value = value;
   input.placeholder = 'Search recipes…';
   input.className =
-    'w-full rounded-lg border border-gray-300 px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+    'w-full rounded-xl border border-stone-300 px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent';
   el.appendChild(input);
 
   if (value) {
@@ -15,7 +15,7 @@ export function SearchBar({ onSearch, value = '' } = {}) {
     btn.type = 'button';
     btn.textContent = '×';
     btn.className =
-      'absolute right-2 text-gray-400 hover:text-gray-600 text-xl leading-none';
+      'absolute right-2 text-stone-400 hover:text-amber-600 text-xl leading-none';
     btn.addEventListener('click', () => {
       input.value = '';
       onSearch('');
