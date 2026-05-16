@@ -90,9 +90,15 @@ module "users_table" {
   hash_key     = "id"
 
   attributes = [
+    { name = "id",       type = "S" },
+    { name = "username", type = "S" },
+  ]
+
+  global_secondary_indexes = [
     {
-      name = "id"
-      type = "S"
+      name            = "username-index"
+      hash_key        = "username"
+      projection_type = "ALL"
     }
   ]
 
@@ -163,10 +169,11 @@ module "lambda_function" {
   logging_log_group                 = aws_cloudwatch_log_group.lambda_logs.name
 
   environment_variables = {
-    STORE_BACKEND  = "dynamodb"
-    RECIPES_TABLE  = module.recipes_table.dynamodb_table_id
-    USERS_TABLE    = module.users_table.dynamodb_table_id
-    JWT_SECRET     = var.jwt_secret
+    STORE_BACKEND            = "dynamodb"
+    RECIPES_TABLE            = module.recipes_table.dynamodb_table_id
+    USERS_TABLE              = module.users_table.dynamodb_table_id
+    JWT_SECRET               = var.jwt_secret
+    ADMIN_BOOTSTRAP_PASSWORD = var.admin_bootstrap_password
   }
 
   # IAM: least-privilege access to DynamoDB tables and CloudWatch logs.
