@@ -321,11 +321,40 @@ module "cdn" {
       domain_name           = module.frontend_bucket.s3_bucket_bucket_regional_domain_name
       origin_access_control = "s3_oac"
     }
+    api = {
+      # Strip the https:// scheme — CloudFront needs just the hostname.
+      domain_name = trimprefix(module.api_gateway.api_endpoint, "https://")
+      custom_origin_config = {
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "https-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
+      }
+    }
   }
 
   default_root_object = "index.html"
   price_class         = "PriceClass_100"
   http_version        = "http2"
+
+  # Route /api/* to API Gateway before the default S3 behavior.
+  ordered_cache_behavior = [
+    {
+      path_pattern           = "/api/*"
+      target_origin_id       = "api"
+      viewer_protocol_policy = "https-only"
+      allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+      cached_methods         = ["GET", "HEAD"]
+      compress               = false
+      use_forwarded_values   = false
+
+      # CachingDisabled — never cache API responses.
+      cache_policy_id = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+      # AllViewerExceptHostHeader — forward auth/content-type but replace Host
+      # with the API Gateway hostname (required, API GW rejects foreign Host).
+      origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
+    }
+  ]
 
   default_cache_behavior = {
     target_origin_id       = "frontend"
