@@ -3,7 +3,7 @@ terraform {
     # After running: cd infra/bootstrap && terraform init && terraform apply
     # replace the placeholder below with the state_bucket_name output value.
     # Then run: cd infra && terraform init
-    bucket = "<REPLACE_WITH_STATE_BUCKET_NAME>"
+    bucket = "cocktails-tf-state-689595418365"
 
     key    = "cocktails/prod/terraform.tfstate"
     region = "us-east-1"

@@ -26,3 +26,10 @@ variable "jwt_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "admin_bootstrap_password" {
+    description = "Password for the initial admin user (only used if users table is empty)"
+    type        = string
+    sensitive   = true
+    default     = ""
+  }
