@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
@@ -10,28 +10,47 @@ import (
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
 	"golang.org/x/crypto/bcrypt"
 
+	awscfg "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+
+	"net/http"
+
 	"github.com/almc/cocktails/internal/handler"
 	"github.com/almc/cocktails/internal/model"
 	"github.com/almc/cocktails/internal/store"
+	dynstore "github.com/almc/cocktails/internal/store/dynamo"
 	sqstore "github.com/almc/cocktails/internal/store/sqlite"
 	"github.com/google/uuid"
 )
 
 func main() {
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "/tmp/cocktails.db"
-	}
+	var recipeStore store.RecipeStore
+	var userStore store.UserStore
 
-	recipeStore, userStore, err := sqstore.Open(dbPath)
-	if err != nil {
-		log.Fatalf("open store: %v", err)
+	switch envOr("STORE_BACKEND", "sqlite") {
+	case "dynamodb":
+		cfg, err := awscfg.LoadDefaultConfig(context.Background())
+		if err != nil {
+			log.Fatalf("load aws config: %v", err)
+		}
+		client := dynamodb.NewFromConfig(cfg)
+		recipeStore = dynstore.NewRecipeStore(client, envOr("RECIPES_TABLE", "cocktails-recipes"))
+		userStore = dynstore.NewUserStore(client, envOr("USERS_TABLE", "cocktails-users"))
+	default:
+		dbPath := envOr("DB_PATH", "/tmp/cocktails.db")
+		rs, us, err := sqstore.Open(dbPath)
+		if err != nil {
+			log.Fatalf("open store: %v", err)
+		}
+		recipeStore = rs
+		userStore = us
 	}
 
 	bootstrapAdmin(userStore)
 
 	h := buildHandler(recipeStore, userStore)
-	lambda.Start(httpadapter.New(h).ProxyWithContext)
+	// NewV2 handles API Gateway HTTP API payload format 2.0.
+	lambda.Start(httpadapter.NewV2(h).ProxyWithContext)
 }
 
 func buildHandler(rs store.RecipeStore, us store.UserStore) http.Handler {
@@ -44,14 +63,31 @@ func buildHandler(rs store.RecipeStore, us store.UserStore) http.Handler {
 	mux.HandleFunc("GET /api/v1/recipes", recipes.List)
 	mux.HandleFunc("GET /api/v1/recipes/random", recipes.Random)
 	mux.HandleFunc("GET /api/v1/recipes/{id}", recipes.GetByID)
-	mux.Handle("POST /api/v1/recipes", handler.RequireAuth(http.HandlerFunc(recipes.Create)))
-	mux.Handle("PUT /api/v1/recipes/{id}", handler.RequireAuth(http.HandlerFunc(recipes.Update)))
-	mux.Handle("DELETE /api/v1/recipes/{id}", handler.RequireAuth(http.HandlerFunc(recipes.Delete)))
+	requireAuth := handler.RequireAuthWithStore(us)
+	mux.Handle("POST /api/v1/recipes", requireAuth(http.HandlerFunc(recipes.Create)))
+	mux.Handle("PUT /api/v1/recipes/{id}", requireAuth(http.HandlerFunc(recipes.Update)))
+	mux.Handle("DELETE /api/v1/recipes/{id}", requireAuth(http.HandlerFunc(recipes.Delete)))
 	mux.HandleFunc("POST /api/v1/auth/login", authH.Login)
+	mux.Handle("GET /api/v1/admin/users",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.ListUsers))))
 	mux.Handle("POST /api/v1/admin/users",
-		handler.RequireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.CreateUser))))
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.CreateUser))))
+	mux.Handle("GET /api/v1/admin/users/{id}",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.GetUser))))
+	mux.Handle("PUT /api/v1/admin/users/{id}",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.UpdateUser))))
+	mux.Handle("DELETE /api/v1/admin/users/{id}",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.DeleteUser))))
 
-	return mux
+	adminRecipesH := handler.NewAdminRecipeHandler(rs)
+	mux.Handle("GET /api/v1/admin/schema",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminRecipesH.ExportSchema))))
+	mux.Handle("GET /api/v1/admin/recipes/export",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminRecipesH.ExportRecipes))))
+	mux.Handle("POST /api/v1/admin/recipes/import",
+		requireAuth(handler.RequireAdmin(http.HandlerFunc(adminRecipesH.ImportRecipes))))
+
+	return handler.CORSMiddleware(mux)
 }
 
 func bootstrapAdmin(us store.UserStore) {
@@ -77,5 +113,14 @@ func bootstrapAdmin(us store.UserStore) {
 	}
 	if err := us.Create(admin); err != nil {
 		log.Printf("bootstrap: create admin: %v", err)
+		return
 	}
+	log.Println("bootstrap: admin user created")
+}
+
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }
