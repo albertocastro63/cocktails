@@ -54,56 +54,72 @@ module "artifact_bucket" {
   restrict_public_buckets = true
 }
 
+# Remap state from the old module addresses to the new direct resources.
+moved {
+  from = module.recipes_table.aws_dynamodb_table.this[0]
+  to   = aws_dynamodb_table.recipes
+}
+
+moved {
+  from = module.users_table.aws_dynamodb_table.this[0]
+  to   = aws_dynamodb_table.users
+}
+
 # ─────────────────────────────────────────────
 # T010 — DynamoDB: Recipes Table
 # ─────────────────────────────────────────────
 
-module "recipes_table" {
-  source  = "terraform-aws-modules/dynamodb-table/aws"
-  version = "~> 5.0"
-
+resource "aws_dynamodb_table" "recipes" {
   name         = "${var.project_name}-recipes"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
 
-  attributes = [
-    {
-      name = "id"
-      type = "S"
-    }
-  ]
+  attribute {
+    name = "id"
+    type = "S"
+  }
 
-  point_in_time_recovery_enabled = true
-  server_side_encryption_enabled = true
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
 }
 
 # ─────────────────────────────────────────────
 # T011 — DynamoDB: Users Table
 # ─────────────────────────────────────────────
 
-module "users_table" {
-  source  = "terraform-aws-modules/dynamodb-table/aws"
-  version = "~> 5.0"
-
+resource "aws_dynamodb_table" "users" {
   name         = "${var.project_name}-users"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
 
-  attributes = [
-    { name = "id",       type = "S" },
-    { name = "username", type = "S" },
-  ]
+  attribute {
+    name = "id"
+    type = "S"
+  }
 
-  global_secondary_indexes = [
-    {
-      name            = "username-index"
-      hash_key        = "username"
-      projection_type = "ALL"
-    }
-  ]
+  attribute {
+    name = "username"
+    type = "S"
+  }
 
-  point_in_time_recovery_enabled = true
-  server_side_encryption_enabled = true
+  global_secondary_index {
+    name            = "username-index"
+    hash_key        = "username"
+    projection_type = "ALL"
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
 }
 
 # ─────────────────────────────────────────────
@@ -170,8 +186,8 @@ module "lambda_function" {
 
   environment_variables = {
     STORE_BACKEND            = "dynamodb"
-    RECIPES_TABLE            = module.recipes_table.dynamodb_table_id
-    USERS_TABLE              = module.users_table.dynamodb_table_id
+    RECIPES_TABLE            = aws_dynamodb_table.recipes.id
+    USERS_TABLE              = aws_dynamodb_table.users.id
     JWT_SECRET               = var.jwt_secret
     ADMIN_BOOTSTRAP_PASSWORD = var.admin_bootstrap_password
   }
@@ -194,10 +210,10 @@ module "lambda_function" {
         "dynamodb:BatchWriteItem",
       ]
       resources = [
-        module.recipes_table.dynamodb_table_arn,
-        "${module.recipes_table.dynamodb_table_arn}/index/*",
-        module.users_table.dynamodb_table_arn,
-        "${module.users_table.dynamodb_table_arn}/index/*",
+        aws_dynamodb_table.recipes.arn,
+        "${aws_dynamodb_table.recipes.arn}/index/*",
+        aws_dynamodb_table.users.arn,
+        "${aws_dynamodb_table.users.arn}/index/*",
       ]
     }
 

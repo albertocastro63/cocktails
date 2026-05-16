@@ -10,10 +10,10 @@ output "frontend_url" {
 
 output "recipes_table_name" {
   description = "DynamoDB table name for recipes"
-  value       = module.recipes_table.dynamodb_table_id
+  value       = aws_dynamodb_table.recipes.id
 }
 
 output "users_table_name" {
   description = "DynamoDB table name for users"
-  value       = module.users_table.dynamodb_table_id
+  value       = aws_dynamodb_table.users.id
 }
