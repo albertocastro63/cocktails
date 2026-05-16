@@ -118,9 +118,22 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
 }
 
 # ─────────────────────────────────────────────
+# T013 — Lambda Package Upload
+# Uploads the pre-built bootstrap.zip to the artifact bucket so that
+# the lambda module can reference it via s3_existing_package (v8 requires
+# the upload and the function config to be separate resources).
+# ─────────────────────────────────────────────
+
+resource "aws_s3_object" "lambda_package" {
+  bucket = module.artifact_bucket.s3_bucket_id
+  key    = "lambda/bootstrap.zip"
+  source = var.lambda_binary_path
+  etag   = filemd5(var.lambda_binary_path)
+}
+
+# ─────────────────────────────────────────────
 # T013 — Lambda Function
 # Runtime: provided.al2023 (Go custom runtime), arm64 (Graviton2).
-# Pre-built binary zip is uploaded to the artifact bucket by the module.
 # ─────────────────────────────────────────────
 
 module "lambda_function" {
@@ -136,11 +149,14 @@ module "lambda_function" {
   memory_size = 256
   timeout     = 30
 
-  # Use a pre-built zip; upload it to S3 for Lambda deployment.
-  create_package        = false
-  local_existing_package = var.lambda_binary_path
-  store_on_s3           = true
-  s3_bucket             = module.artifact_bucket.s3_bucket_id
+  # Reference the zip already uploaded above; v8 requires s3_existing_package
+  # instead of local_existing_package + store_on_s3 (those two now conflict).
+  create_package      = false
+  s3_existing_package = {
+    bucket     = module.artifact_bucket.s3_bucket_id
+    key        = aws_s3_object.lambda_package.key
+    version_id = aws_s3_object.lambda_package.version_id
+  }
 
   # Use the explicit log group created above (14-day retention enforced).
   use_existing_cloudwatch_log_group = true
@@ -295,7 +311,8 @@ module "cdn" {
     cached_methods         = ["GET", "HEAD"]
     compress               = true
 
-    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized (AWS managed)
+    cache_policy_id      = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized (AWS managed)
+    use_forwarded_values = false # required when cache_policy_id is set
   }
 
   custom_error_response = [
