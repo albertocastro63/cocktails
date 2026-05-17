@@ -39,7 +39,7 @@ No new project initialization is needed — the project structure exists. This p
 
 > **Write tests FIRST. Confirm they FAIL before implementing T007 and T008.**
 
-- [ ] T004 [US1] Write failing tests for ownership enforcement in `backend/internal/handler/recipes_test.go`: non-owner PUT returns 403; non-owner DELETE returns 403; owner PUT succeeds; owner DELETE succeeds
+- [ ] T004 [US1] Write tests for ownership enforcement in `backend/internal/handler/recipes_test.go`: non-owner PUT returns 403; non-owner DELETE returns 403; owner PUT succeeds; owner DELETE succeeds; recipe with empty `creator_id` (legacy) cannot be edited/deleted by non-admin (returns 403)
 - [ ] T005 [P] [US1] Write failing tests for `RecipeCard` edit/delete visibility in `frontend/src/components/RecipeCard.test.js`: buttons hidden when `currentUser` is null or non-owner; buttons shown when `currentUser.id === recipe.creator_id`; buttons shown when `currentUser.isAdmin === true`
 
 ### Implementation for User Story 1
@@ -83,7 +83,7 @@ No new project initialization is needed — the project structure exists. This p
 
 > **Write tests FIRST. Confirm they FAIL before implementing store and handler.**
 
-- [ ] T012 [US3] Write failing SQLite test for `ListByCreator` in `backend/internal/store/sqlite/recipes_test.go`: returns only recipes with matching creator_id; returns empty for unknown creator; respects page/limit
+- [ ] T012 [US3] Write failing SQLite test for `ListByCreator` in `backend/internal/store/sqlite/recipes_test.go`: returns only recipes with matching creator_id; returns empty for unknown creator; respects page/limit; recipes with empty creator_id are NOT returned (legacy recipes excluded from per-user listings)
 - [ ] T013 [US3] Write failing handler test for `Mine` endpoint in `backend/internal/handler/recipes_test.go`: authenticated request returns only own recipes; unauthenticated request returns 401; empty-state returns `{"data":[],"total":0,...}`
 
 ### Implementation for User Story 3
@@ -94,8 +94,8 @@ No new project initialization is needed — the project structure exists. This p
 - [ ] T017 [US3] Register `GET /api/v1/recipes/mine` route BEFORE `GET /api/v1/recipes/{id}` in `backend/cmd/lambda/main.go` (protected by `RequireAuth`)
 - [ ] T018 [P] [US3] Register `GET /api/v1/recipes/mine` route BEFORE `GET /api/v1/recipes/{id}` in `backend/cmd/server/main.go` (protected by `requireAuth`)
 - [ ] T019 [P] [US3] Add `getMyRecipes(token, params = {})` function to `frontend/src/api/client.js`
-- [ ] T020 [US3] Create `frontend/src/pages/MyRecipes.js` page: same grid/card layout as `RecipeList`, heading "My Recipes", no search bar, calls `getMyRecipes(token)`, passes `showControls: true` to each `RecipeCard` (all cards are owned by viewer)
-- [ ] T021 [P] [US3] Write tests for `MyRecipes.js` in `frontend/src/pages/MyRecipes.test.js`: renders heading; shows recipe cards on success; shows empty state when no recipes; renders edit/delete on all cards
+- [ ] T020 [US3] Create `frontend/src/pages/MyRecipes.js` page: same grid/card layout as `RecipeList`, heading "My Recipes", no search bar, calls `getMyRecipes(token)`, passes actual `currentUser` object (from `getUserID()` + `isAdmin()`) to each `RecipeCard` — ownership check always passes since all listed recipes belong to the viewer; display error message when fetch fails (consistent with `RecipeList` error pattern)
+- [ ] T021 [US3] Write tests for `MyRecipes.js` in `frontend/src/pages/MyRecipes.test.js` BEFORE implementing T020 — confirm tests fail first: renders heading; shows recipe cards on success; shows empty state when no recipes; shows error state when fetch fails; renders edit/delete controls on all cards
 - [ ] T022 [US3] Add `/my-recipes` route and "My Recipes" nav link (visible only when logged in, placed after "All Recipes") in `frontend/src/main.js`
 
 **Checkpoint**: `GET /api/v1/recipes/mine` returns only the authenticated user's recipes; "My Recipes" page renders with edit/delete on every card.
