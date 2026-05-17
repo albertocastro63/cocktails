@@ -5,6 +5,12 @@
 **Status**: Draft  
 **Input**: User description: "Add base spirit property, this can be a checkmark on the ingredients, only one can be selected however and the selection can be cleared, there is no requirement for any drink to have a base spirit. In the list of ingredients shown in the popover highlight the base spirit, do the same in the recipie descriptions."
 
+## Clarifications
+
+### Session 2026-05-17
+
+- Q: How should the new structured `is_base_spirit` flag relate to existing free-form `"Base spirit"` property entries in the recipe properties map? → A: Both coexist independently — existing `"Base spirit"` property labels remain untouched; authors may clean them up manually if desired but there is no automated migration or deprecation prompt.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Mark Base Spirit When Authoring a Recipe (Priority: P1)
@@ -62,6 +68,7 @@ On the full recipe detail page, the base spirit ingredient is visually distingui
 - A recipe with only one ingredient: the author may or may not mark it as the base spirit; both states are valid.
 - If an ingredient marked as base spirit is deleted from the recipe during editing, the base spirit designation is automatically removed — no ingredient becomes marked.
 - Legacy recipes created before this feature was introduced have no base spirit data; they display as if no base spirit is set (all ingredients uniform).
+- Recipes may also have a free-form `"Base spirit"` entry in their properties map (entered as plain text before this feature existed). This text property and the new structured `is_base_spirit` flag are independent; neither affects the other. Authors may choose to remove the old text entry manually, but the system does not prompt or enforce this.
 - The base spirit checkbox is only accessible to logged-in users with edit rights (owner or admin); read-only viewers see only the display highlight, not the control.
 
 ## Requirements *(mandatory)*
@@ -100,3 +107,4 @@ On the full recipe detail page, the base spirit ingredient is visually distingui
 - The hover popover from feature 005 already iterates the ingredients list; this feature adds a conditional highlight to that iteration.
 - Only the recipe owner and admins see the base spirit toggle control in the edit form; the highlight on popover and detail page is visible to all viewers.
 - No search or filter by base spirit is in scope for this feature.
+- Some existing recipes carry a free-form `"Base spirit"` property (plain text). This is independent of the new structured flag — neither overrides nor replaces the other, and no automated migration is performed.
