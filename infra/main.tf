@@ -148,11 +148,9 @@ module "lambda_function" {
   memory_size = 256
   timeout     = 30
 
-  # Use a pre-built zip; upload it to S3 for Lambda deployment.
-  create_package        = false
+  # Use a pre-built zip deployed directly from the local filesystem.
+  create_package         = false
   local_existing_package = var.lambda_binary_path
-  store_on_s3           = true
-  s3_bucket             = module.artifact_bucket.s3_bucket_id
 
   # Use the explicit log group created above (14-day retention enforced).
   use_existing_cloudwatch_log_group = true
@@ -294,6 +292,15 @@ module "cdn" {
       domain_name           = module.frontend_bucket.s3_bucket_bucket_regional_domain_name
       origin_access_control = "s3_oac"
     }
+    api = {
+      domain_name = replace(module.api_gateway.api_endpoint, "https://", "")
+      custom_origin_config = {
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "https-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
+      }
+    }
   }
 
   default_root_object = "index.html"
@@ -306,9 +313,22 @@ module "cdn" {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
     compress               = true
-
-    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized (AWS managed)
+    use_forwarded_values   = false
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized (AWS managed)
   }
+
+  ordered_cache_behavior = [
+    {
+      path_pattern             = "/api/*"
+      target_origin_id         = "api"
+      viewer_protocol_policy   = "https-only"
+      allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+      cached_methods           = ["GET", "HEAD"]
+      use_forwarded_values     = false
+      cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled (AWS managed)
+      origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac" # AllViewerExceptHostHeader (AWS managed)
+    }
+  ]
 
   custom_error_response = [
     {

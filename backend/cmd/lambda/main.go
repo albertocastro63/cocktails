@@ -1,37 +1,58 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/almc/cocktails/internal/handler"
 	"github.com/almc/cocktails/internal/model"
 	"github.com/almc/cocktails/internal/store"
+	dynstore "github.com/almc/cocktails/internal/store/dynamo"
 	sqstore "github.com/almc/cocktails/internal/store/sqlite"
 	"github.com/google/uuid"
 )
 
 func main() {
+	recipeStore, userStore := openStore()
+	bootstrapAdmin(userStore)
+	h := buildHandler(recipeStore, userStore)
+	lambda.Start(httpadapter.NewV2(h).ProxyWithContext)
+}
+
+func openStore() (store.RecipeStore, store.UserStore) {
+	backend := os.Getenv("STORE_BACKEND")
+	if backend == "dynamodb" {
+		cfg, err := config.LoadDefaultConfig(context.Background())
+		if err != nil {
+			log.Fatalf("load aws config: %v", err)
+		}
+		client := dynamodb.NewFromConfig(cfg)
+		recipesTable := os.Getenv("RECIPES_TABLE")
+		usersTable := os.Getenv("USERS_TABLE")
+		if recipesTable == "" || usersTable == "" {
+			log.Fatal("RECIPES_TABLE and USERS_TABLE must be set when STORE_BACKEND=dynamodb")
+		}
+		return dynstore.NewRecipeStore(client, recipesTable), dynstore.NewUserStore(client, usersTable)
+	}
+
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
 		dbPath = "/tmp/cocktails.db"
 	}
-
-	recipeStore, userStore, err := sqstore.Open(dbPath)
+	rs, us, err := sqstore.Open(dbPath)
 	if err != nil {
 		log.Fatalf("open store: %v", err)
 	}
-
-	bootstrapAdmin(userStore)
-
-	h := buildHandler(recipeStore, userStore)
-	lambda.Start(httpadapter.New(h).ProxyWithContext)
+	return rs, us
 }
 
 func buildHandler(rs store.RecipeStore, us store.UserStore) http.Handler {
