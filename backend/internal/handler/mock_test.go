@@ -117,6 +117,28 @@ func (s *stubRecipeStore) ListAll() ([]*model.Recipe, error) {
 	return all, nil
 }
 
+func (s *stubRecipeStore) ListByCreator(creatorID string, page, limit int) ([]*model.Recipe, int, error) {
+	if s.err != nil {
+		return nil, 0, s.err
+	}
+	var matches []*model.Recipe
+	for _, r := range s.recipes {
+		if r.CreatorID == creatorID {
+			matches = append(matches, r)
+		}
+	}
+	total := len(matches)
+	start := (page - 1) * limit
+	if start >= total {
+		return []*model.Recipe{}, total, nil
+	}
+	end := start + limit
+	if end > total {
+		end = total
+	}
+	return matches[start:end], total, nil
+}
+
 func (s *stubRecipeStore) ImportBatch(recipes []*model.Recipe, creatorID string) (int, int, error) {
 	if s.err != nil {
 		return 0, 0, s.err

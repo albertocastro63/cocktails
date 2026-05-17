@@ -290,3 +290,111 @@ func TestImportBatch_EmptyInput(t *testing.T) {
 		t.Errorf("expected 0/0 got %d/%d", created, skipped)
 	}
 }
+
+func TestListByCreator_ReturnsOwnedRecipes(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid1 := seedUser(t, us)
+	uid2 := seedUser(t, us)
+
+	r1 := sampleRecipe(uid1)
+	r1.Name = "Owner Recipe 1"
+	r2 := sampleRecipe(uid1)
+	r2.Name = "Owner Recipe 2"
+	r3 := sampleRecipe(uid2)
+	r3.Name = "Other User Recipe"
+	for _, r := range []*model.Recipe{r1, r2, r3} {
+		if err := rs.Create(r); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+	}
+
+	recipes, total, err := rs.ListByCreator(uid1, 1, 20)
+	if err != nil {
+		t.Fatalf("ListByCreator: %v", err)
+	}
+	if total != 2 {
+		t.Errorf("expected total 2, got %d", total)
+	}
+	if len(recipes) != 2 {
+		t.Errorf("expected 2 recipes, got %d", len(recipes))
+	}
+	for _, r := range recipes {
+		if r.CreatorID != uid1 {
+			t.Errorf("unexpected creator_id %q", r.CreatorID)
+		}
+	}
+}
+
+func TestListByCreator_ExcludesLegacyRecipes(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+
+	legacy := sampleRecipe("")
+	legacy.Name = "Legacy Recipe"
+	owned := sampleRecipe(uid)
+	owned.Name = "Owned Recipe"
+	for _, r := range []*model.Recipe{legacy, owned} {
+		if err := rs.Create(r); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+	}
+
+	recipes, total, err := rs.ListByCreator(uid, 1, 20)
+	if err != nil {
+		t.Fatalf("ListByCreator: %v", err)
+	}
+	if total != 1 {
+		t.Errorf("expected total 1, got %d", total)
+	}
+	if len(recipes) != 1 || recipes[0].Name != "Owned Recipe" {
+		t.Errorf("expected only owned recipe, got %v", recipes)
+	}
+}
+
+func TestListByCreator_EmptyForUnknownUser(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	r := sampleRecipe(uid)
+	if err := rs.Create(r); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	recipes, total, err := rs.ListByCreator("no-such-user", 1, 20)
+	if err != nil {
+		t.Fatalf("ListByCreator: %v", err)
+	}
+	if total != 0 || len(recipes) != 0 {
+		t.Errorf("expected empty, got total=%d len=%d", total, len(recipes))
+	}
+}
+
+func TestListByCreator_Pagination(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	for i := 0; i < 5; i++ {
+		r := sampleRecipe(uid)
+		r.Name = uuid.NewString()
+		if err := rs.Create(r); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+	}
+
+	page1, total, err := rs.ListByCreator(uid, 1, 3)
+	if err != nil {
+		t.Fatalf("ListByCreator page1: %v", err)
+	}
+	if total != 5 {
+		t.Errorf("expected total 5, got %d", total)
+	}
+	if len(page1) != 3 {
+		t.Errorf("expected 3 on page1, got %d", len(page1))
+	}
+
+	page2, _, err := rs.ListByCreator(uid, 2, 3)
+	if err != nil {
+		t.Fatalf("ListByCreator page2: %v", err)
+	}
+	if len(page2) != 2 {
+		t.Errorf("expected 2 on page2, got %d", len(page2))
+	}
+}

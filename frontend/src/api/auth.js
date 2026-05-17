@@ -26,3 +26,14 @@ export function isAdmin() {
     return false;
   }
 }
+
+export function getUserID() {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.user_id || null;
+  } catch {
+    return null;
+  }
+}

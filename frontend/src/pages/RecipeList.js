@@ -2,6 +2,7 @@ import { getRecipes } from '../api/client.js';
 import { RecipeCard } from '../components/RecipeCard.js';
 import { EmptyState } from '../components/EmptyState.js';
 import { SearchBar } from '../components/SearchBar.js';
+import { getUserID, isAdmin } from '../api/auth.js';
 
 export function RecipeList() {
   const el = document.createElement('div');
@@ -23,6 +24,7 @@ export function RecipeList() {
   let currentQ = '';
 
   function loadRecipes(q = '') {
+    const currentUser = getUserID() ? { id: getUserID(), isAdmin: isAdmin() } : null;
     content.innerHTML = '';
     const loadingP = document.createElement('p');
     loadingP.className = 'text-stone-500 animate-pulse py-4 text-center';
@@ -36,7 +38,7 @@ export function RecipeList() {
       } else {
         const grid = document.createElement('div');
         grid.className = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
-        data.forEach((recipe) => grid.appendChild(RecipeCard({ recipe })));
+        data.forEach((recipe) => grid.appendChild(RecipeCard({ recipe, currentUser })));
         content.appendChild(grid);
       }
     }).catch(() => {

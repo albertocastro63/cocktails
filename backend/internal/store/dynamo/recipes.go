@@ -173,6 +173,34 @@ func (s *RecipeStore) ExistsByName(name string) (bool, error) {
 	return false, nil
 }
 
+func (s *RecipeStore) ListByCreator(creatorID string, page, limit int) ([]*model.Recipe, int, error) {
+	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
+		TableName:        aws.String(s.tableName),
+		FilterExpression: aws.String("creator_id = :cid AND creator_id <> :empty"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":cid":   &types.AttributeValueMemberS{Value: creatorID},
+			":empty": &types.AttributeValueMemberS{Value: ""},
+		},
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	all, err := scanToRecipes(out.Items)
+	if err != nil {
+		return nil, 0, err
+	}
+	total := len(all)
+	start := (page - 1) * limit
+	if start >= total {
+		return []*model.Recipe{}, total, nil
+	}
+	end := start + limit
+	if end > total {
+		end = total
+	}
+	return all[start:end], total, nil
+}
+
 func (s *RecipeStore) ListAll() ([]*model.Recipe, error) {
 	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
 		TableName: aws.String(s.tableName),

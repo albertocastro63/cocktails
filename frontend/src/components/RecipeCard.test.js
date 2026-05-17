@@ -127,3 +127,51 @@ describe('RecipeCard - empty ingredients', () => {
     expect(popover.textContent).toContain('No ingredients listed.');
   });
 });
+
+describe('RecipeCard - edit/delete controls (T005)', () => {
+  const ownerRecipe = { id: 'r1', name: 'Mojito', creator_id: 'user-1', ingredients: [] };
+
+  it('hides edit/delete when currentUser is not provided', () => {
+    const el = RecipeCard({ recipe: ownerRecipe });
+    expect(el.querySelector('a[href*="edit"]')).toBeNull();
+    expect(el.querySelector('button')).toBeNull();
+  });
+
+  it('hides edit/delete when currentUser is null', () => {
+    const el = RecipeCard({ recipe: ownerRecipe, currentUser: null });
+    expect(el.querySelector('a[href*="edit"]')).toBeNull();
+    expect(el.querySelector('button')).toBeNull();
+  });
+
+  it('hides edit/delete when currentUser is not the owner and not admin', () => {
+    const el = RecipeCard({ recipe: ownerRecipe, currentUser: { id: 'user-2', isAdmin: false } });
+    expect(el.querySelector('a[href*="edit"]')).toBeNull();
+    expect(el.querySelector('button')).toBeNull();
+  });
+
+  it('shows edit/delete when currentUser is the recipe owner', () => {
+    const el = RecipeCard({ recipe: ownerRecipe, currentUser: { id: 'user-1', isAdmin: false } });
+    expect(el.querySelector('a[href*="edit"]')).not.toBeNull();
+    expect(el.querySelector('button')).not.toBeNull();
+  });
+
+  it('shows edit/delete when currentUser is admin regardless of ownership', () => {
+    const el = RecipeCard({ recipe: ownerRecipe, currentUser: { id: 'other-user', isAdmin: true } });
+    expect(el.querySelector('a[href*="edit"]')).not.toBeNull();
+    expect(el.querySelector('button')).not.toBeNull();
+  });
+
+  it('hides edit/delete for legacy recipe (empty creator_id) when non-owner non-admin', () => {
+    const legacy = { id: 'r-old', name: 'Old', creator_id: '', ingredients: [] };
+    const el = RecipeCard({ recipe: legacy, currentUser: { id: 'user-1', isAdmin: false } });
+    expect(el.querySelector('a[href*="edit"]')).toBeNull();
+    expect(el.querySelector('button')).toBeNull();
+  });
+
+  it('shows edit/delete for legacy recipe when admin', () => {
+    const legacy = { id: 'r-old', name: 'Old', creator_id: '', ingredients: [] };
+    const el = RecipeCard({ recipe: legacy, currentUser: { id: 'admin-1', isAdmin: true } });
+    expect(el.querySelector('a[href*="edit"]')).not.toBeNull();
+    expect(el.querySelector('button')).not.toBeNull();
+  });
+});

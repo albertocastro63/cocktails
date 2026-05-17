@@ -19,6 +19,7 @@ type RecipeStore interface {
 	ExistsByName(name string) (bool, error)
 	ListAll() ([]*model.Recipe, error)
 	ImportBatch(recipes []*model.Recipe, creatorID string) (created, skipped int, err error)
+	ListByCreator(creatorID string, page, limit int) ([]*model.Recipe, int, error)
 }
 
 type UserStore interface {

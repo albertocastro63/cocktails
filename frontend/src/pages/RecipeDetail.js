@@ -1,5 +1,5 @@
 import { getRecipe, deleteRecipe } from '../api/client.js';
-import { getToken, isLoggedIn } from '../api/auth.js';
+import { getToken, getUserID, isAdmin } from '../api/auth.js';
 import { IngredientList } from '../components/IngredientList.js';
 import { PropertyTable } from '../components/PropertyTable.js';
 import { renderMarkdown } from '../utils/markdown.js';
@@ -26,7 +26,9 @@ export function RecipeDetail({ id }) {
     title.textContent = recipe.name;
     titleRow.appendChild(title);
 
-    if (isLoggedIn()) {
+    const uid = getUserID();
+    const canEdit = uid && (isAdmin() || (recipe.creator_id && uid === recipe.creator_id));
+    if (canEdit) {
       const controls = document.createElement('div');
       controls.className = 'flex gap-2';
       const editBtn = document.createElement('a');

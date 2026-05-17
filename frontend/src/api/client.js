@@ -30,6 +30,11 @@ export function getRandomRecipe() {
   return request('GET', '/api/v1/recipes/random');
 }
 
+export function getMyRecipes(token, params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request('GET', `/api/v1/recipes/mine${qs ? '?' + qs : ''}`, undefined, token);
+}
+
 export function getRecipe(id) {
   return request('GET', `/api/v1/recipes/${id}`);
 }

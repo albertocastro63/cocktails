@@ -29,7 +29,7 @@ function buildIngredientPopover(ingredients) {
   return popover;
 }
 
-export function RecipeCard({ recipe }) {
+export function RecipeCard({ recipe, currentUser = null }) {
   const el = document.createElement('div');
   el.className = 'relative bg-white rounded-2xl border border-stone-200 shadow-sm border-l-4 border-l-amber-400 p-4 hover:shadow-lg hover:border-l-amber-500 transition-shadow';
   const count = recipe.ingredients ? recipe.ingredients.length : 0;
@@ -39,6 +39,22 @@ export function RecipeCard({ recipe }) {
       <p class="text-sm text-stone-500 mt-1">${count} ingredient${count === 1 ? '' : 's'}</p>
     </a>
   `;
+
+  const canEdit = currentUser && (currentUser.isAdmin || (recipe.creator_id && currentUser.id === recipe.creator_id));
+  if (canEdit) {
+    const controls = document.createElement('div');
+    controls.className = 'flex gap-2 mt-2';
+    const editLink = document.createElement('a');
+    editLink.href = `#/recipes/${recipe.id}/edit`;
+    editLink.className = 'text-sm text-amber-600 hover:underline';
+    editLink.textContent = 'Edit';
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'text-sm text-red-500 hover:underline';
+    deleteBtn.textContent = 'Delete';
+    controls.appendChild(editLink);
+    controls.appendChild(deleteBtn);
+    el.appendChild(controls);
+  }
 
   const ingredients = recipe.ingredients || [];
   el.addEventListener('mouseenter', () => el.appendChild(buildIngredientPopover(ingredients)));
