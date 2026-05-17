@@ -160,3 +160,7 @@ backend/bin/
 # IntelliJ
 .idea/
 
+# Compiled Go Binaries
+backend/bootstrap
+backend/bootstrap.zip
+backend/lambda
