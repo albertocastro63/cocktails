@@ -360,6 +360,99 @@ func TestRecipeUpdate_NotesNonCreator_Forbidden(t *testing.T) {
 	}
 }
 
+// T004: legacy recipe (empty creator_id) blocks non-admin edit
+func TestRecipeUpdate_LegacyRecipe_NonAdmin_Forbidden(t *testing.T) {
+	legacy := sampleRecipe("r-legacy", "Old Recipe", "")
+	rs := newStubRecipeStore(legacy)
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Update))
+
+	token := validToken(t, "u2", "bob", false)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/recipes/r-legacy", strings.NewReader(`{}`))
+	req.SetPathValue("id", "r-legacy")
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("got %d want 403 for legacy recipe edit by non-admin", rec.Code)
+	}
+}
+
+// T004: legacy recipe (empty creator_id) blocks non-admin delete
+func TestRecipeDelete_LegacyRecipe_NonAdmin_Forbidden(t *testing.T) {
+	legacy := sampleRecipe("r-legacy", "Old Recipe", "")
+	rs := newStubRecipeStore(legacy)
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Delete))
+
+	token := validToken(t, "u2", "bob", false)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/recipes/r-legacy", nil)
+	req.SetPathValue("id", "r-legacy")
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("got %d want 403 for legacy recipe delete by non-admin", rec.Code)
+	}
+}
+
+// T009: admin can edit a recipe created by another user (failing until T010 implemented)
+func TestRecipeUpdate_Admin_CanEditAny(t *testing.T) {
+	rs := newStubRecipeStore(sampleRecipe("r1", "Mojito", "u1"))
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Update))
+
+	token := validToken(t, "admin-1", "admin", true)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/recipes/r1", strings.NewReader(`{"name":"Admin Edit"}`))
+	req.SetPathValue("id", "r1")
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("got %d want 200 for admin edit of other user's recipe", rec.Code)
+	}
+}
+
+// T009: admin can delete a recipe created by another user (failing until T011 implemented)
+func TestRecipeDelete_Admin_CanDeleteAny(t *testing.T) {
+	rs := newStubRecipeStore(sampleRecipe("r1", "Mojito", "u1"))
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Delete))
+
+	token := validToken(t, "admin-1", "admin", true)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/recipes/r1", nil)
+	req.SetPathValue("id", "r1")
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Errorf("got %d want 204 for admin delete of other user's recipe", rec.Code)
+	}
+}
+
+// T009: admin can edit legacy recipe (empty creator_id)
+func TestRecipeUpdate_Admin_CanEditLegacy(t *testing.T) {
+	legacy := sampleRecipe("r-legacy", "Old Recipe", "")
+	rs := newStubRecipeStore(legacy)
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Update))
+
+	token := validToken(t, "admin-1", "admin", true)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/recipes/r-legacy", strings.NewReader(`{"name":"Admin Fixed"}`))
+	req.SetPathValue("id", "r-legacy")
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("got %d want 200 for admin edit of legacy recipe", rec.Code)
+	}
+}
+
 // T058: 403 if not creator
 func TestRecipeDelete_NotCreator(t *testing.T) {
 	rs := newStubRecipeStore(sampleRecipe("r1", "Mojito", "u1"))
@@ -375,5 +468,67 @@ func TestRecipeDelete_NotCreator(t *testing.T) {
 
 	if rec.Code != http.StatusForbidden {
 		t.Errorf("got %d want 403", rec.Code)
+	}
+}
+
+func TestRecipeMine_ReturnsOwnedRecipes(t *testing.T) {
+	rs := newStubRecipeStore(
+		sampleRecipe("r1", "Mojito", "u1"),
+		sampleRecipe("r2", "Daiquiri", "u1"),
+		sampleRecipe("r3", "Negroni", "u2"),
+	)
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Mine))
+
+	token := validToken(t, "u1", "alice", false)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/recipes/mine", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d want 200", rec.Code)
+	}
+	var resp map[string]any
+	json.NewDecoder(rec.Body).Decode(&resp)
+	data := resp["data"].([]any)
+	if len(data) != 2 {
+		t.Errorf("expected 2 recipes, got %d", len(data))
+	}
+}
+
+func TestRecipeMine_RequiresAuth(t *testing.T) {
+	rs := newStubRecipeStore(sampleRecipe("r1", "Mojito", "u1"))
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Mine))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/recipes/mine", nil)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("got %d want 401", rec.Code)
+	}
+}
+
+func TestRecipeMine_EmptyForUserWithNoRecipes(t *testing.T) {
+	rs := newStubRecipeStore(sampleRecipe("r1", "Mojito", "u2"))
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Mine))
+
+	token := validToken(t, "u1", "alice", false)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/recipes/mine", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d want 200", rec.Code)
+	}
+	var resp map[string]any
+	json.NewDecoder(rec.Body).Decode(&resp)
+	data := resp["data"].([]any)
+	if len(data) != 0 {
+		t.Errorf("expected 0 recipes, got %d", len(data))
 	}
 }

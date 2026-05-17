@@ -26,10 +26,11 @@ func (s *RecipeStore) Create(r *model.Recipe) error {
 	if err != nil {
 		return err
 	}
+	creatorID := sql.NullString{String: r.CreatorID, Valid: r.CreatorID != ""}
 	_, err = s.db.Exec(
 		`INSERT INTO recipes (id, name, ingredients, steps, properties, notes, creator_id, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		r.ID, r.Name, ing, steps, props, r.Notes, r.CreatorID,
+		r.ID, r.Name, ing, steps, props, r.Notes, creatorID,
 		r.CreatedAt.UTC().Format(time.RFC3339Nano),
 		r.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	)
@@ -146,6 +147,25 @@ func (s *RecipeStore) Delete(id string) error {
 	return nil
 }
 
+func (s *RecipeStore) ListByCreator(creatorID string, page, limit int) ([]*model.Recipe, int, error) {
+	offset := (page - 1) * limit
+	var total int
+	if err := s.db.QueryRow(
+		`SELECT COUNT(*) FROM recipes WHERE creator_id = ? AND creator_id != ''`, creatorID,
+	).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	rows, err := s.db.Query(
+		`SELECT id, name, ingredients, steps, properties, notes, creator_id, created_at, updated_at
+		 FROM recipes WHERE creator_id = ? AND creator_id != ''
+		 ORDER BY created_at DESC LIMIT ? OFFSET ?`, creatorID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	return scanRecipes(rows, total)
+}
+
 func (s *RecipeStore) ExistsByName(name string) (bool, error) {
 	var n int
 	err := s.db.QueryRow(`SELECT COUNT(*) FROM recipes WHERE name = ?`, name).Scan(&n)
@@ -184,10 +204,11 @@ func (s *RecipeStore) ImportBatch(recipes []*model.Recipe, _ string) (int, int, 
 		ing, _ := json.Marshal(r.Ingredients)
 		steps, _ := json.Marshal(r.Steps)
 		props, _ := json.Marshal(r.Properties)
+		cid := sql.NullString{String: r.CreatorID, Valid: r.CreatorID != ""}
 		if _, err := tx.Exec(
 			`INSERT INTO recipes (id, name, ingredients, steps, properties, notes, creator_id, created_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			r.ID, r.Name, ing, steps, props, r.Notes, r.CreatorID,
+			r.ID, r.Name, ing, steps, props, r.Notes, cid,
 			r.CreatedAt.UTC().Format(time.RFC3339Nano),
 			r.UpdatedAt.UTC().Format(time.RFC3339Nano),
 		); err != nil {

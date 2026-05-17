@@ -146,7 +146,7 @@ func (h *RecipeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "recipe not found")
 		return
 	}
-	if existing.CreatorID != claims.UserID {
+	if !claims.IsAdmin && existing.CreatorID != claims.UserID {
 		writeError(w, http.StatusForbidden, "FORBIDDEN", "only the recipe creator can edit this recipe")
 		return
 	}
@@ -198,7 +198,7 @@ func (h *RecipeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "recipe not found")
 		return
 	}
-	if existing.CreatorID != claims.UserID {
+	if !claims.IsAdmin && existing.CreatorID != claims.UserID {
 		writeError(w, http.StatusForbidden, "FORBIDDEN", "only the recipe creator can delete this recipe")
 		return
 	}
@@ -207,6 +207,29 @@ func (h *RecipeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *RecipeHandler) Mine(w http.ResponseWriter, r *http.Request) {
+	claims := ClaimsFromContext(r.Context())
+	page := queryInt(r, "page", 1)
+	limit := queryInt(r, "limit", 20)
+	if limit > 100 {
+		limit = 100
+	}
+	recipes, total, err := h.recipes.ListByCreator(claims.UserID, page, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to retrieve recipes")
+		return
+	}
+	if recipes == nil {
+		recipes = []*model.Recipe{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"data":  recipes,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	})
 }
 
 func queryInt(r *http.Request, key string, def int) int {

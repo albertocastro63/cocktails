@@ -7,6 +7,7 @@ import { RecipeForm } from './pages/RecipeForm.js';
 import { AdminUserList } from './pages/AdminUserList.js';
 import { AdminUserForm } from './pages/AdminUserForm.js';
 import { AdminRecipes } from './pages/AdminRecipes.js';
+import { MyRecipes } from './pages/MyRecipes.js';
 import { isLoggedIn, isAdmin, clearToken } from './api/auth.js';
 
 const routes = [
@@ -16,6 +17,7 @@ const routes = [
   { pattern: /^\/admin\/recipes$/, factory: () => AdminRecipes() },
   { pattern: /^\/recipes\/([^/]+)\/edit$/, factory: (m) => RecipeForm({ id: m[1], onSave: () => navigate(`#/recipes/${m[1]}`) }) },
   { pattern: /^\/recipes\/new$/, factory: () => RecipeForm({ onSave: (r) => navigate(`#/recipes/${r?.data?.id || ''}`) }) },
+  { pattern: /^\/my-recipes$/, factory: () => MyRecipes() },
   { pattern: /^\/recipes\/([^/]+)$/, factory: (m) => RecipeDetail({ id: m[1] }) },
   { pattern: /^\/recipes$/, factory: () => RecipeList() },
   { pattern: /^\/login$/, factory: () => Login({ onSuccess: () => navigate('#/') }) },
@@ -67,8 +69,8 @@ function renderPage() {
     // Fall through to route matching for the specific admin page
   }
 
-  // Auth guard for write routes
-  const writeRoutes = /^\/(recipes\/new|recipes\/.+\/edit)/;
+  // Auth guard for write routes and my-recipes
+  const writeRoutes = /^\/(recipes\/new|recipes\/.+\/edit|my-recipes)/;
   if (writeRoutes.test(path) && !isLoggedIn()) {
     root.appendChild(Login({ onSuccess: () => renderPage() }));
     return;
@@ -112,6 +114,12 @@ export function buildNav() {
       recipesLink.textContent = 'Recipes';
       nav.appendChild(recipesLink);
     }
+
+    const myRecipesLink = document.createElement('a');
+    myRecipesLink.href = '#/my-recipes';
+    myRecipesLink.className = 'text-stone-100 hover:text-amber-400';
+    myRecipesLink.textContent = 'My Recipes';
+    nav.appendChild(myRecipesLink);
 
     const createLink = document.createElement('a');
     createLink.href = '#/recipes/new';

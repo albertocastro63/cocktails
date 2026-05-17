@@ -61,8 +61,9 @@ func buildHandler(rs store.RecipeStore, us store.UserStore) http.Handler {
 
 	mux.HandleFunc("GET /api/v1/recipes", recipes.List)
 	mux.HandleFunc("GET /api/v1/recipes/random", recipes.Random)
-	mux.HandleFunc("GET /api/v1/recipes/{id}", recipes.GetByID)
 	requireAuth := handler.RequireAuthWithStore(us)
+	mux.Handle("GET /api/v1/recipes/mine", requireAuth(http.HandlerFunc(recipes.Mine)))
+	mux.HandleFunc("GET /api/v1/recipes/{id}", recipes.GetByID)
 	mux.Handle("POST /api/v1/recipes", requireAuth(http.HandlerFunc(recipes.Create)))
 	mux.Handle("PUT /api/v1/recipes/{id}", requireAuth(http.HandlerFunc(recipes.Update)))
 	mux.Handle("DELETE /api/v1/recipes/{id}", requireAuth(http.HandlerFunc(recipes.Delete)))
