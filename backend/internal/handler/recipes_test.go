@@ -511,6 +511,58 @@ func TestRecipeMine_RequiresAuth(t *testing.T) {
 	}
 }
 
+// T003 (011-base-spirit): is_base_spirit on one ingredient survives POST → GET round-trip
+func TestRecipeCreate_BaseSpiritRoundTrip(t *testing.T) {
+	rs := newStubRecipeStore()
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Create))
+
+	token := validToken(t, "u1", "alice", false)
+	body := `{"name":"Manhattan","ingredients":[` +
+		`{"name":"Rye Whiskey","quantity":"60","unit":"ml","is_base_spirit":true},` +
+		`{"name":"Sweet Vermouth","quantity":"30","unit":"ml"},` +
+		`{"name":"Angostura Bitters","quantity":"2","unit":"dashes"}` +
+		`],"steps":["stir","strain"]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/recipes", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST got %d want 201: %s", rec.Code, rec.Body)
+	}
+	var createResp map[string]any
+	json.NewDecoder(rec.Body).Decode(&createResp)
+	id := createResp["data"].(map[string]any)["id"].(string)
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/recipes/"+id, nil)
+	getReq.SetPathValue("id", id)
+	getRec := httptest.NewRecorder()
+	h.GetByID(getRec, getReq)
+
+	if getRec.Code != http.StatusOK {
+		t.Fatalf("GET got %d want 200: %s", getRec.Code, getRec.Body)
+	}
+	var recipe map[string]any
+	json.NewDecoder(getRec.Body).Decode(&recipe)
+
+	ings := recipe["ingredients"].([]any)
+	if len(ings) != 3 {
+		t.Fatalf("expected 3 ingredients, got %d", len(ings))
+	}
+	for _, ing := range ings {
+		m := ing.(map[string]any)
+		name := m["name"].(string)
+		isBase, _ := m["is_base_spirit"].(bool)
+		if name == "Rye Whiskey" && !isBase {
+			t.Errorf("Rye Whiskey: expected is_base_spirit=true, got false/absent")
+		}
+		if name != "Rye Whiskey" && isBase {
+			t.Errorf("%s: expected is_base_spirit absent/false, got true", name)
+		}
+	}
+}
+
 func TestRecipeMine_EmptyForUserWithNoRecipes(t *testing.T) {
 	rs := newStubRecipeStore(sampleRecipe("r1", "Mojito", "u2"))
 	h := handler.NewRecipeHandler(rs)

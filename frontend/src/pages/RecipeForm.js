@@ -46,8 +46,20 @@ export function RecipeForm({ id, onSave } = {}) {
         <input name="ing_name" placeholder="Name" class="flex-1 border rounded px-2 py-1 text-sm" />
         <input name="ing_qty" placeholder="Qty" class="w-16 border rounded px-2 py-1 text-sm" />
         <input name="ing_unit" placeholder="Unit" class="w-16 border rounded px-2 py-1 text-sm" />
+        <label class="flex items-center gap-1 text-xs text-amber-700 whitespace-nowrap cursor-pointer">
+          <input type="checkbox" name="ing_base_spirit" class="accent-amber-500" />
+          base spirit
+        </label>
         <button type="button" class="text-red-400 hover:text-red-600 text-lg px-1">×</button>
       `;
+      row.querySelector('[name="ing_base_spirit"]').addEventListener('change', (e) => {
+        if (e.target.checked) {
+          [...ingredientsSection._rows.children].forEach((r) => {
+            const cb = r.querySelector('[name="ing_base_spirit"]');
+            if (cb && cb !== e.target) cb.checked = false;
+          });
+        }
+      });
       row.querySelector('button').addEventListener('click', () => row.remove());
       return row;
     }
@@ -108,6 +120,9 @@ export function RecipeForm({ id, onSave } = {}) {
         row.querySelector('[name="ing_name"]').value = ing.name;
         row.querySelector('[name="ing_qty"]').value = ing.quantity;
         row.querySelector('[name="ing_unit"]').value = ing.unit || '';
+        if (ing.is_base_spirit) {
+          row.querySelector('[name="ing_base_spirit"]').checked = true;
+        }
       });
       (recipe.steps || []).forEach((step) => {
         const row = stepsSection._addRow();
@@ -135,11 +150,15 @@ export function RecipeForm({ id, onSave } = {}) {
       return;
     }
 
-    const ingredients = [...ingredientsSection._rows.children].map((row) => ({
-      name: (row.querySelector('[name="ing_name"]') || {}).value?.trim() || '',
-      quantity: (row.querySelector('[name="ing_qty"]') || {}).value?.trim() || '',
-      unit: (row.querySelector('[name="ing_unit"]') || {}).value?.trim() || '',
-    })).filter((i) => i.name);
+    const ingredients = [...ingredientsSection._rows.children].map((row) => {
+      const isBase = row.querySelector('[name="ing_base_spirit"]')?.checked || false;
+      return {
+        name: (row.querySelector('[name="ing_name"]') || {}).value?.trim() || '',
+        quantity: (row.querySelector('[name="ing_qty"]') || {}).value?.trim() || '',
+        unit: (row.querySelector('[name="ing_unit"]') || {}).value?.trim() || '',
+        ...(isBase && { is_base_spirit: true }),
+      };
+    }).filter((i) => i.name);
 
     const steps = [...stepsSection._rows.children].map((row) => {
       const input = row.querySelector('[name="step"]');

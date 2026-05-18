@@ -14,9 +14,20 @@ function buildIngredientPopover(ingredients) {
   const ul = document.createElement('ul');
   ul.className = 'text-sm text-gray-700 space-y-1';
   const MAX_VISIBLE = 5;
-  ingredients.slice(0, MAX_VISIBLE).forEach(({ name }) => {
+  ingredients.slice(0, MAX_VISIBLE).forEach(({ name, is_base_spirit }) => {
     const li = document.createElement('li');
-    li.textContent = name;
+    if (is_base_spirit) {
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'font-semibold text-stone-900';
+      nameSpan.textContent = name;
+      const label = document.createElement('span');
+      label.className = 'text-amber-600 text-xs ml-1';
+      label.textContent = '(base spirit)';
+      li.appendChild(nameSpan);
+      li.appendChild(label);
+    } else {
+      li.textContent = name;
+    }
     ul.appendChild(li);
   });
   if (ingredients.length > MAX_VISIBLE) {

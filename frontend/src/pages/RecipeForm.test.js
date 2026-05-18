@@ -10,7 +10,7 @@ vi.mock('../api/auth.js', () => ({
   isLoggedIn: vi.fn(() => true),
 }));
 
-import { createRecipe } from '../api/client.js';
+import { createRecipe, getRecipe } from '../api/client.js';
 import { RecipeForm } from './RecipeForm.js';
 
 describe('RecipeForm page', () => {
@@ -103,5 +103,101 @@ describe('RecipeForm page', () => {
     const submitBtn = document.body.querySelector('button[type="submit"]');
     expect(submitBtn).not.toBeNull();
     expect(submitBtn.className).toContain('bg-amber-500');
+  });
+});
+
+describe('RecipeForm — base spirit toggle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = '';
+  });
+  afterEach(() => { document.body.innerHTML = ''; });
+
+  function clickAddIngredient() {
+    const btn = [...document.body.querySelectorAll('button')].find(b =>
+      b.textContent.toLowerCase().includes('add ingredient')
+    );
+    btn.click();
+  }
+
+  it('newly added ingredient row contains a base spirit checkbox', () => {
+    document.body.appendChild(RecipeForm({}));
+    clickAddIngredient();
+    expect(document.body.querySelector('[name="ing_base_spirit"]')).not.toBeNull();
+  });
+
+  it('checking base spirit on row B clears row A', () => {
+    document.body.appendChild(RecipeForm({}));
+    clickAddIngredient();
+    clickAddIngredient();
+    const cbs = [...document.body.querySelectorAll('[name="ing_base_spirit"]')];
+    expect(cbs.length).toBe(2);
+    cbs[0].click();
+    expect(cbs[0].checked).toBe(true);
+    cbs[1].click();
+    expect(cbs[1].checked).toBe(true);
+    expect(cbs[0].checked).toBe(false);
+  });
+
+  it('unchecking the active checkbox leaves all rows unchecked', () => {
+    document.body.appendChild(RecipeForm({}));
+    clickAddIngredient();
+    const cb = document.body.querySelector('[name="ing_base_spirit"]');
+    cb.click();
+    expect(cb.checked).toBe(true);
+    cb.click();
+    expect(cb.checked).toBe(false);
+  });
+
+  it('deleting the base spirit row does not activate any remaining row (FR-009)', () => {
+    document.body.appendChild(RecipeForm({}));
+    clickAddIngredient();
+    clickAddIngredient();
+    const cbs = () => [...document.body.querySelectorAll('[name="ing_base_spirit"]')];
+    cbs()[0].click();
+    expect(cbs()[0].checked).toBe(true);
+    const removeBtn = cbs()[0].closest('div').querySelector('button');
+    removeBtn.click();
+    expect(cbs().length).toBe(1);
+    expect(cbs()[0].checked).toBe(false);
+  });
+
+  it('edit prefill restores is_base_spirit on the correct row only', async () => {
+    getRecipe.mockResolvedValue({
+      name: 'Manhattan',
+      ingredients: [
+        { name: 'Rye', quantity: '60', unit: 'ml', is_base_spirit: true },
+        { name: 'Vermouth', quantity: '30', unit: 'ml' },
+      ],
+      steps: [],
+      properties: {},
+      notes: '',
+    });
+    document.body.appendChild(RecipeForm({ id: 'r1' }));
+    await vi.waitFor(() => {
+      const cbs = [...document.body.querySelectorAll('[name="ing_base_spirit"]')];
+      expect(cbs.length).toBe(2);
+      expect(cbs[0].checked).toBe(true);
+      expect(cbs[1].checked).toBe(false);
+    });
+  });
+
+  it('submit payload includes is_base_spirit:true only on the checked ingredient', async () => {
+    createRecipe.mockResolvedValue({ data: { id: 'r1', name: 'New' }, warnings: [] });
+    document.body.appendChild(RecipeForm({}));
+    document.body.querySelector('[name="name"]').value = 'Manhattan';
+    clickAddIngredient();
+    clickAddIngredient();
+    const nameInputs = [...document.body.querySelectorAll('[name="ing_name"]')];
+    nameInputs[0].value = 'Rye';
+    nameInputs[1].value = 'Vermouth';
+    document.body.querySelectorAll('[name="ing_base_spirit"]')[0].click();
+    document.body.querySelector('form').dispatchEvent(new Event('submit'));
+    await vi.waitFor(() => expect(createRecipe).toHaveBeenCalled());
+    const payload = createRecipe.mock.calls[0][0];
+    const rye = payload.ingredients.find(i => i.name === 'Rye');
+    const vermouth = payload.ingredients.find(i => i.name === 'Vermouth');
+    expect(rye.is_base_spirit).toBe(true);
+    expect(vermouth.is_base_spirit).toBeFalsy();
   });
 });
