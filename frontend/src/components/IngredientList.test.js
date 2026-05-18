@@ -35,3 +35,48 @@ describe('IngredientList', () => {
     expect(nameSpan.className).toContain('text-stone-800');
   });
 });
+
+describe('IngredientList — base spirit highlight (T011)', () => {
+  it('base spirit ingredient li contains (base spirit) label', () => {
+    const ings = [
+      { name: 'Rye', quantity: '60', unit: 'ml', is_base_spirit: true },
+      { name: 'Vermouth', quantity: '30', unit: 'ml' },
+    ];
+    const el = IngredientList({ ingredients: ings });
+    expect(el.textContent).toContain('(base spirit)');
+  });
+
+  it('base spirit ingredient name span has font-semibold text-stone-900 classes', () => {
+    const ings = [
+      { name: 'Rye', quantity: '60', unit: 'ml', is_base_spirit: true },
+      { name: 'Vermouth', quantity: '30', unit: 'ml' },
+    ];
+    const el = IngredientList({ ingredients: ings });
+    const boldSpan = el.querySelector('.font-semibold');
+    expect(boldSpan).not.toBeNull();
+    expect(boldSpan.className).toContain('text-stone-900');
+    expect(boldSpan.textContent).toBe('Rye');
+  });
+
+  it('(base spirit) label appears only on the flagged ingredient, not on neighbours', () => {
+    const ings = [
+      { name: 'Rye', quantity: '60', unit: 'ml', is_base_spirit: true },
+      { name: 'Vermouth', quantity: '30', unit: 'ml' },
+      { name: 'Bitters', quantity: '2', unit: 'dashes' },
+    ];
+    const el = IngredientList({ ingredients: ings });
+    const items = [...el.querySelectorAll('li')];
+    const labelCount = items.filter(li => li.textContent.includes('(base spirit)')).length;
+    expect(labelCount).toBe(1);
+  });
+
+  it('all items are rendered identically when no ingredient has is_base_spirit', () => {
+    const ings = [
+      { name: 'Rum', quantity: '50', unit: 'ml' },
+      { name: 'Lime', quantity: '15', unit: 'ml' },
+    ];
+    const el = IngredientList({ ingredients: ings });
+    expect(el.textContent).not.toContain('(base spirit)');
+    expect(el.querySelector('.font-semibold')).toBeNull();
+  });
+});

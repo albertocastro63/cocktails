@@ -3,9 +3,10 @@ package model
 import "time"
 
 type Ingredient struct {
-	Name     string `json:"name"`
-	Quantity string `json:"quantity"`
-	Unit     string `json:"unit,omitempty"`
+	Name          string `json:"name"`
+	Quantity      string `json:"quantity"`
+	Unit          string `json:"unit,omitempty"`
+	IsBaseSpirit  bool   `json:"is_base_spirit,omitempty"`
 }
 
 type Recipe struct {

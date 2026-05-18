@@ -7,13 +7,27 @@ export function IngredientList({ ingredients = [] } = {}) {
   }
   const ul = document.createElement('ul');
   ul.className = 'divide-y divide-stone-100';
-  ingredients.forEach(({ name, quantity, unit }) => {
+  ingredients.forEach(({ name, quantity, unit, is_base_spirit }) => {
     const li = document.createElement('li');
     li.className = 'flex justify-between py-2 text-sm';
-    li.innerHTML = `
-      <span class="font-medium text-stone-800">${name}</span>
-      <span class="text-stone-500">${quantity}${unit ? ' ' + unit : ''}</span>
-    `;
+    const nameSpan = document.createElement('span');
+    if (is_base_spirit) {
+      nameSpan.className = 'font-semibold text-stone-900';
+      nameSpan.textContent = name;
+      const label = document.createElement('span');
+      label.className = 'text-amber-600 text-xs ml-1';
+      label.textContent = '(base spirit)';
+      li.appendChild(nameSpan);
+      li.appendChild(label);
+    } else {
+      nameSpan.className = 'font-medium text-stone-800';
+      nameSpan.textContent = name;
+      li.appendChild(nameSpan);
+    }
+    const qtySpan = document.createElement('span');
+    qtySpan.className = 'text-stone-500';
+    qtySpan.textContent = `${quantity}${unit ? ' ' + unit : ''}`;
+    li.appendChild(qtySpan);
     ul.appendChild(li);
   });
   el.appendChild(ul);

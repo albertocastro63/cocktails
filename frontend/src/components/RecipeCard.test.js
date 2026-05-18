@@ -128,6 +128,74 @@ describe('RecipeCard - empty ingredients', () => {
   });
 });
 
+describe('RecipeCard - base spirit popover highlight (T009)', () => {
+  it('base spirit ingredient li contains (base spirit) label', () => {
+    const r = {
+      id: 'r1',
+      name: 'Manhattan',
+      ingredients: [
+        { name: 'Rye', quantity: '60', unit: 'ml', is_base_spirit: true },
+        { name: 'Vermouth', quantity: '30', unit: 'ml' },
+      ],
+    };
+    const el = RecipeCard({ recipe: r });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    const popover = el.querySelector('[data-popover]');
+    expect(popover.textContent).toContain('(base spirit)');
+  });
+
+  it('base spirit ingredient li has font-semibold class on name span', () => {
+    const r = {
+      id: 'r1',
+      name: 'Manhattan',
+      ingredients: [
+        { name: 'Rye', quantity: '60', unit: 'ml', is_base_spirit: true },
+        { name: 'Vermouth', quantity: '30', unit: 'ml' },
+      ],
+    };
+    const el = RecipeCard({ recipe: r });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    const popover = el.querySelector('[data-popover]');
+    const boldSpan = popover.querySelector('.font-semibold');
+    expect(boldSpan).not.toBeNull();
+    expect(boldSpan.textContent).toBe('Rye');
+  });
+
+  it('(base spirit) label appears only on the flagged ingredient, not on neighbours', () => {
+    const r = {
+      id: 'r1',
+      name: 'Manhattan',
+      ingredients: [
+        { name: 'Rye', quantity: '60', unit: 'ml', is_base_spirit: true },
+        { name: 'Vermouth', quantity: '30', unit: 'ml' },
+        { name: 'Bitters', quantity: '2', unit: 'dashes' },
+      ],
+    };
+    const el = RecipeCard({ recipe: r });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    const popover = el.querySelector('[data-popover]');
+    const items = [...popover.querySelectorAll('li')];
+    const labelCount = items.filter(li => li.textContent.includes('(base spirit)')).length;
+    expect(labelCount).toBe(1);
+  });
+
+  it('all items are rendered identically when no ingredient has is_base_spirit', () => {
+    const r = {
+      id: 'r1',
+      name: 'Mojito',
+      ingredients: [
+        { name: 'Rum', quantity: '50', unit: 'ml' },
+        { name: 'Mint', quantity: '10', unit: 'leaves' },
+      ],
+    };
+    const el = RecipeCard({ recipe: r });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    const popover = el.querySelector('[data-popover]');
+    expect(popover.textContent).not.toContain('(base spirit)');
+    expect(popover.querySelector('.font-semibold')).toBeNull();
+  });
+});
+
 describe('RecipeCard - edit/delete controls (T005)', () => {
   const ownerRecipe = { id: 'r1', name: 'Mojito', creator_id: 'user-1', ingredients: [] };
 

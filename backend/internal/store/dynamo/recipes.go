@@ -37,9 +37,10 @@ type recipeItem struct {
 }
 
 type ingItem struct {
-	Name     string `dynamodbav:"name"`
-	Quantity string `dynamodbav:"quantity"`
-	Unit     string `dynamodbav:"unit"`
+	Name         string `dynamodbav:"name"`
+	Quantity     string `dynamodbav:"quantity"`
+	Unit         string `dynamodbav:"unit"`
+	BaseSpirit   bool   `dynamodbav:"is_base_spirit,omitempty"`
 }
 
 func (s *RecipeStore) Create(r *model.Recipe) error {
@@ -242,7 +243,7 @@ func (s *RecipeStore) ImportBatch(recipes []*model.Recipe, _ string) (int, int, 
 func toItem(r *model.Recipe) recipeItem {
 	ings := make([]ingItem, len(r.Ingredients))
 	for i, ing := range r.Ingredients {
-		ings[i] = ingItem{Name: ing.Name, Quantity: ing.Quantity, Unit: ing.Unit}
+		ings[i] = ingItem{Name: ing.Name, Quantity: ing.Quantity, Unit: ing.Unit, BaseSpirit: ing.IsBaseSpirit}
 	}
 	return recipeItem{
 		ID:          r.ID,
@@ -264,7 +265,7 @@ func unmarshalRecipe(av map[string]types.AttributeValue) (*model.Recipe, error) 
 	}
 	ings := make([]model.Ingredient, len(item.Ingredients))
 	for i, ing := range item.Ingredients {
-		ings[i] = model.Ingredient{Name: ing.Name, Quantity: ing.Quantity, Unit: ing.Unit}
+		ings[i] = model.Ingredient{Name: ing.Name, Quantity: ing.Quantity, Unit: ing.Unit, IsBaseSpirit: ing.BaseSpirit}
 	}
 	createdAt, _ := time.Parse(time.RFC3339Nano, item.CreatedAt)
 	updatedAt, _ := time.Parse(time.RFC3339Nano, item.UpdatedAt)

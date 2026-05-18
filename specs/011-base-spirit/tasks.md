@@ -21,9 +21,9 @@ No new project initialization needed — existing structure is used. This phase 
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T001 [P] Add `IsBaseSpirit bool \`json:"is_base_spirit,omitempty"\`` to `Ingredient` struct in `backend/internal/model/model.go` — existing SQLite serialization tests in `go test ./...` cover the JSON round-trip; no new test file is required for this struct-field addition (C3)
-- [ ] T002 [P] Add `BaseSpirit bool \`dynamodbav:"is_base_spirit,omitempty"\`` to `ingItem` struct and update `toItem`/`fromItem` mapping functions in `backend/internal/store/dynamo/recipes.go` — the existing DynamoDB integration test suite covers attribute marshaling; no new test file required (C3)
-- [ ] T003 [P] Write a failing handler test in `backend/internal/handler/recipes_test.go` confirming `is_base_spirit: true` on one ingredient survives a full `POST /api/v1/recipes` → `GET /api/v1/recipes/{id}` round-trip: send a payload with one ingredient flagged, assert the response body contains `"is_base_spirit": true` on that ingredient and no other (C2)
+- [X] T001 [P] Add `IsBaseSpirit bool \`json:"is_base_spirit,omitempty"\`` to `Ingredient` struct in `backend/internal/model/model.go` — existing SQLite serialization tests in `go test ./...` cover the JSON round-trip; no new test file is required for this struct-field addition (C3)
+- [X] T002 [P] Add `BaseSpirit bool \`dynamodbav:"is_base_spirit,omitempty"\`` to `ingItem` struct and update `toItem`/`fromItem` mapping functions in `backend/internal/store/dynamo/recipes.go` — the existing DynamoDB integration test suite covers attribute marshaling; no new test file required (C3)
+- [X] T003 [P] Write a failing handler test in `backend/internal/handler/recipes_test.go` confirming `is_base_spirit: true` on one ingredient survives a full `POST /api/v1/recipes` → `GET /api/v1/recipes/{id}` round-trip: send a payload with one ingredient flagged, assert the response body contains `"is_base_spirit": true` on that ingredient and no other (C2)
 
 **Checkpoint**: `go build ./...` passes. The field is present in both the JSON API shape and the DynamoDB attribute envelope. The handler test fails (red) and will turn green after T001 lands.
 
@@ -39,7 +39,7 @@ No new project initialization needed — existing structure is used. This phase 
 
 > **Write tests FIRST. Confirm they FAIL before implementing T005–T008.**
 
-- [ ] T004 [US1] Write failing tests for base spirit toggle behaviour in `frontend/src/pages/RecipeForm.test.js`:
+- [X] T004 [US1] Write failing tests for base spirit toggle behaviour in `frontend/src/pages/RecipeForm.test.js`:
   - A newly added ingredient row contains a base spirit checkbox
   - Checking checkbox on row B when row A is already checked: B becomes checked, A is automatically cleared
   - Unchecking the active checkbox leaves all rows unchecked
@@ -49,10 +49,10 @@ No new project initialization needed — existing structure is used. This phase 
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Update the ingredient row builder in `frontend/src/pages/RecipeForm.js` to append a base spirit checkbox `<input type="checkbox" name="ing_base_spirit">` with an amber label to each ingredient row (after the Unit input, before the × button)
-- [ ] T006 [US1] Add mutual-exclusion click handler in `frontend/src/pages/RecipeForm.js`: when a base spirit checkbox is checked, find all sibling ingredient rows via `ingredientsSection._rows.children` and uncheck their base spirit inputs; when unchecked, leave all others as-is
-- [ ] T007 [US1] Update the edit prefill block in `frontend/src/pages/RecipeForm.js` so that when loading an existing recipe, the ingredient row with `ing.is_base_spirit === true` has its checkbox set to `checked`
-- [ ] T008 [US1] Update the submit handler in `frontend/src/pages/RecipeForm.js` to read `row.querySelector('[name="ing_base_spirit"]').checked` for each ingredient row and include `is_base_spirit: true` in the payload only when `checked`
+- [X] T005 [US1] Update the ingredient row builder in `frontend/src/pages/RecipeForm.js` to append a base spirit checkbox `<input type="checkbox" name="ing_base_spirit">` with an amber label to each ingredient row (after the Unit input, before the × button)
+- [X] T006 [US1] Add mutual-exclusion click handler in `frontend/src/pages/RecipeForm.js`: when a base spirit checkbox is checked, find all sibling ingredient rows via `ingredientsSection._rows.children` and uncheck their base spirit inputs; when unchecked, leave all others as-is
+- [X] T007 [US1] Update the edit prefill block in `frontend/src/pages/RecipeForm.js` so that when loading an existing recipe, the ingredient row with `ing.is_base_spirit === true` has its checkbox set to `checked`
+- [X] T008 [US1] Update the submit handler in `frontend/src/pages/RecipeForm.js` to read `row.querySelector('[name="ing_base_spirit"]').checked` for each ingredient row and include `is_base_spirit: true` in the payload only when `checked`
 
 **Checkpoint**: User Story 1 fully functional. Authors can set, change, and clear the base spirit. The correct `is_base_spirit` state persists through save/reload cycles.
 
@@ -68,14 +68,14 @@ No new project initialization needed — existing structure is used. This phase 
 
 > **Write tests FIRST. Confirm they FAIL before implementing T010.**
 
-- [ ] T009 [US2] Write failing tests for base spirit highlight in popover in `frontend/src/components/RecipeCard.test.js`:
+- [X] T009 [US2] Write failing tests for base spirit highlight in popover in `frontend/src/components/RecipeCard.test.js`:
   - When one ingredient has `is_base_spirit: true`, the rendered popover list item contains a `(base spirit)` label or `font-semibold` class (I1)
   - When no ingredient has `is_base_spirit`, all list items are rendered identically (no label, no extra class)
   - The highlight appears only on the ingredient with the flag, not on neighbouring rows
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Update `buildIngredientPopover()` in `frontend/src/components/RecipeCard.js`: when rendering each ingredient `li`, if `ingredient.is_base_spirit` is truthy apply `font-semibold text-stone-900` to the name span and append `<span class="text-amber-600 text-xs ml-1">(base spirit)</span>` inline
+- [X] T010 [US2] Update `buildIngredientPopover()` in `frontend/src/components/RecipeCard.js`: when rendering each ingredient `li`, if `ingredient.is_base_spirit` is truthy apply `font-semibold text-stone-900` to the name span and append `<span class="text-amber-600 text-xs ml-1">(base spirit)</span>` inline
 
 **Checkpoint**: Hovering over a recipe card with a base spirit shows the highlighted ingredient; recipes without one remain uniform.
 
@@ -91,14 +91,14 @@ No new project initialization needed — existing structure is used. This phase 
 
 > **Write tests FIRST. Confirm they FAIL before implementing T012.**
 
-- [ ] T011 [US3] Write failing tests for base spirit highlight in `frontend/src/components/IngredientList.test.js`:
+- [X] T011 [US3] Write failing tests for base spirit highlight in `frontend/src/components/IngredientList.test.js`:
   - When one ingredient has `is_base_spirit: true`, the rendered list item contains a `(base spirit)` label or `font-semibold` class
   - When no ingredient has `is_base_spirit`, all list items are rendered identically
   - Visual treatment matches the popover pattern (same class/label strings as T009/T010)
 
 ### Implementation for User Story 3
 
-- [ ] T012 [US3] Update `IngredientList.js` in `frontend/src/components/IngredientList.js`: when rendering each ingredient `li`, if `ingredient.is_base_spirit` is truthy apply `font-semibold text-stone-900` to the name span and append `<span class="text-amber-600 text-xs ml-1">(base spirit)</span>` — identical token usage to T010
+- [X] T012 [US3] Update `IngredientList.js` in `frontend/src/components/IngredientList.js`: when rendering each ingredient `li`, if `ingredient.is_base_spirit` is truthy apply `font-semibold text-stone-900` to the name span and append `<span class="text-amber-600 text-xs ml-1">(base spirit)</span>` — identical token usage to T010
 
 **Checkpoint**: The detail page ingredient list highlights the base spirit with the same visual treatment as the card popover.
 
@@ -106,8 +106,8 @@ No new project initialization needed — existing structure is used. This phase 
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T013 Run all backend tests and confirm they pass: `cd backend && go test ./...`
-- [ ] T014 [P] Run all frontend tests and confirm they pass: `cd frontend && npm test`
+- [X] T013 Run all backend tests and confirm they pass: `cd backend && go test ./...`
+- [X] T014 [P] Run all frontend tests and confirm they pass: `cd frontend && npm test`
 - [ ] T015 [P] Manually validate quickstart.md scenarios 1–7 against the running dev server
 
 ---
