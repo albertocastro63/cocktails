@@ -128,5 +128,5 @@ The SSL certificate for `cocktails.albertomcastro.com` automatically renews befo
 - The ACM certificate will be provisioned in the `us-east-1` AWS region, which is a hard requirement for CloudFront-attached certificates.
 - Infrastructure changes are managed via Terraform; the ACM certificate, CloudFront alternate domain name, and Cloudflare DNS records will all be added to the existing Terraform configuration.
 - The Cloudflare Terraform provider will be added to the project; it requires the Cloudflare Zone ID for `albertomcastro.com` (a static string supplied directly as a Terraform variable) and a scoped API token — both supplied as Terraform variables and never committed to version control.
-- The existing CloudFront viewer protocol policy may need updating to "redirect HTTP to HTTPS".
+- The existing CloudFront default behavior viewer protocol policy is already set to `redirect-to-https`. The API cache behavior (`/api/*`) uses `https-only` and must be updated to `redirect-to-https` to comply with FR-006.
 - Importing existing manually-created Cloudflare DNS records (if any) into Terraform state is out of scope; the assumption is no conflicting records exist for `cocktails.albertomcastro.com`.
