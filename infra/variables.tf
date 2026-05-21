@@ -26,3 +26,20 @@ variable "jwt_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "cloudflare_api_token" {
+  description = "Cloudflare API token with DNS edit permissions for the albertomcastro.com zone"
+  type        = string
+  sensitive   = true
+}
+
+variable "cloudflare_zone_id" {
+  description = "Cloudflare Zone ID for albertomcastro.com (static value from Cloudflare dashboard → Zone Overview)"
+  type        = string
+}
+
+variable "domain_name" {
+  description = "Custom domain name to attach to the CloudFront distribution"
+  type        = string
+  default     = "cocktails.albertomcastro.com"
+}

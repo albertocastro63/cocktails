@@ -17,3 +17,17 @@ lambda_binary_path = "../backend/bootstrap.zip"
 # JWT signing secret for the API — keep this secret and at least 32 characters.
 # Generate one: openssl rand -base64 32
 jwt_secret = "change-me-use-openssl-rand-base64-32"
+
+# ── Feature 012: Custom Domain with HTTPS ─────────────────────────────────────
+
+# Cloudflare API token with Zone → DNS → Edit permissions for albertomcastro.com.
+# Generate at dash.cloudflare.com → My Profile → API Tokens → Create Token.
+# Supply via TF_VAR_cloudflare_api_token or -var flag — never commit this value.
+# cloudflare_api_token = "your-cloudflare-api-token"
+
+# Cloudflare Zone ID for albertomcastro.com.
+# Find at dash.cloudflare.com → albertomcastro.com → Overview → right sidebar.
+# cloudflare_zone_id = "your-cloudflare-zone-id"
+
+# Custom domain for the CloudFront distribution (default: cocktails.albertomcastro.com).
+# domain_name = "cocktails.albertomcastro.com"

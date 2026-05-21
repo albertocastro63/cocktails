@@ -157,10 +157,10 @@ module "lambda_function" {
   logging_log_group                 = aws_cloudwatch_log_group.lambda_logs.name
 
   environment_variables = {
-    STORE_BACKEND  = "dynamodb"
-    RECIPES_TABLE  = module.recipes_table.dynamodb_table_id
-    USERS_TABLE    = module.users_table.dynamodb_table_id
-    JWT_SECRET     = var.jwt_secret
+    STORE_BACKEND = "dynamodb"
+    RECIPES_TABLE = module.recipes_table.dynamodb_table_id
+    USERS_TABLE   = module.users_table.dynamodb_table_id
+    JWT_SECRET    = var.jwt_secret
   }
 
   # IAM: least-privilege access to DynamoDB tables and CloudWatch logs.
@@ -321,7 +321,7 @@ module "cdn" {
     {
       path_pattern             = "/api/*"
       target_origin_id         = "api"
-      viewer_protocol_policy   = "https-only"
+      viewer_protocol_policy   = "redirect-to-https"
       allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
       cached_methods           = ["GET", "HEAD"]
       use_forwarded_values     = false
@@ -345,8 +345,12 @@ module "cdn" {
     },
   ]
 
+  aliases = [var.domain_name]
+
   viewer_certificate = {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = aws_acm_certificate_validation.cert.certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
 
   tags = {
@@ -438,11 +442,52 @@ resource "null_resource" "sam_metadata_lambda_function" {
   triggers = {
     # SAM CLI reads these trigger keys from the terraform plan output to locate
     # the function source and built artifact for local emulation.
-    resource_name       = "module.lambda_function.aws_lambda_function.this[0]"
-    resource_type       = "ZIP_LAMBDA_FUNCTION"
+    resource_name        = "module.lambda_function.aws_lambda_function.this[0]"
+    resource_type        = "ZIP_LAMBDA_FUNCTION"
     original_source_code = "${path.root}/../backend"
-    built_output_path   = "${path.root}/../backend/bootstrap.zip"
+    built_output_path    = "${path.root}/../backend/bootstrap.zip"
   }
 
   depends_on = [module.lambda_function]
+}
+
+# ─────────────────────────────────────────────
+# Feature 012 — Custom Domain with HTTPS
+# ACM certificate, Cloudflare DNS records, and CloudFront custom domain wiring.
+# ─────────────────────────────────────────────
+
+resource "aws_acm_certificate" "cert" {
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "cloudflare_dns_record" "acm_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.cert.domain_validation_options : dvo.domain_name => dvo
+  }
+
+  zone_id = var.cloudflare_zone_id
+  name    = each.value.resource_record_name
+  type    = each.value.resource_record_type
+  content = each.value.resource_record_value
+  proxied = false
+  ttl     = 60
+}
+
+resource "aws_acm_certificate_validation" "cert" {
+  certificate_arn         = aws_acm_certificate.cert.arn
+  validation_record_fqdns = [for dvo in aws_acm_certificate.cert.domain_validation_options : dvo.resource_record_name]
+}
+
+resource "cloudflare_dns_record" "routing" {
+  zone_id = var.cloudflare_zone_id
+  name    = "cocktails"
+  type    = "CNAME"
+  content = module.cdn.cloudfront_distribution_domain_name
+  proxied = false
+  ttl     = 300
 }
