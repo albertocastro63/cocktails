@@ -8,6 +8,11 @@ output "frontend_url" {
   value       = "https://${module.cdn.cloudfront_distribution_domain_name}"
 }
 
+output "custom_domain_url" {
+  description = "Custom domain URL for the app (available after terraform apply with Cloudflare credentials)"
+  value       = "https://${var.domain_name}"
+}
+
 output "recipes_table_name" {
   description = "DynamoDB table name for recipes"
   value       = module.recipes_table.dynamodb_table_id

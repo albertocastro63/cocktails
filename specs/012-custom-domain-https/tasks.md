@@ -11,8 +11,8 @@
 
 **Purpose**: Add the Cloudflare Terraform provider declaration so `terraform init` can download it.
 
-- [ ] T001 Add `cloudflare/cloudflare ~> 5.0` to `required_providers` in `infra/versions.tf` and add a `provider "cloudflare"` block with `api_token = var.cloudflare_api_token`
-- [ ] T002 Run `terraform init` from `infra/` to download the new Cloudflare provider plugin — verify no errors
+- [X] T001 Add `cloudflare/cloudflare ~> 5.0` to `required_providers` in `infra/versions.tf` and add a `provider "cloudflare"` block with `api_token = var.cloudflare_api_token`
+- [X] T002 Run `terraform init` from `infra/` to download the new Cloudflare provider plugin — verify no errors
 
 ---
 
@@ -22,8 +22,8 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 [P] Add `cloudflare_api_token` (sensitive string), `cloudflare_zone_id` (string), and `domain_name` (string, default `"cocktails.albertomcastro.com"`) variables to `infra/variables.tf`
-- [ ] T004 [P] Add `resource "aws_acm_certificate" "cert"` to `infra/main.tf`: domain_name = `var.domain_name`, validation_method = `"DNS"`, with a `lifecycle { create_before_destroy = true }` block
+- [X] T003 [P] Add `cloudflare_api_token` (sensitive string), `cloudflare_zone_id` (string), and `domain_name` (string, default `"cocktails.albertomcastro.com"`) variables to `infra/variables.tf`
+- [X] T004 [P] Add `resource "aws_acm_certificate" "cert"` to `infra/main.tf`: domain_name = `var.domain_name`, validation_method = `"DNS"`, with a `lifecycle { create_before_destroy = true }` block
 
 **Checkpoint**: `terraform plan` shows the new ACM certificate resource. Variables are accessible to subsequent resources.
 
@@ -37,11 +37,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Add `resource "cloudflare_dns_record" "acm_validation"` to `infra/main.tf` using `for_each` over `{ for dvo in aws_acm_certificate.cert.domain_validation_options : dvo.domain_name => dvo }`: type = `"CNAME"`, name = `each.value.resource_record_name`, content = `each.value.resource_record_value`, zone_id = `var.cloudflare_zone_id`, proxied = `false` — note: Cloudflare provider v5 uses `content`, not `value`; this is the ACM DNS ownership proof record (US3: DNS-as-code; US4: kept in place for auto-renewal)
-- [ ] T006 [US1] Add `resource "aws_acm_certificate_validation" "cert"` to `infra/main.tf`: certificate_arn = `aws_acm_certificate.cert.arn`, validation_record_fqdns = `[for dvo in aws_acm_certificate.cert.domain_validation_options : dvo.resource_record_name]` — derives FQDNs directly from ACM (source of truth), avoiding reliance on a Cloudflare provider computed attribute that may not exist in v5; this blocks apply until ACM confirms the certificate is issued
-- [ ] T007 [US1] Add `resource "cloudflare_dns_record" "routing"` to `infra/main.tf`: type = `"CNAME"`, name = `"cocktails"`, value = `module.cdn.cloudfront_distribution_domain_name`, zone_id = `var.cloudflare_zone_id`, proxied = `false` — routes user traffic to CloudFront (US3: DNS-as-code)
-- [ ] T008 [US1] Update `module "cdn"` in `infra/main.tf`: add `aliases = [var.domain_name]` and replace the `viewer_certificate` block (`cloudfront_default_certificate = true`) with `{ acm_certificate_arn = aws_acm_certificate_validation.cert.certificate_arn, ssl_support_method = "sni-only", minimum_protocol_version = "TLSv1.2_2021" }`
-- [ ] T009 [US1] Update `ordered_cache_behavior[0]` in `infra/main.tf`: change `viewer_protocol_policy` from `"https-only"` to `"redirect-to-https"` — required by FR-006 (both behaviors must redirect HTTP to HTTPS, not return 403)
+- [X] T005 [US1] Add `resource "cloudflare_dns_record" "acm_validation"` to `infra/main.tf` using `for_each` over `{ for dvo in aws_acm_certificate.cert.domain_validation_options : dvo.domain_name => dvo }`: type = `"CNAME"`, name = `each.value.resource_record_name`, content = `each.value.resource_record_value`, zone_id = `var.cloudflare_zone_id`, proxied = `false` — note: Cloudflare provider v5 uses `content`, not `value`; this is the ACM DNS ownership proof record (US3: DNS-as-code; US4: kept in place for auto-renewal)
+- [X] T006 [US1] Add `resource "aws_acm_certificate_validation" "cert"` to `infra/main.tf`: certificate_arn = `aws_acm_certificate.cert.arn`, validation_record_fqdns = `[for dvo in aws_acm_certificate.cert.domain_validation_options : dvo.resource_record_name]` — derives FQDNs directly from ACM (source of truth), avoiding reliance on a Cloudflare provider computed attribute that may not exist in v5; this blocks apply until ACM confirms the certificate is issued
+- [X] T007 [US1] Add `resource "cloudflare_dns_record" "routing"` to `infra/main.tf`: type = `"CNAME"`, name = `"cocktails"`, value = `module.cdn.cloudfront_distribution_domain_name`, zone_id = `var.cloudflare_zone_id`, proxied = `false` — routes user traffic to CloudFront (US3: DNS-as-code)
+- [X] T008 [US1] Update `module "cdn"` in `infra/main.tf`: add `aliases = [var.domain_name]` and replace the `viewer_certificate` block (`cloudfront_default_certificate = true`) with `{ acm_certificate_arn = aws_acm_certificate_validation.cert.certificate_arn, ssl_support_method = "sni-only", minimum_protocol_version = "TLSv1.2_2021" }`
+- [X] T009 [US1] Update `ordered_cache_behavior[0]` in `infra/main.tf`: change `viewer_protocol_policy` from `"https-only"` to `"redirect-to-https"` — required by FR-006 (both behaviors must redirect HTTP to HTTPS, not return 403)
 
 **Checkpoint**: `terraform plan` shows: 1 ACM certificate created, 2 Cloudflare DNS records created, 1 ACM validation resource created, CloudFront distribution updated (aliases + viewer_certificate + API behavior redirect policy). No other resources changed.
 
@@ -51,9 +51,9 @@
 
 **Purpose**: Validate syntax, apply the changes, and verify all six success criteria from the spec.
 
-- [ ] T010 Run `terraform validate && terraform fmt --check` from `infra/` — confirms provider schema compliance and HCL formatting before committing a 10–45 min apply
-- [ ] T011 Run `terraform apply` from `infra/` with `cloudflare_api_token` and `cloudflare_zone_id` supplied (note: expect 10–45 min wait for ACM cert issuance)
-- [ ] T012 Run quickstart.md verification scenarios 1–6 against the live infrastructure:
+- [X] T010 Run `terraform validate && terraform fmt --check` from `infra/` — confirms provider schema compliance and HCL formatting before committing a 10–45 min apply
+- [X] T011 Run `terraform apply` from `infra/` with `cloudflare_api_token` and `cloudflare_zone_id` supplied (note: expect 10–45 min wait for ACM cert issuance)
+- [X] T012 Run quickstart.md verification scenarios 1–6 against the live infrastructure:
   - SC-001: `https://cocktails.albertomcastro.com` loads with valid cert (browser + curl)
   - SC-002: `curl -sI http://cocktails.albertomcastro.com` returns 301 → HTTPS (US2); `curl -sI http://cocktails.albertomcastro.com/api/v1/recipes` also returns 301 (FR-006 API path)
   - SC-003: `dig _*.cocktails.albertomcastro.com CNAME` resolves to `*.acm-validations.aws.` (US3/US4)
