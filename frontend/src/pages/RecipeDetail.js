@@ -1,5 +1,6 @@
-import { getRecipe, deleteRecipe } from '../api/client.js';
+import { getRecipe, deleteRecipe, getFavoriteStatus, favoriteRecipe, unfavoriteRecipe } from '../api/client.js';
 import { getToken, getUserID, isAdmin } from '../api/auth.js';
+import { FavoriteButton } from '../components/FavoriteButton.js';
 import { IngredientList } from '../components/IngredientList.js';
 import { PropertyTable } from '../components/PropertyTable.js';
 import { renderMarkdown } from '../utils/markdown.js';
@@ -51,6 +52,37 @@ export function RecipeDetail({ id }) {
       controls.appendChild(editBtn);
       controls.appendChild(deleteBtn);
       titleRow.appendChild(controls);
+    }
+
+    if (uid && recipe.creator_id !== uid) {
+      getFavoriteStatus(id, getToken()).then(({ is_favorite }) => {
+        let isFavorited = is_favorite;
+        const renderHeart = () => {
+          const existing = titleRow.querySelector('button[data-heart]');
+          if (existing) existing.remove();
+          const btn = FavoriteButton({
+            isFavorited,
+            onToggle: () => {
+              const action = isFavorited ? unfavoriteRecipe : favoriteRecipe;
+              isFavorited = !isFavorited;
+              renderHeart();
+              action(id, getToken()).catch(() => {
+                isFavorited = !isFavorited;
+                renderHeart();
+                const err = document.createElement('p');
+                err.className = 'text-red-600 text-sm mt-1';
+                err.textContent = 'Failed to save. Try again.';
+                titleRow.appendChild(err);
+                setTimeout(() => err.remove(), 4000);
+              });
+            },
+          });
+          btn.dataset.heart = '';
+          btn.className += ' ml-3';
+          titleRow.appendChild(btn);
+        };
+        renderHeart();
+      }).catch(() => {});
     }
 
     content.appendChild(titleRow);

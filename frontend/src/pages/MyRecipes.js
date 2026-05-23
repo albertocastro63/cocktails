@@ -1,4 +1,4 @@
-import { getMyRecipes } from '../api/client.js';
+import { getMyRecipes, getMyFavorites } from '../api/client.js';
 import { getToken, getUserID, isAdmin } from '../api/auth.js';
 import { RecipeCard } from '../components/RecipeCard.js';
 import { EmptyState } from '../components/EmptyState.js';
@@ -21,14 +21,32 @@ export function MyRecipes() {
 
   const currentUser = getUserID() ? { id: getUserID(), isAdmin: isAdmin() } : null;
 
-  getMyRecipes(getToken()).then(({ data }) => {
+  const token = getToken();
+  Promise.all([
+    getMyRecipes(token),
+    getMyFavorites(token).catch(() => ({ data: [] })),
+  ]).then(([createdResult, favoritedResult]) => {
+    const createdData = createdResult.data || [];
+    const favoritedData = favoritedResult.data || [];
+
+    const map = new Map();
+    createdData.forEach((recipe) => map.set(recipe.id, { recipe, isFavorite: false }));
+    favoritedData.forEach((recipe) => {
+      if (!map.has(recipe.id)) {
+        map.set(recipe.id, { recipe, isFavorite: true });
+      }
+    });
+
+    const unified = [...map.values()];
     content.innerHTML = '';
-    if (!data || data.length === 0) {
+    if (unified.length === 0) {
       content.appendChild(EmptyState({ message: "You haven't added any recipes yet." }));
     } else {
       const grid = document.createElement('div');
       grid.className = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
-      data.forEach((recipe) => grid.appendChild(RecipeCard({ recipe, currentUser })));
+      unified.forEach(({ recipe, isFavorite }) =>
+        grid.appendChild(RecipeCard({ recipe, currentUser, isFavorite }))
+      );
       content.appendChild(grid);
     }
   }).catch(() => {

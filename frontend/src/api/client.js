@@ -100,3 +100,20 @@ export function exportRecipes(token) {
 export function importRecipes(recipes, token) {
   return request('POST', '/api/v1/admin/recipes/import', recipes, token);
 }
+
+export function getMyFavorites(token, params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return request('GET', `/api/v1/recipes/favorites${qs ? '?' + qs : ''}`, undefined, token);
+}
+
+export function getFavoriteStatus(id, token) {
+  return request('GET', `/api/v1/recipes/${id}/favorite`, undefined, token);
+}
+
+export function favoriteRecipe(id, token) {
+  return request('PUT', `/api/v1/recipes/${id}/favorite`, null, token);
+}
+
+export function unfavoriteRecipe(id, token) {
+  return request('DELETE', `/api/v1/recipes/${id}/favorite`, null, token);
+}

@@ -85,6 +85,19 @@ func migrate(db *sql.DB) error {
 		return err
 	}
 
+	// Idempotent: favorites table for user-saved recipes.
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS favorites (
+			user_id    TEXT NOT NULL,
+			recipe_id  TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			PRIMARY KEY (user_id, recipe_id)
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
 	// Make recipes.creator_id nullable if the existing table has it as NOT NULL.
 	var notnull int
 	if err = db.QueryRow(`SELECT "notnull" FROM pragma_table_info('recipes') WHERE name='creator_id'`).Scan(&notnull); err != nil {
@@ -136,4 +149,13 @@ func Open(path string) (*RecipeStore, *UserStore, error) {
 		return nil, nil, err
 	}
 	return &RecipeStore{db: db}, &UserStore{db: db}, nil
+}
+
+// OpenAll returns all three stores sharing the same SQLite connection.
+func OpenAll(path string) (*RecipeStore, *UserStore, *FavoriteStore, error) {
+	db, err := openDB(path)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return &RecipeStore{db: db}, &UserStore{db: db}, &FavoriteStore{db: db}, nil
 }

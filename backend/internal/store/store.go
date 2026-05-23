@@ -22,6 +22,14 @@ type RecipeStore interface {
 	ListByCreator(creatorID string, page, limit int) ([]*model.Recipe, int, error)
 }
 
+type FavoriteStore interface {
+	Add(userID, recipeID string) error
+	Remove(userID, recipeID string) error
+	IsFavorite(userID, recipeID string) (bool, error)
+	ListByUser(userID string) ([]*model.Favorite, error)
+	CountByRecipe(recipeID string) (int, error)
+}
+
 type UserStore interface {
 	Create(user *model.User) error
 	GetByID(id string) (*model.User, error)
