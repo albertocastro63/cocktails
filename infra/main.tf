@@ -113,6 +113,38 @@ module "users_table" {
 }
 
 # ─────────────────────────────────────────────
+# Feature 014 — DynamoDB: Favorites Table
+# Composite primary key: user_id (hash) + recipe_id (range).
+# GSI on recipe_id supports future CountByRecipe queries.
+# ─────────────────────────────────────────────
+
+module "favorites_table" {
+  source  = "terraform-aws-modules/dynamodb-table/aws"
+  version = "~> 5.0"
+
+  name         = "${var.project_name}-favorites"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "user_id"
+  range_key    = "recipe_id"
+
+  attributes = [
+    { name = "user_id",   type = "S" },
+    { name = "recipe_id", type = "S" },
+  ]
+
+  global_secondary_indexes = [
+    {
+      name            = "recipe_id-index"
+      hash_key        = "recipe_id"
+      projection_type = "ALL"
+    }
+  ]
+
+  point_in_time_recovery_enabled = true
+  server_side_encryption_enabled = true
+}
+
+# ─────────────────────────────────────────────
 # T012 — CloudWatch Log Group
 # Created explicitly before Lambda to enforce the 14-day retention policy.
 # Without this, Lambda auto-creates the log group with infinite retention.
@@ -157,10 +189,11 @@ module "lambda_function" {
   logging_log_group                 = aws_cloudwatch_log_group.lambda_logs.name
 
   environment_variables = {
-    STORE_BACKEND = "dynamodb"
-    RECIPES_TABLE = module.recipes_table.dynamodb_table_id
-    USERS_TABLE   = module.users_table.dynamodb_table_id
-    JWT_SECRET    = var.jwt_secret
+    STORE_BACKEND   = "dynamodb"
+    RECIPES_TABLE   = module.recipes_table.dynamodb_table_id
+    USERS_TABLE     = module.users_table.dynamodb_table_id
+    FAVORITES_TABLE = module.favorites_table.dynamodb_table_id
+    JWT_SECRET      = var.jwt_secret
   }
 
   # IAM: least-privilege access to DynamoDB tables and CloudWatch logs.
@@ -185,6 +218,8 @@ module "lambda_function" {
         "${module.recipes_table.dynamodb_table_arn}/index/*",
         module.users_table.dynamodb_table_arn,
         "${module.users_table.dynamodb_table_arn}/index/*",
+        module.favorites_table.dynamodb_table_arn,
+        "${module.favorites_table.dynamodb_table_arn}/index/*",
       ]
     }
 
