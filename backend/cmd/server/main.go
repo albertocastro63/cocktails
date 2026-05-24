@@ -23,6 +23,7 @@ import (
 func main() {
 	var recipeStore store.RecipeStore
 	var userStore store.UserStore
+	var favoriteStore store.FavoriteStore
 
 	switch envOr("STORE_BACKEND", "sqlite") {
 	case "dynamodb":
@@ -33,36 +34,45 @@ func main() {
 		client := dynamodb.NewFromConfig(cfg)
 		recipeStore = dynstore.NewRecipeStore(client, envOr("RECIPES_TABLE", "cocktails-recipes"))
 		userStore = dynstore.NewUserStore(client, envOr("USERS_TABLE", "cocktails-users"))
+		favoriteStore = dynstore.NewFavoriteStore(client, envOr("FAVORITES_TABLE", "cocktails-favorites"))
 	default:
 		dbPath := envOr("DB_PATH", "cocktails.db")
-		rs, us, err := sqstore.Open(dbPath)
+		rs, us, fs, err := sqstore.OpenAll(dbPath)
 		if err != nil {
 			log.Fatalf("open store: %v", err)
 		}
 		recipeStore = rs
 		userStore = us
+		favoriteStore = fs
 	}
 
 	bootstrapAdmin(userStore)
 
-	h := buildHandler(recipeStore, userStore)
+	h := buildHandler(recipeStore, userStore, favoriteStore)
 
 	port := envOr("PORT", "8080")
 	log.Printf("listening on :%s", port)
 	log.Fatal(http.ListenAndServe(":"+port, h))
 }
 
-func buildHandler(rs store.RecipeStore, us store.UserStore) http.Handler {
+func buildHandler(rs store.RecipeStore, us store.UserStore, fs store.FavoriteStore) http.Handler {
 	recipes := handler.NewRecipeHandler(rs)
 	authH := handler.NewAuthHandler(us)
 	adminH := handler.NewAdminHandler(us)
+	favH := handler.NewFavoriteHandler(fs, rs)
 
 	mux := http.NewServeMux()
 
+	requireAuth := handler.RequireAuthWithStore(us)
+
 	mux.HandleFunc("GET /api/v1/recipes", recipes.List)
 	mux.HandleFunc("GET /api/v1/recipes/random", recipes.Random)
-	requireAuth := handler.RequireAuthWithStore(us)
 	mux.Handle("GET /api/v1/recipes/mine", requireAuth(http.HandlerFunc(recipes.Mine)))
+	// Favorites routes must be registered before the {id} wildcard
+	mux.Handle("GET /api/v1/recipes/favorites", requireAuth(http.HandlerFunc(favH.List)))
+	mux.Handle("PUT /api/v1/recipes/{id}/favorite", requireAuth(http.HandlerFunc(favH.Add)))
+	mux.Handle("DELETE /api/v1/recipes/{id}/favorite", requireAuth(http.HandlerFunc(favH.Remove)))
+	mux.Handle("GET /api/v1/recipes/{id}/favorite", requireAuth(http.HandlerFunc(favH.Check)))
 	mux.HandleFunc("GET /api/v1/recipes/{id}", recipes.GetByID)
 	mux.Handle("POST /api/v1/recipes", requireAuth(http.HandlerFunc(recipes.Create)))
 	mux.Handle("PUT /api/v1/recipes/{id}", requireAuth(http.HandlerFunc(recipes.Update)))

@@ -22,13 +22,13 @@ import (
 )
 
 func main() {
-	recipeStore, userStore := openStore()
+	recipeStore, userStore, favoriteStore := openStore()
 	bootstrapAdmin(userStore)
-	h := buildHandler(recipeStore, userStore)
+	h := buildHandler(recipeStore, userStore, favoriteStore)
 	lambda.Start(httpadapter.NewV2(h).ProxyWithContext)
 }
 
-func openStore() (store.RecipeStore, store.UserStore) {
+func openStore() (store.RecipeStore, store.UserStore, store.FavoriteStore) {
 	backend := os.Getenv("STORE_BACKEND")
 	if backend == "dynamodb" {
 		cfg, err := config.LoadDefaultConfig(context.Background())
@@ -38,33 +38,42 @@ func openStore() (store.RecipeStore, store.UserStore) {
 		client := dynamodb.NewFromConfig(cfg)
 		recipesTable := os.Getenv("RECIPES_TABLE")
 		usersTable := os.Getenv("USERS_TABLE")
-		if recipesTable == "" || usersTable == "" {
-			log.Fatal("RECIPES_TABLE and USERS_TABLE must be set when STORE_BACKEND=dynamodb")
+		favoritesTable := os.Getenv("FAVORITES_TABLE")
+		if recipesTable == "" || usersTable == "" || favoritesTable == "" {
+			log.Fatal("RECIPES_TABLE, USERS_TABLE and FAVORITES_TABLE must be set when STORE_BACKEND=dynamodb")
 		}
-		return dynstore.NewRecipeStore(client, recipesTable), dynstore.NewUserStore(client, usersTable)
+		return dynstore.NewRecipeStore(client, recipesTable),
+			dynstore.NewUserStore(client, usersTable),
+			dynstore.NewFavoriteStore(client, favoritesTable)
 	}
 
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
 		dbPath = "/tmp/cocktails.db"
 	}
-	rs, us, err := sqstore.Open(dbPath)
+	rs, us, fs, err := sqstore.OpenAll(dbPath)
 	if err != nil {
 		log.Fatalf("open store: %v", err)
 	}
-	return rs, us
+	return rs, us, fs
 }
 
-func buildHandler(rs store.RecipeStore, us store.UserStore) http.Handler {
+func buildHandler(rs store.RecipeStore, us store.UserStore, fs store.FavoriteStore) http.Handler {
 	recipes := handler.NewRecipeHandler(rs)
 	authH := handler.NewAuthHandler(us)
 	adminH := handler.NewAdminHandler(us)
+	favH := handler.NewFavoriteHandler(fs, rs)
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/v1/recipes", recipes.List)
 	mux.HandleFunc("GET /api/v1/recipes/random", recipes.Random)
 	mux.Handle("GET /api/v1/recipes/mine", handler.RequireAuth(http.HandlerFunc(recipes.Mine)))
+	// Favorites routes must be registered before the {id} wildcard
+	mux.Handle("GET /api/v1/recipes/favorites", handler.RequireAuth(http.HandlerFunc(favH.List)))
+	mux.Handle("PUT /api/v1/recipes/{id}/favorite", handler.RequireAuth(http.HandlerFunc(favH.Add)))
+	mux.Handle("DELETE /api/v1/recipes/{id}/favorite", handler.RequireAuth(http.HandlerFunc(favH.Remove)))
+	mux.Handle("GET /api/v1/recipes/{id}/favorite", handler.RequireAuth(http.HandlerFunc(favH.Check)))
 	mux.HandleFunc("GET /api/v1/recipes/{id}", recipes.GetByID)
 	mux.Handle("POST /api/v1/recipes", handler.RequireAuth(http.HandlerFunc(recipes.Create)))
 	mux.Handle("PUT /api/v1/recipes/{id}", handler.RequireAuth(http.HandlerFunc(recipes.Update)))

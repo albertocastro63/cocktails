@@ -21,6 +21,12 @@ type Recipe struct {
 	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
+type Favorite struct {
+	UserID    string    `json:"user_id"`
+	RecipeID  string    `json:"recipe_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type User struct {
 	ID           string    `json:"id"`
 	Username     string    `json:"username"`
