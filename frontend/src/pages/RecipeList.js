@@ -87,6 +87,11 @@ export function RecipeList() {
   });
   searchWrap.appendChild(bar);
 
+  const hint = document.createElement('p');
+  hint.className = 'text-stone-400 text-sm mt-1';
+  hint.textContent = 'Tip: use "and" or "+" to search multiple ingredients — e.g. "gin and lemon"';
+  searchWrap.appendChild(hint);
+
   renderSortButtons();
   loadRecipes();
 

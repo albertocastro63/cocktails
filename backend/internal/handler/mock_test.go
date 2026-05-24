@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"errors"
+	"sort"
 	"strings"
 
 	"github.com/almc/cocktails/internal/model"
@@ -137,6 +138,46 @@ func (s *stubRecipeStore) ListByCreator(creatorID string, page, limit int) ([]*m
 		end = total
 	}
 	return matches[start:end], total, nil
+}
+
+func (s *stubRecipeStore) SearchByIngredients(ingredients []string, page, limit int) ([]*model.Recipe, int, error) {
+	if s.err != nil {
+		return nil, 0, s.err
+	}
+	var matches []*model.Recipe
+	for _, r := range s.recipes {
+		if stubMatchesAllIngredients(r, ingredients) {
+			matches = append(matches, r)
+		}
+	}
+	sort.Slice(matches, func(i, j int) bool { return matches[i].ID < matches[j].ID })
+	total := len(matches)
+	start := (page - 1) * limit
+	if start >= total {
+		return []*model.Recipe{}, total, nil
+	}
+	end := start + limit
+	if end > total {
+		end = total
+	}
+	return matches[start:end], total, nil
+}
+
+func stubMatchesAllIngredients(r *model.Recipe, ingredients []string) bool {
+	for _, token := range ingredients {
+		t := strings.ToLower(token)
+		found := false
+		for _, ing := range r.Ingredients {
+			if strings.Contains(strings.ToLower(ing.Name), t) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *stubRecipeStore) ImportBatch(recipes []*model.Recipe, creatorID string) (int, int, error) {

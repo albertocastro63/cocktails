@@ -18,7 +18,7 @@ its corresponding implementation task begins.
 **Purpose**: Extend the `RecipeStore` interface with `SearchByIngredients`. Both store
 implementations and the handler depend on this definition — nothing else can proceed without it.
 
-- [ ] T001 Add `SearchByIngredients(ingredients []string, page, limit int) ([]*model.Recipe, int, error)` method to `RecipeStore` interface in `backend/internal/store/store.go`
+- [X] T001 Add `SearchByIngredients(ingredients []string, page, limit int) ([]*model.Recipe, int, error)` method to `RecipeStore` interface in `backend/internal/store/store.go`
 
 **Checkpoint**: Interface is defined. SQLite, DynamoDB, and handler work can now proceed.
 
@@ -36,20 +36,20 @@ single-term FTS results unchanged.
 
 ### Tests for User Story 1 (TDD — write and confirm FAILING before implementation)
 
-- [ ] T002 [P] [US1] Write failing SQLite `SearchByIngredients` tests covering: 2-ingredient AND match, 3-ingredient AND match, no-match empty result, case-insensitivity, substring match (e.g. "gin" matches "Sloe Gin"), pagination (page 2), single-empty-token falls through in `backend/internal/store/sqlite/ingredient_search_test.go`
-- [ ] T003 [P] [US1] Write failing DynamoDB `SearchByIngredients` tests covering: 2-ingredient AND match, no-match empty result, case-insensitivity in `backend/internal/store/dynamo/ingredient_search_test.go`
-- [ ] T004 [P] [US1] Write failing handler HTTP tests covering: `?q=gin+and+lemon` routes to `SearchByIngredients` and returns filtered recipes; `?q=gin%2Blemon` (no spaces) same result; `?q=gin++%2B++lemon` (extra whitespace) same result; `?q=gin` stays on single-term path; empty `?q=` returns full list; `?q=gin+%2B+%2B+lemon` (empty middle token) treated as 2-token search; `?q=gin+and+lemon&page=2` returns correct offset (pagination unchanged per FR-007) in `backend/internal/handler/ingredient_search_test.go`
-- [ ] T005 [P] [US1] Write failing Vitest test asserting a `<p>` element with text matching `/use.*and.*\+.*ingredient/i` exists in the RecipeList DOM in `frontend/src/pages/RecipeList.ingredient.test.js`
+- [X] T002 [P] [US1] Write failing SQLite `SearchByIngredients` tests covering: 2-ingredient AND match, 3-ingredient AND match, no-match empty result, case-insensitivity, substring match (e.g. "gin" matches "Sloe Gin"), pagination (page 2), single-empty-token falls through in `backend/internal/store/sqlite/ingredient_search_test.go`
+- [X] T003 [P] [US1] Write failing DynamoDB `SearchByIngredients` tests covering: 2-ingredient AND match, no-match empty result, case-insensitivity in `backend/internal/store/dynamo/ingredient_search_test.go`
+- [X] T004 [P] [US1] Write failing handler HTTP tests covering: `?q=gin+and+lemon` routes to `SearchByIngredients` and returns filtered recipes; `?q=gin%2Blemon` (no spaces) same result; `?q=gin++%2B++lemon` (extra whitespace) same result; `?q=gin` stays on single-term path; empty `?q=` returns full list; `?q=gin+%2B+%2B+lemon` (empty middle token) treated as 2-token search; `?q=gin+and+lemon&page=2` returns correct offset (pagination unchanged per FR-007) in `backend/internal/handler/ingredient_search_test.go`
+- [X] T005 [P] [US1] Write failing Vitest test asserting a `<p>` element with text matching `/use.*and.*\+.*ingredient/i` exists in the RecipeList DOM in `frontend/src/pages/RecipeList.ingredient.test.js`
 
 **Checkpoint**: All 4 test files exist and their tests FAIL. Proceed to implementation.
 
 ### Implementation for User Story 1
 
-- [ ] T006 [P] [US1] Implement `SearchByIngredients` on SQLite `RecipeStore` in `backend/internal/store/sqlite/recipes.go` using a dynamically-built SQL query with `json_each(r.ingredients)` and one correlated `(SELECT COUNT(*) ... WHERE LOWER(json_extract(value,'$.name')) LIKE ?) > 0` clause per ingredient token (args: `%token%` repeated for COUNT query then SELECT query)
-- [ ] T007 [P] [US1] Implement `SearchByIngredients` on DynamoDB `RecipeStore` in `backend/internal/store/dynamo/recipes.go` by adding `matchesAllIngredients(r *model.Recipe, ingredients []string) bool` helper (case-insensitive substring check per token across `r.Ingredients[*].Name`) and wiring it into a full-Scan filter, mirroring the existing `Search` method structure
-- [ ] T008 [US1] Implement `parseIngredientQuery(q string) []string` in `backend/internal/handler/recipes.go` (extract to `backend/internal/handler/parse.go` if function body exceeds ~30 lines, per Constitution I ≤ 40 line limit): split on `(?i)\s+and\s+` first, then split each token on `\s*\+\s*`, trim all tokens, discard empty strings, return the resulting slice
-- [ ] T009 [US1] Wire `parseIngredientQuery` into the list handler in `backend/internal/handler/recipes.go`: when `len(tokens) >= 2` call `h.recipes.SearchByIngredients(tokens, page, limit)`, when `len(tokens) == 1` call existing `h.recipes.Search(tokens[0], page, limit)`, when `len(tokens) == 0` call `h.recipes.List(page, limit)` (sequential — depends on T006, T007, T008)
-- [ ] T010 [P] [US1] Add hint `<p>` element with text `Tip: use "and" or "+" to search multiple ingredients — e.g. "gin and lemon"` and class `text-stone-400 text-sm mt-1` immediately after the `searchWrap.appendChild(bar)` line in `frontend/src/pages/RecipeList.js`
+- [X] T006 [P] [US1] Implement `SearchByIngredients` on SQLite `RecipeStore` in `backend/internal/store/sqlite/recipes.go` using a dynamically-built SQL query with `json_each(r.ingredients)` and one correlated `(SELECT COUNT(*) ... WHERE LOWER(json_extract(value,'$.name')) LIKE ?) > 0` clause per ingredient token (args: `%token%` repeated for COUNT query then SELECT query)
+- [X] T007 [P] [US1] Implement `SearchByIngredients` on DynamoDB `RecipeStore` in `backend/internal/store/dynamo/recipes.go` by adding `matchesAllIngredients(r *model.Recipe, ingredients []string) bool` helper (case-insensitive substring check per token across `r.Ingredients[*].Name`) and wiring it into a full-Scan filter, mirroring the existing `Search` method structure
+- [X] T008 [US1] Implement `parseIngredientQuery(q string) []string` in `backend/internal/handler/recipes.go` (extract to `backend/internal/handler/parse.go` if function body exceeds ~30 lines, per Constitution I ≤ 40 line limit): split on `(?i)\s+and\s+` first, then split each token on `\s*\+\s*`, trim all tokens, discard empty strings, return the resulting slice
+- [X] T009 [US1] Wire `parseIngredientQuery` into the list handler in `backend/internal/handler/recipes.go`: when `len(tokens) >= 2` call `h.recipes.SearchByIngredients(tokens, page, limit)`, when `len(tokens) == 1` call existing `h.recipes.Search(tokens[0], page, limit)`, when `len(tokens) == 0` call `h.recipes.List(page, limit)` (sequential — depends on T006, T007, T008)
+- [X] T010 [P] [US1] Add hint `<p>` element with text `Tip: use "and" or "+" to search multiple ingredients — e.g. "gin and lemon"` and class `text-stone-400 text-sm mt-1` immediately after the `searchWrap.appendChild(bar)` line in `frontend/src/pages/RecipeList.js`
 
 **Checkpoint**: All tests pass. Multi-ingredient search is fully functional end-to-end.
 
@@ -59,8 +59,8 @@ single-term FTS results unchanged.
 
 **Purpose**: Verify full test suite health and run quickstart scenarios.
 
-- [ ] T011 Run full backend test suite with coverage: `cd backend && go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out | grep -E 'store/sqlite|store/dynamo|handler'` — confirm all tests pass (including T002, T003, T004) and coverage ≥ 80% on new files
-- [ ] T012 Run full frontend test suite `cd frontend && npm test` and confirm all tests pass including T005
+- [X] T011 Run full backend test suite with coverage: `cd backend && go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out | grep -E 'store/sqlite|store/dynamo|handler'` — confirm all tests pass (including T002, T003, T004) and coverage ≥ 80% on new files
+- [X] T012 Run full frontend test suite `cd frontend && npm test` and confirm all tests pass including T005
 - [ ] T013 Manual quickstart.md validation: run the 8 backend API scenarios and 6 frontend steps from `specs/015-multi-ingredient-search/quickstart.md` against a local dev server; SC-002 (p95 ≤ 200 ms) verified informally via response times observed during this step
 
 ---
