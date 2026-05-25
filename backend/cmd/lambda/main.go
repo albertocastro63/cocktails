@@ -79,8 +79,24 @@ func buildHandler(rs store.RecipeStore, us store.UserStore, fs store.FavoriteSto
 	mux.Handle("PUT /api/v1/recipes/{id}", handler.RequireAuth(http.HandlerFunc(recipes.Update)))
 	mux.Handle("DELETE /api/v1/recipes/{id}", handler.RequireAuth(http.HandlerFunc(recipes.Delete)))
 	mux.HandleFunc("POST /api/v1/auth/login", authH.Login)
+	mux.Handle("GET /api/v1/admin/users",
+		handler.RequireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.ListUsers))))
 	mux.Handle("POST /api/v1/admin/users",
 		handler.RequireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.CreateUser))))
+	mux.Handle("GET /api/v1/admin/users/{id}",
+		handler.RequireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.GetUser))))
+	mux.Handle("PUT /api/v1/admin/users/{id}",
+		handler.RequireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.UpdateUser))))
+	mux.Handle("DELETE /api/v1/admin/users/{id}",
+		handler.RequireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.DeleteUser))))
+
+	adminRecipesH := handler.NewAdminRecipeHandler(rs)
+	mux.Handle("GET /api/v1/admin/schema",
+		handler.RequireAuth(handler.RequireAdmin(http.HandlerFunc(adminRecipesH.ExportSchema))))
+	mux.Handle("GET /api/v1/admin/recipes/export",
+		handler.RequireAuth(handler.RequireAdmin(http.HandlerFunc(adminRecipesH.ExportRecipes))))
+	mux.Handle("POST /api/v1/admin/recipes/import",
+		handler.RequireAuth(handler.RequireAdmin(http.HandlerFunc(adminRecipesH.ImportRecipes))))
 
 	return mux
 }
