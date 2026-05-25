@@ -47,9 +47,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T003 [US1] Implement `frontend/src/components/Footer.js`: export a `Footer()` function that returns a `<footer>` element containing a wrapper `div` with classes `max-w-4xl mx-auto px-4`, inside which render an `<hr class="border-stone-300 my-4">` followed by a `<p class="text-stone-500 text-sm text-center pb-4">` with text `© ${new Date().getFullYear()} Cocktails`
+- [ ] T003 [US1] Implement `frontend/src/components/Footer.js`: export a `Footer()` function that returns a `<footer>` element containing a wrapper `div` with classes `max-w-4xl mx-auto px-4`, inside which render an `<hr class="border-stone-300 mt-4 mb-0">` (no bottom margin to avoid extra whitespace at page bottom) followed by a `<p class="text-stone-500 text-sm text-center py-4">` with text `© ${new Date().getFullYear()} Cocktails`
 
-- [ ] T004 [US1] Wire footer into `frontend/src/main.js` in the `renderPage()` function: import `Footer` from `./components/Footer.js` and append `Footer()` as the last child of `root` after the route-matched content is appended (the `root.appendChild(factory(m))` block and the 404 fallback block both need `root.appendChild(Footer())`)
+- [ ] T004 [US1] Wire footer into `frontend/src/main.js` in the `renderPage()` function: import `Footer` from `./components/Footer.js` and append `root.appendChild(Footer())` as the last statement before every `return` inside `renderPage()` — this includes: (1) the admin-denied early return (renders "Access denied" paragraph), (2) the write-route auth guard early return (renders Login), (3) the matched-route branch (`root.appendChild(factory(m))`), and (4) the 404 fallback. Every code path that renders page content must end with `root.appendChild(Footer())`
 
 **Checkpoint**: Navigate to `#/`, `#/recipes`, `#/login`, and `#/recipes/new` — footer visible on all pages. Separator constrained to content width. Copyright year is current.
 
@@ -71,13 +71,16 @@
   - Test: on `mouseleave`, the popover is removed from `document.body`
   - Test: only one popover exists in `document.body` at a time when two cards are hovered in sequence
   - Test: popover has `position: absolute` style set
+  - Test: clicking `document.body` (click-elsewhere) removes the popover (FR-007 click-outside closure); simulate by dispatching a `click` event on `document.body` while popover is open and asserting `document.body.querySelector('[data-popover]')` is null
+  - Note: jsdom does not define `window.scrollX`/`window.scrollY` — mock them as `0` in `beforeEach` via `Object.defineProperty(window, 'scrollX', { value: 0, writable: true })` and similarly for `scrollY` to avoid `NaN` coordinates in tests
 
 ### Implementation for User Story 2
 
 - [ ] T006 [US2] Modify `frontend/src/components/RecipeCard.js`: refactor the popup logic so that:
   1. `buildIngredientPopover` remains unchanged (still returns a div with the ingredient list)
-  2. The `mouseenter` handler replaces `el.appendChild(...)` with: `const rect = el.getBoundingClientRect(); const popup = buildIngredientPopover(ingredients); popup.style.position = 'absolute'; popup.style.top = \`${rect.bottom + window.scrollY + 4}px\`; popup.style.left = \`${rect.left + window.scrollX}px\`; popup.style.width = \`${rect.width}px\`; document.body.appendChild(popup);`
+  2. The `mouseenter` handler replaces `el.appendChild(...)` with: `const rect = el.getBoundingClientRect(); const popup = buildIngredientPopover(ingredients); popup.style.position = 'absolute'; popup.style.top = \`${rect.bottom + (window.scrollY ?? 0) + 4}px\`; popup.style.left = \`${rect.left + (window.scrollX ?? 0)}px\`; popup.style.width = \`${rect.width}px\`; document.body.appendChild(popup);`
   3. The `mouseleave` handler replaces `el.querySelector('[data-popover]')?.remove()` with: `document.body.querySelector('[data-popover]')?.remove()`
+  4. Add a `click` listener on `document` (added in `mouseenter`, removed in `mouseleave`) that calls `document.body.querySelector('[data-popover]')?.remove()` — this implements FR-007 click-elsewhere closure. Use a named function reference so the listener can be removed cleanly: `const onDocClick = () => document.body.querySelector('[data-popover]')?.remove(); document.addEventListener('click', onDocClick, { once: true })`
 
 **Checkpoint**: On `#/recipes`, hover a recipe card — popup appears at card location without layout shift. Check DevTools console confirms scroll height unchanged. Move cursor away — popup disappears cleanly.
 
@@ -148,5 +151,5 @@
 - Both user stories are P1 — both are required for MVP; neither can be skipped
 - The popup fix uses `document.body.appendChild()` — tests will need to query `document.body`, not the card element
 - The Footer component year is evaluated at render time via `new Date().getFullYear()` — no mocking needed in tests unless testing a specific year
-- T004 requires appending `Footer()` in BOTH the matched-route branch AND the 404 fallback branch in `renderPage()`
+- T004 requires appending `Footer()` before every `return` in `renderPage()` — four locations: admin-denied render, write-route auth guard, matched-route branch, and 404 fallback
 - Popover cleanup: `document.body.querySelector('[data-popover]')?.remove()` — the `data-popover` attribute is already set in the existing `buildIngredientPopover` function
