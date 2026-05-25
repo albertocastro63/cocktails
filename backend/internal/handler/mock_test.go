@@ -163,6 +163,65 @@ func (s *stubRecipeStore) SearchByIngredients(ingredients []string, page, limit 
 	return matches[start:end], total, nil
 }
 
+func (s *stubRecipeStore) SearchByBaseSpirit(baseSpirit string, page, limit int) ([]*model.Recipe, int, error) {
+	if s.err != nil {
+		return nil, 0, s.err
+	}
+	if strings.TrimSpace(baseSpirit) == "" {
+		return s.List(page, limit)
+	}
+	bs := strings.ToLower(baseSpirit)
+	var matches []*model.Recipe
+	for _, r := range s.recipes {
+		for _, ing := range r.Ingredients {
+			if ing.IsBaseSpirit && strings.Contains(strings.ToLower(ing.Name), bs) {
+				matches = append(matches, r)
+				break
+			}
+		}
+	}
+	total := len(matches)
+	start := (page - 1) * limit
+	if start >= total {
+		return []*model.Recipe{}, total, nil
+	}
+	end := start + limit
+	if end > total {
+		end = total
+	}
+	return matches[start:end], total, nil
+}
+
+func (s *stubRecipeStore) SearchByBaseSpiritAndIngredients(baseSpirit string, ingredients []string, page, limit int) ([]*model.Recipe, int, error) {
+	if s.err != nil {
+		return nil, 0, s.err
+	}
+	bs := strings.ToLower(baseSpirit)
+	var matches []*model.Recipe
+	for _, r := range s.recipes {
+		hasBase := false
+		for _, ing := range r.Ingredients {
+			if ing.IsBaseSpirit && strings.Contains(strings.ToLower(ing.Name), bs) {
+				hasBase = true
+				break
+			}
+		}
+		if hasBase && stubMatchesAllIngredients(r, ingredients) {
+			matches = append(matches, r)
+		}
+	}
+	total := len(matches)
+	start := (page - 1) * limit
+	if start >= total {
+		return []*model.Recipe{}, total, nil
+	}
+	end := start + limit
+	if end > total {
+		end = total
+	}
+	return matches[start:end], total, nil
+}
+
 func stubMatchesAllIngredients(r *model.Recipe, ingredients []string) bool {
 	for _, token := range ingredients {
 		t := strings.ToLower(token)

@@ -27,7 +27,7 @@
 
 **Purpose**: Read starting state of all target files before any edits.
 
-- [ ] T001 Read `backend/internal/store/store.go`, `backend/internal/handler/recipes.go`, `backend/internal/handler/mock_test.go`, and `frontend/src/pages/RecipeList.js` to confirm starting state before any changes
+- [X] T001 Read `backend/internal/store/store.go`, `backend/internal/handler/recipes.go`, `backend/internal/handler/mock_test.go`, and `frontend/src/pages/RecipeList.js` to confirm starting state before any changes
 
 ---
 
@@ -35,9 +35,9 @@
 
 **Purpose**: Extend the `RecipeStore` interface with two new methods so all downstream layers can implement and test against the contract. This blocks all other phases — Go will not compile until the stub in `mock_test.go` also satisfies the interface.
 
-- [ ] T002 Extend `backend/internal/store/store.go`: add two method signatures to `RecipeStore` — `SearchByBaseSpirit(baseSpirit string, page, limit int) ([]*model.Recipe, int, error)` and `SearchByBaseSpiritAndIngredients(baseSpirit string, ingredients []string, page, limit int) ([]*model.Recipe, int, error)`
+- [X] T002 Extend `backend/internal/store/store.go`: add two method signatures to `RecipeStore` — `SearchByBaseSpirit(baseSpirit string, page, limit int) ([]*model.Recipe, int, error)` and `SearchByBaseSpiritAndIngredients(baseSpirit string, ingredients []string, page, limit int) ([]*model.Recipe, int, error)`
 
-- [ ] T003 Extend `backend/internal/handler/mock_test.go`: add stub implementations of both new `RecipeStore` methods to `stubRecipeStore` so the compile-time interface check (`var _ store.RecipeStore = (*stubRecipeStore)(nil)`) continues to pass. `SearchByBaseSpirit` stub: filter `s.recipes` to recipes that have at least one ingredient where `ing.IsBaseSpirit == true && strings.Contains(strings.ToLower(ing.Name), strings.ToLower(baseSpirit))`; apply pagination same as `SearchByIngredients`. `SearchByBaseSpiritAndIngredients` stub: apply `SearchByBaseSpirit` filter first, then apply `stubMatchesAllIngredients` on the result; apply pagination.
+- [X] T003 Extend `backend/internal/handler/mock_test.go`: add stub implementations of both new `RecipeStore` methods to `stubRecipeStore` so the compile-time interface check (`var _ store.RecipeStore = (*stubRecipeStore)(nil)`) continues to pass. `SearchByBaseSpirit` stub: filter `s.recipes` to recipes that have at least one ingredient where `ing.IsBaseSpirit == true && strings.Contains(strings.ToLower(ing.Name), strings.ToLower(baseSpirit))`; apply pagination same as `SearchByIngredients`. `SearchByBaseSpiritAndIngredients` stub: apply `SearchByBaseSpirit` filter first, then apply `stubMatchesAllIngredients` on the result; apply pagination.
 
 **Checkpoint**: `cd backend && go build ./...` passes with zero errors before proceeding.
 
@@ -53,7 +53,7 @@
 
 > **Write these tests FIRST and confirm they FAIL before implementing**
 
-- [ ] T004 [US1] Write failing tests for `SearchByBaseSpirit` and `SearchByBaseSpiritAndIngredients` in `backend/internal/store/sqlite/recipes_test.go`. Add a `TestSearchByBaseSpirit` suite:
+- [X] T004 [US1] Write failing tests for `SearchByBaseSpirit` and `SearchByBaseSpiritAndIngredients` in `backend/internal/store/sqlite/recipes_test.go`. Add a `TestSearchByBaseSpirit` suite:
   - Setup: create three recipes — (A) has `{Name:"gin", IsBaseSpirit:true}` + `{Name:"lime juice"}`, (B) has `{Name:"rum", IsBaseSpirit:true}`, (C) has no `IsBaseSpirit:true` ingredient
   - Test: `SearchByBaseSpirit("gin",1,20)` returns only recipe A; total=1
   - Test: `SearchByBaseSpirit("Gin",1,20)` (uppercase) returns recipe A (case-insensitive)
@@ -86,7 +86,7 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement `SearchByBaseSpirit` and `SearchByBaseSpiritAndIngredients` in `backend/internal/store/sqlite/recipes.go`. For `SearchByBaseSpirit`: build a WHERE clause using `EXISTS (SELECT 1 FROM json_each(r.ingredients) WHERE json_extract(value,'$.is_base_spirit') = 1 AND LOWER(json_extract(value,'$.name')) LIKE ?)` with bind arg `'%' + strings.ToLower(baseSpirit) + '%'`; if `baseSpirit` is empty/whitespace fall through to `s.List(page,limit)`. For `SearchByBaseSpiritAndIngredients`: combine the base-spirit EXISTS clause with the per-ingredient `json_each` clauses from `SearchByIngredients` using AND; apply pagination the same way.
+- [X] T008 [US1] Implement `SearchByBaseSpirit` and `SearchByBaseSpiritAndIngredients` in `backend/internal/store/sqlite/recipes.go`. For `SearchByBaseSpirit`: build a WHERE clause using `EXISTS (SELECT 1 FROM json_each(r.ingredients) WHERE json_extract(value,'$.is_base_spirit') = 1 AND LOWER(json_extract(value,'$.name')) LIKE ?)` with bind arg `'%' + strings.ToLower(baseSpirit) + '%'`; if `baseSpirit` is empty/whitespace fall through to `s.List(page,limit)`. For `SearchByBaseSpiritAndIngredients`: combine the base-spirit EXISTS clause with the per-ingredient `json_each` clauses from `SearchByIngredients` using AND; apply pagination the same way.
 
 - [ ] T009 [P] [US1] Implement `SearchByBaseSpirit` and `SearchByBaseSpiritAndIngredients` in `backend/internal/store/dynamo/recipes.go`. Add helper `matchesBaseSpirit(r *model.Recipe, q string) bool` that checks `ing.IsBaseSpirit && strings.Contains(strings.ToLower(ing.Name), q)` across all ingredients. `SearchByBaseSpirit`: scan all items, filter with `matchesBaseSpirit`, paginate (same pattern as `Search`). `SearchByBaseSpiritAndIngredients`: scan all items, filter with both `matchesBaseSpirit` AND `matchesAllIngredients`, paginate.
 
@@ -130,7 +130,7 @@
 
 **Purpose**: Validate the full implementation end-to-end.
 
-- [ ] T014 Run `cd backend && go test ./... -cover` — all tests pass; coverage ≥ 75% on modified packages
+- [X] T014 Run `cd backend && go test ./... -cover` — all tests pass; coverage ≥ 75% on modified packages
 
 - [ ] T015 [P] Run `cd frontend && npm test -- --coverage` — all tests pass; coverage ≥ 75%
 

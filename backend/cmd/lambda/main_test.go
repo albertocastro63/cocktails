@@ -16,8 +16,12 @@ func (noopRecipeStore) Create(*model.Recipe) error                              
 func (noopRecipeStore) GetByID(string) (*model.Recipe, error)                                { return nil, errors.New("not found") }
 func (noopRecipeStore) List(int, int) ([]*model.Recipe, int, error)                          { return nil, 0, nil }
 func (noopRecipeStore) Search(string, int, int) ([]*model.Recipe, int, error)                { return nil, 0, nil }
-func (noopRecipeStore) SearchByIngredients([]string, int, int) ([]*model.Recipe, int, error) { return nil, 0, nil }
-func (noopRecipeStore) Random() (*model.Recipe, error)                                       { return nil, nil }
+func (noopRecipeStore) SearchByIngredients([]string, int, int) ([]*model.Recipe, int, error)           { return nil, 0, nil }
+func (noopRecipeStore) SearchByBaseSpirit(string, int, int) ([]*model.Recipe, int, error)              { return nil, 0, nil }
+func (noopRecipeStore) SearchByBaseSpiritAndIngredients(string, []string, int, int) ([]*model.Recipe, int, error) {
+	return nil, 0, nil
+}
+func (noopRecipeStore) Random() (*model.Recipe, error)                                                 { return nil, nil }
 func (noopRecipeStore) Update(*model.Recipe) error                                           { return nil }
 func (noopRecipeStore) Delete(string) error                                                  { return nil }
 func (noopRecipeStore) ExistsByName(string) (bool, error)                                    { return false, nil }

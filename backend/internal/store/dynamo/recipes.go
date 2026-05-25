@@ -272,6 +272,78 @@ func (s *RecipeStore) SearchByIngredients(ingredients []string, page, limit int)
 	return matches[start:end], total, nil
 }
 
+func matchesBaseSpirit(r *model.Recipe, q string) bool {
+	for _, ing := range r.Ingredients {
+		if ing.IsBaseSpirit && strings.Contains(strings.ToLower(ing.Name), q) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *RecipeStore) SearchByBaseSpirit(baseSpirit string, page, limit int) ([]*model.Recipe, int, error) {
+	if strings.TrimSpace(baseSpirit) == "" {
+		return s.List(page, limit)
+	}
+	q := strings.ToLower(baseSpirit)
+	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
+		TableName: aws.String(s.tableName),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	all, err := scanToRecipes(out.Items)
+	if err != nil {
+		return nil, 0, err
+	}
+	var matches []*model.Recipe
+	for _, r := range all {
+		if matchesBaseSpirit(r, q) {
+			matches = append(matches, r)
+		}
+	}
+	total := len(matches)
+	start := (page - 1) * limit
+	if start >= total {
+		return []*model.Recipe{}, total, nil
+	}
+	end := start + limit
+	if end > total {
+		end = total
+	}
+	return matches[start:end], total, nil
+}
+
+func (s *RecipeStore) SearchByBaseSpiritAndIngredients(baseSpirit string, ingredients []string, page, limit int) ([]*model.Recipe, int, error) {
+	q := strings.ToLower(baseSpirit)
+	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
+		TableName: aws.String(s.tableName),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	all, err := scanToRecipes(out.Items)
+	if err != nil {
+		return nil, 0, err
+	}
+	var matches []*model.Recipe
+	for _, r := range all {
+		if matchesBaseSpirit(r, q) && matchesAllIngredients(r, ingredients) {
+			matches = append(matches, r)
+		}
+	}
+	total := len(matches)
+	start := (page - 1) * limit
+	if start >= total {
+		return []*model.Recipe{}, total, nil
+	}
+	end := start + limit
+	if end > total {
+		end = total
+	}
+	return matches[start:end], total, nil
+}
+
 func matchesAllIngredients(r *model.Recipe, ingredients []string) bool {
 	for _, token := range ingredients {
 		t := strings.ToLower(token)

@@ -253,6 +253,68 @@ func (s *RecipeStore) SearchByIngredients(ingredients []string, page, limit int)
 	return scanRecipes(rows, total)
 }
 
+func (s *RecipeStore) SearchByBaseSpirit(baseSpirit string, page, limit int) ([]*model.Recipe, int, error) {
+	if strings.TrimSpace(baseSpirit) == "" {
+		return s.List(page, limit)
+	}
+	bs := "%" + strings.ToLower(baseSpirit) + "%"
+	where := `EXISTS (
+		SELECT 1 FROM json_each(r.ingredients)
+		WHERE json_extract(value,'$.is_base_spirit') = 1
+		  AND LOWER(json_extract(value,'$.name')) LIKE ?
+	)`
+	var total int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM recipes r WHERE `+where, bs).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	offset := (page - 1) * limit
+	rows, err := s.db.Query(
+		`SELECT r.id, r.name, r.ingredients, r.steps, r.properties, r.notes, r.creator_id, r.created_at, r.updated_at
+		 FROM recipes r WHERE `+where+` ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
+		bs, limit, offset,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	return scanRecipes(rows, total)
+}
+
+func (s *RecipeStore) SearchByBaseSpiritAndIngredients(baseSpirit string, ingredients []string, page, limit int) ([]*model.Recipe, int, error) {
+	bs := "%" + strings.ToLower(baseSpirit) + "%"
+	bsClause := `EXISTS (
+		SELECT 1 FROM json_each(r.ingredients)
+		WHERE json_extract(value,'$.is_base_spirit') = 1
+		  AND LOWER(json_extract(value,'$.name')) LIKE ?
+	)`
+	args := []any{bs}
+	var ingClauses []string
+	for _, ing := range ingredients {
+		ingClauses = append(ingClauses, `(SELECT COUNT(*) FROM json_each(r.ingredients) WHERE LOWER(json_extract(value,'$.name')) LIKE ?) > 0`)
+		args = append(args, "%"+strings.ToLower(ing)+"%")
+	}
+	where := bsClause
+	if len(ingClauses) > 0 {
+		where += " AND " + strings.Join(ingClauses, " AND ")
+	}
+	var total int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM recipes r WHERE `+where, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	offset := (page - 1) * limit
+	selectArgs := append(args, limit, offset)
+	rows, err := s.db.Query(
+		`SELECT r.id, r.name, r.ingredients, r.steps, r.properties, r.notes, r.creator_id, r.created_at, r.updated_at
+		 FROM recipes r WHERE `+where+` ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
+		selectArgs...,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	return scanRecipes(rows, total)
+}
+
 func (s *RecipeStore) upsertFTS(r *model.Recipe) error {
 	var parts []string
 	parts = append(parts, r.Name)

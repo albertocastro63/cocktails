@@ -5,6 +5,17 @@ import { SearchBar } from '../components/SearchBar.js';
 import { SortButtonGroup } from '../components/SortButtonGroup.js';
 import { getUserID, isAdmin } from '../api/auth.js';
 
+export function normaliseWhisky(q) {
+  return q.replace(/\bwhisky\b/gi, (m) => m.slice(0, -1) + 'ey');
+}
+
+export function parseBaseSpirit(rawQ) {
+  const match = rawQ.match(/base\s+spirit\s+(?:is|=)\s*(.*?)(?:\s+(?=base\s+spirit\s+)|$)/i);
+  const baseSpirit = match ? match[1].trim() : '';
+  const q = rawQ.replace(/base\s+spirit\s+(?:is|=)\s*[^\n]*/gi, '').trim();
+  return { baseSpirit, q };
+}
+
 export function sortRecipes(recipes, direction) {
   return recipes.slice().sort((a, b) =>
     direction === 'asc'
@@ -63,25 +74,29 @@ export function RecipeList() {
     renderGrid(loadedData, currentQ);
   }
 
-  function loadRecipes(q = '') {
+  function loadRecipes(q = '', baseSpirit = '') {
     content.innerHTML = '';
     const loadingP = document.createElement('p');
     loadingP.className = 'text-stone-500 animate-pulse py-4 text-center';
     loadingP.textContent = 'Loading…';
     content.appendChild(loadingP);
-    const params = q ? { q } : {};
+    const params = {};
+    if (q) params.q = q;
+    if (baseSpirit) params.base_spirit = baseSpirit;
     getRecipes(params).then(({ data }) => {
       loadedData = data || [];
-      renderGrid(loadedData, q);
+      renderGrid(loadedData, q || baseSpirit);
     }).catch(() => {
       content.textContent = 'Failed to load recipes.';
     });
   }
 
   const bar = SearchBar({
-    onSearch(q) {
-      currentQ = q;
-      loadRecipes(q);
+    onSearch(raw) {
+      const normQ = normaliseWhisky(raw);
+      const { baseSpirit, q } = parseBaseSpirit(normQ);
+      currentQ = raw;
+      loadRecipes(q, baseSpirit);
     },
     value: currentQ,
   });
@@ -89,7 +104,7 @@ export function RecipeList() {
 
   const hint = document.createElement('p');
   hint.className = 'text-stone-400 text-sm mt-1';
-  hint.textContent = 'Tip: use "and" or "+" to search multiple ingredients — e.g. "gin and lemon"';
+  hint.textContent = 'Tip: search by ingredient (use "and" or "+" for multiple) — or try "base spirit is gin"';
   searchWrap.appendChild(hint);
 
   renderSortButtons();
