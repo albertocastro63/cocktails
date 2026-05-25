@@ -57,7 +57,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T005 [US2] Add `services:` block to the `backend` job in `.github/workflows/ci.yml`: service name `dynamodb-local`, image `amazon/dynamodb-local:latest`, ports `["8000:8000"]`, options with `--health-cmd "curl -sf http://localhost:8000/ || exit 1" --health-interval 5s --health-timeout 3s --health-retries 10`. Also add `env:` block to the backend job: `DYNAMODB_ENDPOINT: http://localhost:8000`, `AWS_REGION: us-east-1`, `AWS_ACCESS_KEY_ID: test`, `AWS_SECRET_ACCESS_KEY: test`
+- [ ] T005 [US2] Add `services:` block to the `backend` job in `.github/workflows/ci.yml`: service name `dynamodb-local`, image `amazon/dynamodb-local:latest`, ports `["8000:8000"]`, options with `--health-cmd "curl -s http://localhost:8000 > /dev/null" --health-interval 5s --health-timeout 3s --health-retries 10` (note: DynamoDB Local returns HTTP 400 on GET /, so `-f` must NOT be used — any response means the container is up). Also add `env:` block to the backend job: `DYNAMODB_ENDPOINT: http://localhost:8000`, `AWS_REGION: us-east-1`, `AWS_ACCESS_KEY_ID: test`, `AWS_SECRET_ACCESS_KEY: test`
 
 **Checkpoint**: Navigate to the backend job log for any PR → `TestDynamo_SearchByIngredients_TwoIngredients` (and sibling tests) appear in output and pass, with no "skipping DynamoDB tests" message.
 
@@ -71,7 +71,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T006 [US3] Add `permissions: id-token: write, contents: read` to the `backend` job in `.github/workflows/ci.yml`, then add a step: name `Configure AWS credentials (OIDC)`, `if: vars.AWS_CI_ROLE_ARN != ''`, `uses: aws-actions/configure-aws-credentials@v4`, with `role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}` and `aws-region: us-east-1`. Place this step before the test step.
+- [ ] T006 [US3] Add `permissions: id-token: write, contents: read` to the `backend` job in `.github/workflows/ci.yml`, then add a step: name `Configure AWS credentials (OIDC)`, `if: vars.AWS_CI_ROLE_ARN != ''`, `uses: aws-actions/configure-aws-credentials@v4`, with `role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}` and `aws-region: us-east-1`. Place this step before the test step. Note: the initial IAM role (`github-ci-role`) requires **no permission policies** — the trust policy alone is sufficient until a deploy step is added. Only the trust relationship needs to be configured: `StringLike sub: repo:albertocastro63/cocktails:*`.
 
 **Checkpoint**: When `vars.AWS_CI_ROLE_ARN` is unset, the OIDC step is skipped and all other checks pass. When the variable is set (after IAM role creation), the step runs and obtains temporary credentials.
 
@@ -84,6 +84,8 @@
 - [ ] T007 Verify the pipeline by pushing a test commit that deliberately breaks a Go test to a PR branch, confirming the `backend` check fails and the merge button is disabled (quickstart.md Acceptance Test 1); then revert the breakage and confirm the check turns green
 
 - [ ] T008 [P] Verify DynamoDB integration tests run (not skipped) by inspecting the `backend` job log for any PR run and confirming `TestDynamo_` test names appear in the output (quickstart.md Acceptance Test 2)
+
+- [ ] T009 Enable branch protection on `main`: go to Settings → Branches → Add rule for `main`, enable "Require status checks to pass before merging", add `backend` and `frontend` as required checks (FR-008). This makes failing CI checks block merging.
 
 ---
 

@@ -91,15 +91,15 @@ When code is merged or pushed directly to main, the pipeline runs the same full 
 - **FR-004**: The pipeline MUST run a backend production build and confirm it succeeds without errors.
 - **FR-005**: The pipeline MUST run frontend tests and confirm they all pass.
 - **FR-006**: The pipeline MUST run a frontend production build and confirm it succeeds without errors.
-- **FR-007**: Each check (backend tests, backend build, frontend tests, frontend build) MUST be reported as an individual named status check on the PR.
+- **FR-007**: The pipeline MUST report two named status checks on the PR — `backend` and `frontend` — one per job. Each check reflects the combined result of all steps in that job (tests, coverage, and build).
 - **FR-008**: A failing check MUST block pull request merging when branch protection rules are enabled on `main`.
 - **FR-009**: The pipeline MUST report the reason for failure (test output, build error) in a way that is visible to the developer without leaving GitHub.
-- **FR-010**: The pipeline MUST complete within a time that keeps developer feedback loops short.
+- **FR-010**: The pipeline MUST complete within a time that keeps developer feedback loops short (see SC-004: under 5 minutes for a standard code change).
 - **FR-011**: The pipeline MUST run DynamoDB integration tests using a local DynamoDB emulator, without requiring any AWS credentials.
 - **FR-012**: The local DynamoDB emulator MUST be started automatically as part of the pipeline and be ready before the integration tests run.
 - **FR-013**: Any pipeline step that accesses real AWS services MUST obtain credentials via OIDC role assumption — no static AWS access keys may be stored as repository secrets.
 - **FR-014**: The OIDC trust policy MUST be scoped to this specific repository to prevent credential use from forks or unrelated workflows.
-- **FR-015**: The IAM role assumed via OIDC MUST follow least-privilege — granting only the permissions required by the pipeline steps that use it.
+- **FR-015**: The IAM role assumed via OIDC MUST follow least-privilege — granting only the permissions required by the pipeline steps that use it. For the initial pipeline (no deploy step), the role requires no permission policies; only the OIDC trust relationship is needed.
 - **FR-016**: The pipeline MUST measure backend Go test coverage and fail the backend check if coverage falls below 80% of business logic modules.
 - **FR-017**: The pipeline MUST measure frontend test coverage and fail the frontend check if coverage falls below 80% (consistent with the existing Vitest coverage configuration).
 
