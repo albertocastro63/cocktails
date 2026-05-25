@@ -17,7 +17,7 @@
 
 **Purpose**: Create the GitHub Actions directory structure.
 
-- [ ] T001 Create `.github/workflows/` directory at the repository root
+- [X] T001 Create `.github/workflows/` directory at the repository root
 
 ---
 
@@ -39,11 +39,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T002 [US1] Create `.github/workflows/ci.yml` with: workflow name, `on: pull_request` (branches: [main]) AND `on: push` (branches: [main]) triggers (covering US4), and `concurrency: group: ${{ github.workflow }}-${{ github.ref }}, cancel-in-progress: true`
+- [X] T002 [US1] Create `.github/workflows/ci.yml` with: workflow name, `on: pull_request` (branches: [main]) AND `on: push` (branches: [main]) triggers (covering US4), and `concurrency: group: ${{ github.workflow }}-${{ github.ref }}, cancel-in-progress: true`
 
-- [ ] T003 [US1] Add `frontend` job to `.github/workflows/ci.yml`: `runs-on: ubuntu-latest`, steps: `actions/checkout@v4`, `actions/setup-node@v4` (node-version: `lts/*`, cache: `npm`, cache-dependency-path: `frontend/package-lock.json`), `cd frontend && npm ci`, `cd frontend && npm test`, `cd frontend && npm run build`
+- [X] T003 [US1] Add `frontend` job to `.github/workflows/ci.yml`: `runs-on: ubuntu-latest`, steps: `actions/checkout@v4`, `actions/setup-node@v4` (node-version: `lts/*`, cache: `npm`, cache-dependency-path: `frontend/package-lock.json`), `cd frontend && npm ci`, `cd frontend && npm test -- --coverage` (enforces vitest thresholds), `cd frontend && npm run build`
 
-- [ ] T004 [US1] Add `backend` job to `.github/workflows/ci.yml`: `runs-on: ubuntu-latest`, steps: `actions/checkout@v4`, `actions/setup-go@v5` (go-version-file: `backend/go.mod`, cache-dependency-path: `backend/go.sum`), a combined test+coverage step that runs `cd backend && go test -coverprofile=coverage.out ./...` then parses `go tool cover -func=coverage.out` total and exits non-zero if coverage is below 80%, and a build step running `cd backend && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./cmd/lambda/`
+- [X] T004 [US1] Add `backend` job to `.github/workflows/ci.yml`: `runs-on: ubuntu-latest`, steps: `actions/checkout@v4`, `actions/setup-go@v5` (go-version-file: `backend/go.mod`, cache-dependency-path: `backend/go.sum`), a combined test+coverage step that runs `cd backend && go test -coverprofile=coverage.out ./...` then parses `go tool cover -func=coverage.out` total and exits non-zero if coverage is below 80%, and a build step running `cd backend && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./cmd/lambda/`
 
 **Checkpoint**: Both `backend` and `frontend` named checks appear on a PR. A broken test in either language blocks merging.
 
@@ -57,7 +57,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T005 [US2] Add `services:` block to the `backend` job in `.github/workflows/ci.yml`: service name `dynamodb-local`, image `amazon/dynamodb-local:latest`, ports `["8000:8000"]`, options with `--health-cmd "curl -s http://localhost:8000 > /dev/null" --health-interval 5s --health-timeout 3s --health-retries 10` (note: DynamoDB Local returns HTTP 400 on GET /, so `-f` must NOT be used — any response means the container is up). Also add `env:` block to the backend job: `DYNAMODB_ENDPOINT: http://localhost:8000`, `AWS_REGION: us-east-1`, `AWS_ACCESS_KEY_ID: test`, `AWS_SECRET_ACCESS_KEY: test`
+- [X] T005 [US2] Add `services:` block to the `backend` job in `.github/workflows/ci.yml`: service name `dynamodb-local`, image `amazon/dynamodb-local:latest`, ports `["8000:8000"]`, options with `--health-cmd "curl -s http://localhost:8000 > /dev/null" --health-interval 5s --health-timeout 3s --health-retries 10` (note: DynamoDB Local returns HTTP 400 on GET /, so `-f` must NOT be used — any response means the container is up). Also add `env:` block to the backend job: `DYNAMODB_ENDPOINT: http://localhost:8000`, `AWS_REGION: us-east-1`, `AWS_ACCESS_KEY_ID: test`, `AWS_SECRET_ACCESS_KEY: test`
 
 **Checkpoint**: Navigate to the backend job log for any PR → `TestDynamo_SearchByIngredients_TwoIngredients` (and sibling tests) appear in output and pass, with no "skipping DynamoDB tests" message.
 
@@ -71,7 +71,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T006 [US3] Add `permissions: id-token: write, contents: read` to the `backend` job in `.github/workflows/ci.yml`, then add a step: name `Configure AWS credentials (OIDC)`, `if: vars.AWS_CI_ROLE_ARN != ''`, `uses: aws-actions/configure-aws-credentials@v4`, with `role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}` and `aws-region: us-east-1`. Place this step before the test step. Note: the initial IAM role (`github-ci-role`) requires **no permission policies** — the trust policy alone is sufficient until a deploy step is added. Only the trust relationship needs to be configured: `StringLike sub: repo:albertocastro63/cocktails:*`.
+- [X] T006 [US3] Add `permissions: id-token: write, contents: read` to the `backend` job in `.github/workflows/ci.yml`, then add a step: name `Configure AWS credentials (OIDC)`, `if: vars.AWS_CI_ROLE_ARN != ''`, `uses: aws-actions/configure-aws-credentials@v4`, with `role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}` and `aws-region: us-east-1`. Place this step before the test step. Note: the initial IAM role (`github-ci-role`) requires **no permission policies** — the trust policy alone is sufficient until a deploy step is added. Only the trust relationship needs to be configured: `StringLike sub: repo:albertocastro63/cocktails:*`.
 
 **Checkpoint**: When `vars.AWS_CI_ROLE_ARN` is unset, the OIDC step is skipped and all other checks pass. When the variable is set (after IAM role creation), the step runs and obtains temporary credentials.
 
