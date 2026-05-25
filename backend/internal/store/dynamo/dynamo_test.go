@@ -195,8 +195,8 @@ func TestDynamo_RecipeStore_Extended(t *testing.T) {
 	}
 
 	imported, skipped, err := rs.ImportBatch([]*model.Recipe{
-		{Name: "Mojito", CreatorID: "u1"},
-		{Name: "Negroni", CreatorID: "u2"},
+		{ID: uuid.NewString(), Name: "Mojito", CreatorID: "u1"},   // duplicate name → skip
+		{ID: uuid.NewString(), Name: "Negroni", CreatorID: "u2"},  // new → import
 	}, "u3")
 	if err != nil {
 		t.Fatalf("ImportBatch: %v", err)
@@ -239,7 +239,10 @@ func TestDynamo_UserStore_Extended(t *testing.T) {
 		t.Error("List: expected at least 1 user")
 	}
 
-	user.IsAdmin = true
+	// Update only touches first_name, last_name, email, password_hash, token_version
+	user.FirstName = "Bobby"
+	user.PasswordHash = "$2a$12$updated"
+	user.TokenVersion = 2
 	if err := us.Update(user); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
@@ -247,8 +250,11 @@ func TestDynamo_UserStore_Extended(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID after Update: %v", err)
 	}
-	if !updated.IsAdmin {
-		t.Error("expected IsAdmin=true after Update")
+	if updated.FirstName != "Bobby" {
+		t.Errorf("expected FirstName=Bobby after Update, got %q", updated.FirstName)
+	}
+	if updated.TokenVersion != 2 {
+		t.Errorf("expected TokenVersion=2 after Update, got %d", updated.TokenVersion)
 	}
 
 	if err := us.Delete(user.ID); err != nil {
