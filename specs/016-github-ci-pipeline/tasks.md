@@ -81,11 +81,11 @@
 
 **Purpose**: Validate the pipeline end-to-end against the quickstart.md acceptance tests.
 
-- [ ] T007 Verify the pipeline by pushing a test commit that deliberately breaks a Go test to a PR branch, confirming the `backend` check fails and the merge button is disabled (quickstart.md Acceptance Test 1); then revert the breakage and confirm the check turns green
+- [X] T007 Verify the pipeline by pushing a test commit that deliberately breaks a Go test to a PR branch, confirming the `backend` check fails and the merge button is disabled (quickstart.md Acceptance Test 1); then revert the breakage and confirm the check turns green
 
-- [ ] T008 [P] Verify DynamoDB integration tests run (not skipped) by inspecting the `backend` job log for any PR run and confirming `TestDynamo_` test names appear in the output (quickstart.md Acceptance Test 2)
+- [X] T008 [P] Verify DynamoDB integration tests run (not skipped) by inspecting the `backend` job log for any PR run and confirming `TestDynamo_` test names appear in the output (quickstart.md Acceptance Test 2)
 
-- [ ] T009 Enable branch protection on `main`: go to Settings → Branches → Add rule for `main`, enable "Require status checks to pass before merging", add `backend` and `frontend` as required checks (FR-008). This makes failing CI checks block merging.
+- [X] T009 Enable branch protection on `main`: go to Settings → Branches → Add rule for `main`, enable "Require status checks to pass before merging", add `backend` and `frontend` as required checks (FR-008). This makes failing CI checks block merging.
 
 ---
 
