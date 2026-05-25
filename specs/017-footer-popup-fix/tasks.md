@@ -17,7 +17,7 @@
 
 **Purpose**: Confirm project structure is ready — no new directories needed.
 
-- [ ] T001 Verify `frontend/src/components/` directory exists and `frontend/src/main.js` is accessible (read both to confirm starting state before any changes)
+- [X] T001 Verify `frontend/src/components/` directory exists and `frontend/src/main.js` is accessible (read both to confirm starting state before any changes)
 
 ---
 
@@ -39,7 +39,7 @@
 
 > **Write these tests FIRST and confirm they FAIL before implementing Footer.js**
 
-- [ ] T002 [US1] Write failing tests for the Footer component in `frontend/src/components/Footer.test.js`:
+- [X] T002 [US1] Write failing tests for the Footer component in `frontend/src/components/Footer.test.js`:
   - Test: `Footer()` returns a `<footer>` DOM element
   - Test: footer contains an `<hr>` (or element with role separator) and a text node containing `© [currentYear] Cocktails`
   - Test: the copyright year matches `new Date().getFullYear()`
@@ -47,9 +47,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T003 [US1] Implement `frontend/src/components/Footer.js`: export a `Footer()` function that returns a `<footer>` element containing a wrapper `div` with classes `max-w-4xl mx-auto px-4`, inside which render an `<hr class="border-stone-300 mt-4 mb-0">` (no bottom margin to avoid extra whitespace at page bottom) followed by a `<p class="text-stone-500 text-sm text-center py-4">` with text `© ${new Date().getFullYear()} Cocktails`
+- [X] T003 [US1] Implement `frontend/src/components/Footer.js`: export a `Footer()` function that returns a `<footer>` element containing a wrapper `div` with classes `max-w-4xl mx-auto px-4`, inside which render an `<hr class="border-stone-300 mt-4 mb-0">` (no bottom margin to avoid extra whitespace at page bottom) followed by a `<p class="text-stone-500 text-sm text-center py-4">` with text `© ${new Date().getFullYear()} Cocktails`
 
-- [ ] T004 [US1] Wire footer into `frontend/src/main.js` in the `renderPage()` function: import `Footer` from `./components/Footer.js` and append `root.appendChild(Footer())` as the last statement before every `return` inside `renderPage()` — this includes: (1) the admin-denied early return (renders "Access denied" paragraph), (2) the write-route auth guard early return (renders Login), (3) the matched-route branch (`root.appendChild(factory(m))`), and (4) the 404 fallback. Every code path that renders page content must end with `root.appendChild(Footer())`
+- [X] T004 [US1] Wire footer into `frontend/src/main.js` in the `renderPage()` function: import `Footer` from `./components/Footer.js` and append `root.appendChild(Footer())` as the last statement before every `return` inside `renderPage()` — this includes: (1) the admin-denied early return (renders "Access denied" paragraph), (2) the write-route auth guard early return (renders Login), (3) the matched-route branch (`root.appendChild(factory(m))`), and (4) the 404 fallback. Every code path that renders page content must end with `root.appendChild(Footer())`
 
 **Checkpoint**: Navigate to `#/`, `#/recipes`, `#/login`, and `#/recipes/new` — footer visible on all pages. Separator constrained to content width. Copyright year is current.
 
@@ -65,7 +65,7 @@
 
 > **Write these tests FIRST and confirm they FAIL before modifying RecipeCard.js**
 
-- [ ] T005 [US2] Add failing popup-overlay tests to `frontend/src/components/RecipeCard.test.js`:
+- [X] T005 [US2] Add failing popup-overlay tests to `frontend/src/components/RecipeCard.test.js`:
   - Test: on `mouseenter`, the popover is appended to `document.body` (not to the card element)
   - Test: on `mouseenter`, the popover is NOT a descendant of the card element
   - Test: on `mouseleave`, the popover is removed from `document.body`
@@ -76,7 +76,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T006 [US2] Modify `frontend/src/components/RecipeCard.js`: refactor the popup logic so that:
+- [X] T006 [US2] Modify `frontend/src/components/RecipeCard.js`: refactor the popup logic so that:
   1. `buildIngredientPopover` remains unchanged (still returns a div with the ingredient list)
   2. The `mouseenter` handler replaces `el.appendChild(...)` with: `const rect = el.getBoundingClientRect(); const popup = buildIngredientPopover(ingredients); popup.style.position = 'absolute'; popup.style.top = \`${rect.bottom + (window.scrollY ?? 0) + 4}px\`; popup.style.left = \`${rect.left + (window.scrollX ?? 0)}px\`; popup.style.width = \`${rect.width}px\`; document.body.appendChild(popup);`
   3. The `mouseleave` handler replaces `el.querySelector('[data-popover]')?.remove()` with: `document.body.querySelector('[data-popover]')?.remove()`
@@ -90,11 +90,11 @@
 
 **Purpose**: Validate the implementation end-to-end against quickstart.md acceptance tests.
 
-- [ ] T007 Run `cd frontend && npm test -- --coverage` — confirm all tests pass and coverage remains ≥ 75%
+- [X] T007 Run `cd frontend && npm test -- --coverage` — confirm all tests pass and coverage remains ≥ 75%
 
-- [ ] T008 [P] Execute quickstart.md Acceptance Test 1 (footer): navigate to `#/`, `#/recipes`, `#/login` and confirm footer visible with separator line and copyright notice constrained to content width on both narrow (375px) and wide (2000px) viewports
+- [X] T008 [P] Execute quickstart.md Acceptance Test 1 (footer): navigate to `#/`, `#/recipes`, `#/login` and confirm footer visible with separator line and copyright notice constrained to content width on both narrow (375px) and wide (2000px) viewports
 
-- [ ] T009 [P] Execute quickstart.md Acceptance Test 2 (popup overlay): on `#/recipes`, verify `document.documentElement.scrollHeight` is identical before and after hovering a card; verify no card shifts position; verify popup closes cleanly on mouseleave
+- [X] T009 [P] Execute quickstart.md Acceptance Test 2 (popup overlay): on `#/recipes`, verify `document.documentElement.scrollHeight` is identical before and after hovering a card; verify no card shifts position; verify popup closes cleanly on mouseleave
 
 ---
 

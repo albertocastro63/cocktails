@@ -9,6 +9,7 @@ import { AdminUserForm } from './pages/AdminUserForm.js';
 import { AdminRecipes } from './pages/AdminRecipes.js';
 import { MyRecipes } from './pages/MyRecipes.js';
 import { isLoggedIn, isAdmin, clearToken } from './api/auth.js';
+import { Footer } from './components/Footer.js';
 
 const routes = [
   { pattern: /^\/admin\/users\/([^/]+)\/edit$/, factory: (m) => AdminUserForm({ id: m[1], onSave: () => navigate('#/admin/users') }) },
@@ -57,6 +58,7 @@ function renderPage() {
   if (/^\/admin/.test(path)) {
     if (!isLoggedIn()) {
       root.appendChild(Login({ onSuccess: () => renderPage() }));
+      root.appendChild(Footer());
       return;
     }
     if (!isAdmin()) {
@@ -64,6 +66,7 @@ function renderPage() {
       p.className = 'text-center py-16 text-red-600';
       p.textContent = 'Access denied. Admin only.';
       root.appendChild(p);
+      root.appendChild(Footer());
       return;
     }
     // Fall through to route matching for the specific admin page
@@ -73,6 +76,7 @@ function renderPage() {
   const writeRoutes = /^\/(recipes\/new|recipes\/.+\/edit|my-recipes)/;
   if (writeRoutes.test(path) && !isLoggedIn()) {
     root.appendChild(Login({ onSuccess: () => renderPage() }));
+    root.appendChild(Footer());
     return;
   }
 
@@ -91,6 +95,7 @@ function renderPage() {
     el.textContent = 'Page not found.';
     root.appendChild(el);
   }
+  root.appendChild(Footer());
 }
 
 export function buildNav() {
