@@ -13,6 +13,7 @@ type RecipeStore interface {
 	GetByID(id string) (*model.Recipe, error)
 	List(page, limit int) ([]*model.Recipe, int, error)
 	Search(query string, page, limit int) ([]*model.Recipe, int, error)
+	SearchByIngredients(ingredients []string, page, limit int) ([]*model.Recipe, int, error)
 	Random() (*model.Recipe, error)
 	Update(recipe *model.Recipe) error
 	Delete(id string) error

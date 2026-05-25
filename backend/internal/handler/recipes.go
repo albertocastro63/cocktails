@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +12,24 @@ import (
 	"github.com/almc/cocktails/internal/store"
 	"github.com/google/uuid"
 )
+
+var (
+	reAnd  = regexp.MustCompile(`(?i)\s+and\s+`)
+	rePlus = regexp.MustCompile(`\s*\+\s*`)
+)
+
+func parseIngredientQuery(q string) []string {
+	var tokens []string
+	for _, part := range reAnd.Split(q, -1) {
+		for _, tok := range rePlus.Split(part, -1) {
+			tok = strings.TrimSpace(tok)
+			if tok != "" {
+				tokens = append(tokens, tok)
+			}
+		}
+	}
+	return tokens
+}
 
 type RecipeHandler struct {
 	recipes store.RecipeStore
@@ -32,9 +51,13 @@ func (h *RecipeHandler) List(w http.ResponseWriter, r *http.Request) {
 	var total int
 	var err error
 
-	if strings.TrimSpace(q) != "" {
-		recipes, total, err = h.recipes.Search(q, page, limit)
-	} else {
+	tokens := parseIngredientQuery(q)
+	switch {
+	case len(tokens) >= 2:
+		recipes, total, err = h.recipes.SearchByIngredients(tokens, page, limit)
+	case len(tokens) == 1:
+		recipes, total, err = h.recipes.Search(tokens[0], page, limit)
+	default:
 		recipes, total, err = h.recipes.List(page, limit)
 	}
 	if err != nil {

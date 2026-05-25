@@ -240,6 +240,55 @@ func (s *RecipeStore) ImportBatch(recipes []*model.Recipe, _ string) (int, int, 
 	return created, skipped, nil
 }
 
+func (s *RecipeStore) SearchByIngredients(ingredients []string, page, limit int) ([]*model.Recipe, int, error) {
+	if len(ingredients) == 0 {
+		return s.List(page, limit)
+	}
+	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
+		TableName: aws.String(s.tableName),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	all, err := scanToRecipes(out.Items)
+	if err != nil {
+		return nil, 0, err
+	}
+	var matches []*model.Recipe
+	for _, r := range all {
+		if matchesAllIngredients(r, ingredients) {
+			matches = append(matches, r)
+		}
+	}
+	total := len(matches)
+	start := (page - 1) * limit
+	if start >= total {
+		return []*model.Recipe{}, total, nil
+	}
+	end := start + limit
+	if end > total {
+		end = total
+	}
+	return matches[start:end], total, nil
+}
+
+func matchesAllIngredients(r *model.Recipe, ingredients []string) bool {
+	for _, token := range ingredients {
+		t := strings.ToLower(token)
+		found := false
+		for _, ing := range r.Ingredients {
+			if strings.Contains(strings.ToLower(ing.Name), t) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
 func toItem(r *model.Recipe) recipeItem {
 	ings := make([]ingItem, len(r.Ingredients))
 	for i, ing := range r.Ingredients {

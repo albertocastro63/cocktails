@@ -222,6 +222,37 @@ func (s *RecipeStore) ImportBatch(recipes []*model.Recipe, _ string) (int, int, 
 	return created, skipped, nil
 }
 
+func (s *RecipeStore) SearchByIngredients(ingredients []string, page, limit int) ([]*model.Recipe, int, error) {
+	if len(ingredients) == 0 {
+		return s.List(page, limit)
+	}
+	var clauses []string
+	var countArgs []any
+	for _, ing := range ingredients {
+		clauses = append(clauses, `(SELECT COUNT(*) FROM json_each(r.ingredients) WHERE LOWER(json_extract(value,'$.name')) LIKE ?) > 0`)
+		countArgs = append(countArgs, "%"+strings.ToLower(ing)+"%")
+	}
+	where := strings.Join(clauses, " AND ")
+
+	var total int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM recipes r WHERE `+where, countArgs...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	selectArgs := append(countArgs, limit, offset)
+	rows, err := s.db.Query(
+		`SELECT r.id, r.name, r.ingredients, r.steps, r.properties, r.notes, r.creator_id, r.created_at, r.updated_at
+		 FROM recipes r WHERE `+where+` ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
+		selectArgs...,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	return scanRecipes(rows, total)
+}
+
 func (s *RecipeStore) upsertFTS(r *model.Recipe) error {
 	var parts []string
 	parts = append(parts, r.Name)
