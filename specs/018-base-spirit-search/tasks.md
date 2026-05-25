@@ -63,7 +63,7 @@
   - Setup: use same recipes A and B; recipe A also has ingredient `{Name:"lime juice"}`
   - Test: `SearchByBaseSpiritAndIngredients("gin", []string{"lime"}, 1, 20)` returns only recipe A
   - Test: `SearchByBaseSpiritAndIngredients("gin", []string{"rum"}, 1, 20)` returns empty (gin base but no rum ingredient)
-  - Test: `SearchByBaseSpiritAndIngredients("rum", []string{"rum"}, 1, 20)` — recipe B has rum as base-spirit but check if it has a rum ingredient too; adjust fixture accordingly
+  - Fixture clarification: recipe B = `{Name:"rum", IsBaseSpirit:true}, {Name:"ginger beer"}`. Test: `SearchByBaseSpiritAndIngredients("rum", []string{"ginger"}, 1, 20)` returns recipe B (rum base + ginger ingredient match). Test: `SearchByBaseSpiritAndIngredients("rum", []string{"lime"}, 1, 20)` returns empty (rum base but no lime ingredient in recipe B).
 
 - [ ] T005 [P] [US1] Write failing tests for `SearchByBaseSpirit` and `SearchByBaseSpiritAndIngredients` in `backend/internal/store/dynamo/ingredient_search_test.go`. Follow the same fixture structure as T004 using the existing DynamoDB test helpers (see other tests in that file for the `newTestStore` / helper pattern). Add equivalent test cases for case-insensitivity, empty base-spirit value, and combined-filter intersection.
 
@@ -92,7 +92,7 @@
 
 - [ ] T010 [US1] Extend `backend/internal/handler/recipes.go`: in the `List` method, after reading `q`, read `baseSpirit := strings.TrimSpace(r.URL.Query().Get("base_spirit"))`. Update the dispatch switch to the five-case table: (no q, no bs) → `List`; (single token q, no bs) → `Search`; (multi-token q, no bs) → `SearchByIngredients`; (any q length ≥ 0, bs present) where no q tokens → `SearchByBaseSpirit`; where q tokens ≥ 1 → `SearchByBaseSpiritAndIngredients`. Note: `baseSpirit` is "present" only if non-empty after trim.
 
-- [ ] T011 [US1] Export `parseBaseSpirit` from `frontend/src/pages/RecipeList.js` and wire it into `onSearch`. Steps: (1) add exported function `export function parseBaseSpirit(rawQ)` that uses a regex (`/base\s+spirit\s+(?:is|=)\s*(.*?)(?=\s+base\s+spirit\s+|$)/i`) to extract the first `baseSpirit` value (trimmed) and remove the matched clause from `rawQ` to produce the remaining `q` (trimmed); (2) in the `onSearch` callback, call `parseBaseSpirit(q)`, build params object: include `q` only if non-empty, include `base_spirit` only if non-empty; (3) update the hint text paragraph to: `'Tip: search by ingredient (use "and" or "+" for multiple) — or try "base spirit is gin"'`
+- [ ] T011 [US1] Export `parseBaseSpirit` from `frontend/src/pages/RecipeList.js` and wire it into `onSearch`. Steps: (1) add exported function `export function parseBaseSpirit(rawQ)` that extracts the first `baseSpirit` value and strips ALL base-spirit clauses from the remaining string using two steps: (a) match the first clause with `/base\s+spirit\s+(?:is|=)\s*(.*?)(?:\s+(?=base\s+spirit\s+)|$)/i` to capture `baseSpirit` (trim the capture); (b) strip every base-spirit clause from `rawQ` to produce the cleaned `q`: `rawQ.replace(/base\s+spirit\s+(?:is|=)\s*[^\n]*/gi, '').trim()`; (2) in the `onSearch` callback, call `parseBaseSpirit(q)`, build params object: include `q` only if non-empty, include `base_spirit` only if non-empty; (3) update the hint text paragraph to: `'Tip: search by ingredient (use "and" or "+" for multiple) — or try "base spirit is gin"'`
 
 **Checkpoint**: `cd backend && go test ./...` passes. `cd frontend && npm test` passes for base-spirit test file.
 
@@ -138,6 +138,10 @@
 
 - [ ] T017 [P] Execute quickstart.md Acceptance Test 3 (whisky normalisation): search `rye whisky` vs `rye whiskey`; confirm identical result sets. Repeat with `base spirit is rye whisky` vs `base spirit is rye whiskey`.
 
+- [ ] T018 [P] Execute quickstart.md Acceptance Test 2 (combined filter): navigate to `#/recipes`, type `absinthe base spirit is rye whiskey`; confirm only recipes containing absinthe AND with rye whiskey as base spirit appear. If no such recipe exists, confirm the empty-state message is shown (not an error).
+
+- [ ] T019 [P] Execute quickstart.md Acceptance Test 4 (hint text): navigate to `#/recipes`, confirm the hint text below the search field contains a reference to `base spirit is` syntax (e.g. includes the phrase "base spirit is gin").
+
 ---
 
 ## Dependencies & Execution Order
@@ -168,7 +172,7 @@
 - T004 and T005: parallel (different directories)
 - T008 and T009: parallel (different directories)
 - T011 (frontend US1 impl) and T008+T009 (backend store impl): parallel
-- T014, T015, T016, T017 in Phase 5: all parallel
+- T014, T015, T016, T017, T018, T019 in Phase 5: all parallel
 
 ---
 
