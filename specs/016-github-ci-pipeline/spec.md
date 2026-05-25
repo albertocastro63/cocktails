@@ -25,7 +25,39 @@ When a developer opens or updates a pull request, the pipeline automatically run
 
 ---
 
-### User Story 2 — Validation on Pushes to Main (Priority: P2)
+### User Story 2 — DynamoDB Integration Tests via Local Emulator (Priority: P2)
+
+The pipeline runs the DynamoDB integration tests (currently skipped in CI) against a local DynamoDB emulator started as a sidecar service. No AWS credentials are required. Developers get confidence that the store implementations work correctly against a real DynamoDB protocol, not just stub stores.
+
+**Why this priority**: The DynamoDB store implementations exist and have tests written, but those tests are never exercised in CI. A bug in the real DynamoDB store (e.g., a missing GSI, a wrong attribute name) would only surface in production.
+
+**Independent Test**: Confirm that the DynamoDB integration tests (e.g., `TestDynamo_SearchByIngredients_TwoIngredients`) run and pass in the pipeline without any AWS credentials configured.
+
+**Acceptance Scenarios**:
+
+1. **Given** the pipeline runs, **When** the backend test job executes, **Then** a local DynamoDB emulator is available and the integration tests run against it rather than being skipped.
+2. **Given** a DynamoDB integration test fails, **When** the pipeline completes, **Then** the backend check is marked failing and the PR is blocked.
+3. **Given** the emulator fails to start, **When** the pipeline runs, **Then** the pipeline fails visibly rather than silently skipping the tests.
+
+---
+
+### User Story 3 — Secure AWS Authentication via OIDC (Priority: P3)
+
+Any pipeline step that needs to communicate with real AWS services (e.g., a future deploy step) authenticates using short-lived credentials obtained through OpenID Connect, with no long-lived AWS access keys stored in GitHub. The IAM role granted to the pipeline is scoped to the minimum permissions required.
+
+**Why this priority**: Establishes the secure credential pattern now so that adding a deploy step later does not require retrofitting secrets management. Long-lived access keys stored as GitHub Secrets are a common credential leak vector.
+
+**Independent Test**: Add a step that calls `aws sts get-caller-identity` using OIDC credentials and confirm it succeeds without any `AWS_ACCESS_KEY_ID` secret being defined in the repository.
+
+**Acceptance Scenarios**:
+
+1. **Given** the pipeline runs on `main`, **When** an AWS-authenticated step executes, **Then** it obtains temporary credentials via OIDC role assumption — no static access key is used.
+2. **Given** the OIDC trust is scoped to this repository, **When** a fork or unrelated workflow attempts to assume the same role, **Then** the role assumption is denied.
+3. **Given** no long-lived AWS credentials are stored in GitHub Secrets, **When** the repository settings are audited, **Then** no `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` secrets exist.
+
+---
+
+### User Story 4 — Validation on Pushes to Main (Priority: P2)
 
 When code is merged or pushed directly to main, the pipeline runs the same full validation suite. Developers and maintainers can see the current health of the main branch at a glance via the commit status badges.
 
@@ -62,6 +94,11 @@ When code is merged or pushed directly to main, the pipeline runs the same full 
 - **FR-008**: A failing check MUST block pull request merging when branch protection rules are enabled on `main`.
 - **FR-009**: The pipeline MUST report the reason for failure (test output, build error) in a way that is visible to the developer without leaving GitHub.
 - **FR-010**: The pipeline MUST complete within a time that keeps developer feedback loops short.
+- **FR-011**: The pipeline MUST run DynamoDB integration tests using a local DynamoDB emulator, without requiring any AWS credentials.
+- **FR-012**: The local DynamoDB emulator MUST be started automatically as part of the pipeline and be ready before the integration tests run.
+- **FR-013**: Any pipeline step that accesses real AWS services MUST obtain credentials via OIDC role assumption — no static AWS access keys may be stored as repository secrets.
+- **FR-014**: The OIDC trust policy MUST be scoped to this specific repository to prevent credential use from forks or unrelated workflows.
+- **FR-015**: The IAM role assumed via OIDC MUST follow least-privilege — granting only the permissions required by the pipeline steps that use it.
 
 ### Key Entities
 
@@ -77,13 +114,17 @@ When code is merged or pushed directly to main, the pipeline runs the same full 
 - **SC-002**: A PR with any failing test or build check cannot be merged — the GitHub merge button is disabled.
 - **SC-003**: A developer can identify which specific check failed and read its output without leaving the GitHub PR page.
 - **SC-004**: The full pipeline (backend + frontend) completes in under 5 minutes for a standard code change.
-- **SC-005**: A pipeline run that passes gives developers confidence equivalent to running `go test ./...` and `npm test` locally.
+- **SC-005**: A pipeline run that passes gives developers confidence equivalent to running `go test ./...` and `npm test` locally — including DynamoDB integration tests, not just stub-based tests.
+- **SC-006**: No static AWS access keys exist as repository secrets; all AWS authentication uses short-lived OIDC credentials.
+- **SC-007**: The OIDC IAM role cannot be assumed by any workflow outside this repository.
 
 ## Assumptions
 
 - The repository is hosted on GitHub and GitHub Actions is available (no self-hosted runners needed for the initial version).
 - Branch protection rules will be enabled on `main` separately by the repository owner after the pipeline is working; the pipeline itself only needs to report status checks.
-- Backend tests do not require a live AWS environment — they use in-memory SQLite and stub stores, so no AWS credentials are needed in CI.
+- Unit and handler tests do not require a live AWS environment — they use in-memory SQLite and stub stores, so no AWS credentials are needed for those checks.
 - Frontend tests run in a headless environment using jsdom (already the case with Vitest), so no browser binary is needed.
-- DynamoDB integration tests (which require `DYNAMODB_ENDPOINT`) are skipped in CI, consistent with their current skip-if-no-endpoint behavior.
+- DynamoDB integration tests use the local emulator; the existing skip-if-no-endpoint pattern means they will run when `DYNAMODB_ENDPOINT` is set and skip gracefully when it is not.
+- The local DynamoDB emulator is available as a public container image and requires no licensing or authentication to pull.
+- An AWS account and IAM permissions to create an OIDC identity provider and IAM role are available; setting up the OIDC trust is a one-time manual step performed by the repository owner.
 - The pipeline runs on the free GitHub Actions tier; paid compute or large runners are out of scope.

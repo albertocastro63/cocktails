@@ -31,4 +31,4 @@
 
 ## Notes
 
-All items pass. Spec is ready for `/speckit-plan`.
+All items pass. Spec updated to include DynamoDB Local integration tests (US2) and OIDC-based AWS authentication (US3). Ready for `/speckit-plan`.
