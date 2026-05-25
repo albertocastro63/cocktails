@@ -324,11 +324,11 @@ describe('RecipeCard - popup overlay (body portal)', () => {
     expect(popovers.length).toBe(1);
   });
 
-  it('popover has position: absolute style', () => {
+  it('popover has position: fixed style', () => {
     const el = RecipeCard({ recipe: overlayRecipe });
     el.dispatchEvent(new MouseEvent('mouseenter'));
     const popover = document.body.querySelector('[data-popover]');
-    expect(popover.style.position).toBe('absolute');
+    expect(popover.style.position).toBe('fixed');
   });
 
   it('clicking document.body removes the popover (click-elsewhere closure)', () => {

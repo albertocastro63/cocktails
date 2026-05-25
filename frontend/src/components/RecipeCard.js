@@ -81,11 +81,14 @@ export function RecipeCard({ recipe, currentUser = null, isFavorite = false }) {
   el.addEventListener('mouseenter', () => {
     const rect = el.getBoundingClientRect();
     const popup = buildIngredientPopover(ingredients);
-    popup.style.position = 'absolute';
-    popup.style.top = `${rect.bottom + (window.scrollY ?? 0) + 4}px`;
-    popup.style.left = `${rect.left + (window.scrollX ?? 0)}px`;
+    popup.style.position = 'fixed';
+    popup.style.top = `${rect.bottom + 4}px`;
+    popup.style.left = `${rect.left}px`;
     popup.style.width = `${rect.width}px`;
+    popup.style.opacity = '0';
+    popup.style.transition = 'opacity 0.12s ease';
     document.body.appendChild(popup);
+    requestAnimationFrame(() => { popup.style.opacity = '1'; });
     const onDocClick = () => document.body.querySelector('[data-popover]')?.remove();
     document.addEventListener('click', onDocClick, { once: true });
   });
