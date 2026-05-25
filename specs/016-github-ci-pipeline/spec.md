@@ -51,9 +51,10 @@ Any pipeline step that needs to communicate with real AWS services (e.g., a futu
 
 **Acceptance Scenarios**:
 
-1. **Given** the pipeline runs on `main`, **When** an AWS-authenticated step executes, **Then** it obtains temporary credentials via OIDC role assumption — no static access key is used.
-2. **Given** the OIDC trust is scoped to this repository, **When** a fork or unrelated workflow attempts to assume the same role, **Then** the role assumption is denied.
-3. **Given** no long-lived AWS credentials are stored in GitHub Secrets, **When** the repository settings are audited, **Then** no `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` secrets exist.
+1. **Given** the pipeline runs on `main` and `vars.AWS_CI_ROLE_ARN` is set, **When** the OIDC step executes, **Then** it obtains temporary credentials via OIDC role assumption — no static access key is used.
+2. **Given** `vars.AWS_CI_ROLE_ARN` is not set, **When** the pipeline runs, **Then** the OIDC step is skipped automatically and all other checks still pass.
+3. **Given** the OIDC trust is scoped to this repository, **When** a fork or unrelated workflow attempts to assume the same role, **Then** the role assumption is denied.
+4. **Given** no long-lived AWS credentials are stored in GitHub Secrets, **When** the repository settings are audited, **Then** no `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` secrets exist.
 
 ---
 
@@ -99,6 +100,8 @@ When code is merged or pushed directly to main, the pipeline runs the same full 
 - **FR-013**: Any pipeline step that accesses real AWS services MUST obtain credentials via OIDC role assumption — no static AWS access keys may be stored as repository secrets.
 - **FR-014**: The OIDC trust policy MUST be scoped to this specific repository to prevent credential use from forks or unrelated workflows.
 - **FR-015**: The IAM role assumed via OIDC MUST follow least-privilege — granting only the permissions required by the pipeline steps that use it.
+- **FR-016**: The pipeline MUST measure backend Go test coverage and fail the backend check if coverage falls below 80% of business logic modules.
+- **FR-017**: The pipeline MUST measure frontend test coverage and fail the frontend check if coverage falls below 80% (consistent with the existing Vitest coverage configuration).
 
 ### Key Entities
 
@@ -117,6 +120,14 @@ When code is merged or pushed directly to main, the pipeline runs the same full 
 - **SC-005**: A pipeline run that passes gives developers confidence equivalent to running `go test ./...` and `npm test` locally — including DynamoDB integration tests, not just stub-based tests.
 - **SC-006**: No static AWS access keys exist as repository secrets; all AWS authentication uses short-lived OIDC credentials.
 - **SC-007**: The OIDC IAM role cannot be assumed by any workflow outside this repository.
+- **SC-008**: The backend CI check fails if Go test coverage drops below 80%; the frontend CI check fails if JavaScript coverage drops below 80%.
+
+## Clarifications
+
+### Session 2026-05-25
+
+- Q: Should the backend CI job fail if Go test coverage drops below 80%? → A: Yes — fail the backend job if Go coverage < 80%, enforced via `go test -coverprofile` and a threshold check. Consistent with the frontend's existing coverage enforcement and the project constitution (Principle II).
+- Q: How should the OIDC step appear in the initial workflow file before the IAM role exists? → A: Conditional active step — `if: vars.AWS_CI_ROLE_ARN != ''`. The step is always present in the YAML but skipped automatically until the GitHub Actions variable is set; activates without any code change once the IAM role is ready.
 
 ## Assumptions
 
