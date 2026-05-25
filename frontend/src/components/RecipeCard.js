@@ -82,12 +82,17 @@ export function RecipeCard({ recipe, currentUser = null, isFavorite = false }) {
     const rect = el.getBoundingClientRect();
     const popup = buildIngredientPopover(ingredients);
     popup.style.position = 'fixed';
-    popup.style.top = `${rect.bottom + 4}px`;
+    popup.style.top = '-9999px';
     popup.style.left = `${rect.left}px`;
     popup.style.width = `${rect.width}px`;
     popup.style.opacity = '0';
     popup.style.transition = 'opacity 0.12s ease';
     document.body.appendChild(popup);
+    const popupHeight = popup.getBoundingClientRect().height;
+    const fitsBelow = rect.bottom + 4 + popupHeight <= window.innerHeight;
+    popup.style.top = fitsBelow
+      ? `${rect.bottom + 4}px`
+      : `${Math.max(4, rect.top - popupHeight - 4)}px`;
     requestAnimationFrame(() => { popup.style.opacity = '1'; });
     const onDocClick = () => document.body.querySelector('[data-popover]')?.remove();
     document.addEventListener('click', onDocClick, { once: true });
