@@ -10,7 +10,7 @@ vi.mock('../api/auth.js', () => ({
   isLoggedIn: vi.fn(() => true),
 }));
 
-import { createRecipe, getRecipe } from '../api/client.js';
+import { createRecipe, updateRecipe, getRecipe } from '../api/client.js';
 import { RecipeForm } from './RecipeForm.js';
 
 describe('RecipeForm page', () => {
@@ -103,6 +103,80 @@ describe('RecipeForm page', () => {
     const submitBtn = document.body.querySelector('button[type="submit"]');
     expect(submitBtn).not.toBeNull();
     expect(submitBtn.className).toContain('bg-amber-500');
+  });
+
+  it('shows error message when name is empty on submit', () => {
+    const el = RecipeForm({});
+    document.body.appendChild(el);
+    document.body.querySelector('form').dispatchEvent(new Event('submit'));
+    const err = document.body.querySelector('p.text-red-600');
+    expect(err.classList.contains('hidden')).toBe(false);
+    expect(err.textContent).toBe('Name is required.');
+  });
+
+  it('shows error message when createRecipe throws', async () => {
+    createRecipe.mockRejectedValue(new Error('Server error'));
+    const el = RecipeForm({});
+    document.body.appendChild(el);
+    document.body.querySelector('[name="name"]').value = 'Mojito';
+    document.body.querySelector('form').dispatchEvent(new Event('submit'));
+    await vi.waitFor(() => {
+      const err = document.body.querySelector('p.text-red-600');
+      expect(err.classList.contains('hidden')).toBe(false);
+      expect(err.textContent).toBe('Server error');
+    });
+  });
+
+  it('calls updateRecipe when an id is provided', async () => {
+    getRecipe.mockResolvedValue({ name: 'Existing', ingredients: [], steps: [], properties: {}, notes: '' });
+    updateRecipe.mockResolvedValue({ data: { id: 'r1' } });
+    const el = RecipeForm({ id: 'r1' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => {
+      expect(document.body.querySelector('[name="name"]').value).toBe('Existing');
+    });
+    document.body.querySelector('[name="name"]').value = 'Updated';
+    document.body.querySelector('form').dispatchEvent(new Event('submit'));
+    await vi.waitFor(() => expect(updateRecipe).toHaveBeenCalledWith('r1', expect.any(Object), 'tok'));
+  });
+
+  it('includes steps and properties in the submit payload', async () => {
+    createRecipe.mockResolvedValue({ data: { id: 'r1' } });
+    const el = RecipeForm({});
+    document.body.appendChild(el);
+    document.body.querySelector('[name="name"]').value = 'Mojito';
+
+    const addStep = [...document.body.querySelectorAll('button')].find(b => b.textContent.includes('Add Step'));
+    addStep.click();
+    document.body.querySelector('[name="step"]').value = 'Shake it';
+
+    const addProp = [...document.body.querySelectorAll('button')].find(b => b.textContent.includes('Add Property'));
+    addProp.click();
+    document.body.querySelector('[name="prop_key"]').value = 'style';
+    document.body.querySelector('[name="prop_val"]').value = 'tropical';
+
+    document.body.querySelector('form').dispatchEvent(new Event('submit'));
+    await vi.waitFor(() => expect(createRecipe).toHaveBeenCalled());
+
+    const payload = createRecipe.mock.calls[0][0];
+    expect(payload.steps).toEqual(['Shake it']);
+    expect(payload.properties).toEqual({ style: 'tropical' });
+  });
+
+  it('removing a step row removes it from the submit payload', async () => {
+    createRecipe.mockResolvedValue({ data: { id: 'r1' } });
+    const el = RecipeForm({});
+    document.body.appendChild(el);
+    document.body.querySelector('[name="name"]').value = 'Mojito';
+
+    const addStep = [...document.body.querySelectorAll('button')].find(b => b.textContent.includes('Add Step'));
+    addStep.click();
+    const stepRow = document.body.querySelector('[name="step"]').closest('div');
+    stepRow.querySelector('button').click();
+
+    document.body.querySelector('form').dispatchEvent(new Event('submit'));
+    await vi.waitFor(() => expect(createRecipe).toHaveBeenCalled());
+    expect(createRecipe.mock.calls[0][0].steps).toEqual([]);
   });
 });
 
