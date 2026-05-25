@@ -5,6 +5,13 @@
 **Status**: Draft
 **Input**: User description: "Add search by base spirit by writing in the search field 'base spirit is ...' or 'base spirit = ...'. If that is included in the search filter by that condition, for example you can say 'search for a cocktail that uses absynthe where the base spirit is rye whiskey'. Finally, allow alternative spellings for whiskey or whisky."
 
+## Clarifications
+
+### Session 2026-05-25
+
+- Q: Where is the base-spirit filter executed — backend (new query parameter) or client-side post-filter on returned results? → A: Backend filter — client parses the syntax, strips it from `q`, sends `base_spirit=<value>` as a separate query parameter; backend filters by base spirit in the search layer.
+  - Q: Where does whiskey/whisky spelling normalisation happen — client expands before sending, or backend normalises on its end? → A: Client expands — before sending the search request, the client replaces every occurrence of `whisky` (without ‘e’) with `whiskey` in both the `q` and `base_spirit` parameters; the backend receives only the normalised form.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 — Search by Base Spirit (Priority: P1)
@@ -60,9 +67,9 @@ The application treats `whiskey` and `whisky` as equivalent in all ingredient se
 
 - **FR-001**: The recipe search field MUST recognise the syntax `base spirit is <value>` and `base spirit = <value>` as a base-spirit filter directive (case-insensitive).
 - **FR-002**: When a base-spirit filter is present, results MUST include only recipes that have at least one ingredient flagged as the base spirit whose name matches the filter value.
-- **FR-003**: The base-spirit filter MUST be combinable with regular ingredient search terms; the non-filter portion of the query is applied as a normal ingredient search alongside the base-spirit constraint.
+- **FR-003**: The base-spirit filter MUST be combinable with regular ingredient search terms; the client strips the base-spirit clause from the query, sends the remaining ingredient terms as `q` and the base-spirit value as a separate `base_spirit` parameter to the backend.
 - **FR-004**: The spirit name value in a base-spirit filter MUST use substring matching, consistent with the existing ingredient search behaviour.
-- **FR-005**: The application MUST treat `whiskey` and `whisky` as equivalent in all ingredient searches — both the regular ingredient search and the base-spirit filter.
+- **FR-005**: The application MUST treat `whiskey` and `whisky` as equivalent in all ingredient searches — both the regular ingredient search and the base-spirit filter. The client MUST normalise the query by replacing every occurrence of `whisky` (without 'e') with `whiskey` in both the `q` and `base_spirit` parameters before the search request is sent; the backend receives only the normalised spelling.
 - **FR-006**: An empty or whitespace-only base-spirit value MUST be silently ignored; the remainder of the query is processed normally.
 - **FR-007**: The search field hint text MUST be updated to communicate that `base spirit is <name>` syntax is available.
 - **FR-008**: If multiple base-spirit filter clauses appear in one query, only the first is applied; no error is shown to the user.
@@ -80,8 +87,8 @@ The application treats `whiskey` and `whisky` as equivalent in all ingredient se
 ## Assumptions
 
 - The base-spirit flag already exists on recipe ingredients (introduced in feature 011); this feature adds new search/filter behaviour on top of existing data — no data model changes are required.
-- Whiskey/whisky normalisation is applied to the search query text before it is sent; stored ingredient names are not modified.
-- The `base spirit is` / `base spirit =` clause is parsed on the client side before the search request is dispatched, consistent with how the existing multi-ingredient AND-search (`+`) works.
+- Whiskey/whisky normalisation is applied client-side: before sending the search request, the client replaces every occurrence of `whisky` (without 'e') with `whiskey` in both the `q` and `base_spirit` parameters. Stored ingredient names are not modified.
+- The `base spirit is` / `base spirit =` clause is parsed on the client side before the search request is dispatched; the client sends two parameters: `q` (remaining ingredient terms) and `base_spirit` (the extracted spirit name).
+- The backend search API must be extended to accept a `base_spirit` query parameter and filter results to recipes whose base-spirit ingredient name matches it; this backend work is in scope for this feature.
 - The feature applies to the recipe list page search only; recipe detail, admin, and other views are out of scope.
 - Only one base-spirit filter clause per query is expected; the first occurrence wins.
-- The existing backend search API already supports filtering by ingredient attributes including `is_base_spirit`; if not, the backend extension is in scope for this feature.
