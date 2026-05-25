@@ -20,6 +20,32 @@
   - .specify/templates/tasks-template.md — Test-First and performance tasks reflected in structure ✅
 
   Deferred items: None
+
+  ---
+
+  SYNC IMPACT REPORT
+  Version change: 1.0.0 → 2.0.0
+  Ratification date: 2026-05-25
+
+  Principles changed (MAJOR — threshold redefinition):
+  - II. Test-First Development: unit test coverage threshold lowered from ≥ 80% to ≥ 75%
+
+  Rationale: Feature 016 (GitHub Actions CI pipeline) lowered the enforced threshold in
+  vitest.config.js and the Go coverage check to 75% to reflect realistic coverage achievable
+  with the DynamoDB-heavy backend (integration tests contribute coverage only when the
+  DynamoDB Local service container is running in CI). The constitution was not updated at
+  the time; this amendment corrects the divergence.
+
+  Sections changed:
+  - §II Test-First Development: "≥ 80%" → "≥ 75%"
+  - Quality Gates & Review Standards: "≥ 80% business logic" → "≥ 75% business logic"
+
+  Template updates:
+  - .specify/templates/plan-template.md — Constitution Check rows referencing coverage
+    threshold will now cite ≥ 75% ✅ (no structural change to template required; plans
+    fill in the value at generation time)
+
+  Deferred items: None
 -->
 
 # Cocktails Constitution
@@ -42,7 +68,7 @@ All code MUST be clean, readable, and maintainable at every commit. Non-negotiab
 Tests MUST be written and confirmed failing before implementation begins. Non-negotiable rules:
 
 - The TDD cycle is mandatory: write failing test → implement minimal code → refactor.
-- Unit test coverage MUST be ≥ 80% for all business logic modules.
+- Unit test coverage MUST be ≥ 75% for all business logic modules.
 - Integration tests MUST cover all API contracts and inter-service boundaries.
 - Tests MUST be fully deterministic — flaky or order-dependent tests are treated as bugs.
 - Test names MUST describe the scenario in plain language; Given/When/Then format is preferred.
@@ -78,7 +104,7 @@ All pull requests MUST pass every gate below before merge:
 
 - Automated linting and formatting checks pass with zero warnings.
 - All tests pass (unit, integration, contract) in CI.
-- Code coverage does not decrease below the established threshold (≥ 80% business logic).
+- Code coverage does not decrease below the established threshold (≥ 75% business logic).
 - No unresolved review comments on the PR.
 - Performance benchmarks show no regression on critical paths.
 - Constitution Check in plan.md is completed and flagged violations are documented.
@@ -120,4 +146,4 @@ not addressed here defers to community best practices for the technology in use.
 violations MUST be corrected or formally justified in the Complexity Tracking section of the
 relevant plan.md before merge.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-07 | **Last Amended**: 2026-05-07
+**Version**: 2.0.0 | **Ratified**: 2026-05-07 | **Last Amended**: 2026-05-25

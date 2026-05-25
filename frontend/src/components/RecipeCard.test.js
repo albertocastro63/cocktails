@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { RecipeCard } from './RecipeCard.js';
 
 const recipe = {
@@ -42,10 +42,19 @@ describe('RecipeCard', () => {
 });
 
 describe('RecipeCard - ingredient popover', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'scrollX', { value: 0, writable: true, configurable: true });
+    Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
+  });
+
+  afterEach(() => {
+    document.body.querySelector('[data-popover]')?.remove();
+  });
+
   it('shows popover with ingredient names on mouseenter', () => {
     const el = RecipeCard({ recipe });
     el.dispatchEvent(new MouseEvent('mouseenter'));
-    const popover = el.querySelector('[data-popover]');
+    const popover = document.body.querySelector('[data-popover]');
     expect(popover).not.toBeNull();
     expect(popover.textContent).toContain('rum');
     expect(popover.textContent).toContain('mint');
@@ -55,8 +64,7 @@ describe('RecipeCard - ingredient popover', () => {
     const el = RecipeCard({ recipe });
     el.dispatchEvent(new MouseEvent('mouseenter'));
     el.dispatchEvent(new MouseEvent('mouseleave'));
-    const popover = el.querySelector('[data-popover]');
-    expect(popover).toBeNull();
+    expect(document.body.querySelector('[data-popover]')).toBeNull();
   });
 
   it('removes first tile popover when mouse leaves it and enters a second tile', () => {
@@ -66,7 +74,7 @@ describe('RecipeCard - ingredient popover', () => {
     el1.dispatchEvent(new MouseEvent('mouseleave'));
     el2.dispatchEvent(new MouseEvent('mouseenter'));
     expect(el1.querySelector('[data-popover]')).toBeNull();
-    expect(el2.querySelector('[data-popover]')).not.toBeNull();
+    expect(document.body.querySelector('[data-popover]')).not.toBeNull();
   });
 
   it('tile link href is unchanged after popover is shown', () => {
@@ -79,13 +87,22 @@ describe('RecipeCard - ingredient popover', () => {
 });
 
 describe('RecipeCard - ingredient truncation', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'scrollX', { value: 0, writable: true, configurable: true });
+    Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
+  });
+
+  afterEach(() => {
+    document.body.querySelector('[data-popover]')?.remove();
+  });
+
   it('shows all ingredients when recipe has exactly 5', () => {
     const r = { id: 'r2', name: 'T', ingredients: [
       { name: 'a' }, { name: 'b' }, { name: 'c' }, { name: 'd' }, { name: 'e' },
     ]};
     const el = RecipeCard({ recipe: r });
     el.dispatchEvent(new MouseEvent('mouseenter'));
-    const popover = el.querySelector('[data-popover]');
+    const popover = document.body.querySelector('[data-popover]');
     expect(popover.textContent).toContain('a');
     expect(popover.textContent).toContain('e');
     expect(popover.textContent).not.toContain('…');
@@ -97,7 +114,7 @@ describe('RecipeCard - ingredient truncation', () => {
     ]};
     const el = RecipeCard({ recipe: r });
     el.dispatchEvent(new MouseEvent('mouseenter'));
-    const popover = el.querySelector('[data-popover]');
+    const popover = document.body.querySelector('[data-popover]');
     expect(popover.textContent).toContain('a');
     expect(popover.textContent).toContain('e');
     expect(popover.textContent).not.toContain('f');
@@ -111,24 +128,42 @@ describe('RecipeCard - ingredient truncation', () => {
     ]};
     const el = RecipeCard({ recipe: r });
     el.dispatchEvent(new MouseEvent('mouseenter'));
-    const popover = el.querySelector('[data-popover]');
+    const popover = document.body.querySelector('[data-popover]');
     expect(popover.textContent).not.toContain('f');
     expect(popover.textContent).toContain('…');
   });
 });
 
 describe('RecipeCard - empty ingredients', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'scrollX', { value: 0, writable: true, configurable: true });
+    Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
+  });
+
+  afterEach(() => {
+    document.body.querySelector('[data-popover]')?.remove();
+  });
+
   it('shows "No ingredients listed." when recipe has no ingredients', () => {
     const r = { id: 'r5', name: 'Empty', ingredients: [] };
     const el = RecipeCard({ recipe: r });
     el.dispatchEvent(new MouseEvent('mouseenter'));
-    const popover = el.querySelector('[data-popover]');
+    const popover = document.body.querySelector('[data-popover]');
     expect(popover).not.toBeNull();
     expect(popover.textContent).toContain('No ingredients listed.');
   });
 });
 
 describe('RecipeCard - base spirit popover highlight (T009)', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'scrollX', { value: 0, writable: true, configurable: true });
+    Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
+  });
+
+  afterEach(() => {
+    document.body.querySelector('[data-popover]')?.remove();
+  });
+
   it('base spirit ingredient li contains (base spirit) label', () => {
     const r = {
       id: 'r1',
@@ -140,7 +175,7 @@ describe('RecipeCard - base spirit popover highlight (T009)', () => {
     };
     const el = RecipeCard({ recipe: r });
     el.dispatchEvent(new MouseEvent('mouseenter'));
-    const popover = el.querySelector('[data-popover]');
+    const popover = document.body.querySelector('[data-popover]');
     expect(popover.textContent).toContain('(base spirit)');
   });
 
@@ -155,7 +190,7 @@ describe('RecipeCard - base spirit popover highlight (T009)', () => {
     };
     const el = RecipeCard({ recipe: r });
     el.dispatchEvent(new MouseEvent('mouseenter'));
-    const popover = el.querySelector('[data-popover]');
+    const popover = document.body.querySelector('[data-popover]');
     const boldSpan = popover.querySelector('.font-semibold');
     expect(boldSpan).not.toBeNull();
     expect(boldSpan.textContent).toBe('Rye');
@@ -173,7 +208,7 @@ describe('RecipeCard - base spirit popover highlight (T009)', () => {
     };
     const el = RecipeCard({ recipe: r });
     el.dispatchEvent(new MouseEvent('mouseenter'));
-    const popover = el.querySelector('[data-popover]');
+    const popover = document.body.querySelector('[data-popover]');
     const items = [...popover.querySelectorAll('li')];
     const labelCount = items.filter(li => li.textContent.includes('(base spirit)')).length;
     expect(labelCount).toBe(1);
@@ -190,7 +225,7 @@ describe('RecipeCard - base spirit popover highlight (T009)', () => {
     };
     const el = RecipeCard({ recipe: r });
     el.dispatchEvent(new MouseEvent('mouseenter'));
-    const popover = el.querySelector('[data-popover]');
+    const popover = document.body.querySelector('[data-popover]');
     expect(popover.textContent).not.toContain('(base spirit)');
     expect(popover.querySelector('.font-semibold')).toBeNull();
   });
@@ -241,5 +276,66 @@ describe('RecipeCard - edit/delete controls (T005)', () => {
     const el = RecipeCard({ recipe: legacy, currentUser: { id: 'admin-1', isAdmin: true } });
     expect(el.querySelector('a[href*="edit"]')).not.toBeNull();
     expect(el.querySelector('button')).not.toBeNull();
+  });
+});
+
+describe('RecipeCard - popup overlay (body portal)', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'scrollX', { value: 0, writable: true, configurable: true });
+    Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
+  });
+
+  afterEach(() => {
+    document.body.querySelector('[data-popover]')?.remove();
+  });
+
+  const overlayRecipe = {
+    id: 'r-overlay',
+    name: 'Negroni',
+    ingredients: [{ name: 'Gin' }, { name: 'Campari' }],
+  };
+
+  it('on mouseenter, popover is appended to document.body', () => {
+    const el = RecipeCard({ recipe: overlayRecipe });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    expect(document.body.querySelector('[data-popover]')).not.toBeNull();
+  });
+
+  it('on mouseenter, popover is NOT a descendant of the card element', () => {
+    const el = RecipeCard({ recipe: overlayRecipe });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    expect(el.querySelector('[data-popover]')).toBeNull();
+  });
+
+  it('on mouseleave, popover is removed from document.body', () => {
+    const el = RecipeCard({ recipe: overlayRecipe });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    el.dispatchEvent(new MouseEvent('mouseleave'));
+    expect(document.body.querySelector('[data-popover]')).toBeNull();
+  });
+
+  it('only one popover in document.body when two cards hovered in sequence', () => {
+    const el1 = RecipeCard({ recipe: overlayRecipe });
+    const el2 = RecipeCard({ recipe: overlayRecipe });
+    el1.dispatchEvent(new MouseEvent('mouseenter'));
+    el1.dispatchEvent(new MouseEvent('mouseleave'));
+    el2.dispatchEvent(new MouseEvent('mouseenter'));
+    const popovers = document.body.querySelectorAll('[data-popover]');
+    expect(popovers.length).toBe(1);
+  });
+
+  it('popover has position: fixed style', () => {
+    const el = RecipeCard({ recipe: overlayRecipe });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    const popover = document.body.querySelector('[data-popover]');
+    expect(popover.style.position).toBe('fixed');
+  });
+
+  it('clicking document.body removes the popover (click-elsewhere closure)', () => {
+    const el = RecipeCard({ recipe: overlayRecipe });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    expect(document.body.querySelector('[data-popover]')).not.toBeNull();
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(document.body.querySelector('[data-popover]')).toBeNull();
   });
 });
