@@ -398,3 +398,168 @@ func TestListByCreator_Pagination(t *testing.T) {
 		t.Errorf("expected 2 on page2, got %d", len(page2))
 	}
 }
+
+func TestSearchByBaseSpirit(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+
+	recipeA := &model.Recipe{
+		ID:   uuid.NewString(),
+		Name: "Gimlet",
+		Ingredients: []model.Ingredient{
+			{Name: "gin", IsBaseSpirit: true},
+			{Name: "lime juice"},
+		},
+		Steps:     []string{"Shake", "Strain"},
+		CreatorID: uid,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	recipeB := &model.Recipe{
+		ID:   uuid.NewString(),
+		Name: "Daiquiri",
+		Ingredients: []model.Ingredient{
+			{Name: "rum", IsBaseSpirit: true},
+			{Name: "ginger beer"},
+		},
+		Steps:     []string{"Shake", "Strain"},
+		CreatorID: uid,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	recipeC := &model.Recipe{
+		ID:        uuid.NewString(),
+		Name:      "Lemonade",
+		Ingredients: []model.Ingredient{
+			{Name: "lemon juice"},
+			{Name: "sugar"},
+		},
+		Steps:     []string{"Mix"},
+		CreatorID: uid,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	for _, r := range []*model.Recipe{recipeA, recipeB, recipeC} {
+		if err := rs.Create(r); err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+	}
+
+	t.Run("returns only gin-based recipe", func(t *testing.T) {
+		got, total, err := rs.SearchByBaseSpirit("gin", 1, 20)
+		if err != nil {
+			t.Fatalf("SearchByBaseSpirit: %v", err)
+		}
+		if total != 1 {
+			t.Errorf("total: got %d want 1", total)
+		}
+		if len(got) != 1 || got[0].ID != recipeA.ID {
+			t.Errorf("expected recipeA, got %v", got)
+		}
+	})
+
+	t.Run("case-insensitive", func(t *testing.T) {
+		got, total, err := rs.SearchByBaseSpirit("GIN", 1, 20)
+		if err != nil {
+			t.Fatalf("SearchByBaseSpirit: %v", err)
+		}
+		if total != 1 || got[0].ID != recipeA.ID {
+			t.Errorf("expected recipeA for GIN, got total=%d", total)
+		}
+	})
+
+	t.Run("no match returns empty", func(t *testing.T) {
+		got, total, err := rs.SearchByBaseSpirit("whis", 1, 20)
+		if err != nil {
+			t.Fatalf("SearchByBaseSpirit: %v", err)
+		}
+		if total != 0 || len(got) != 0 {
+			t.Errorf("expected empty, got total=%d", total)
+		}
+	})
+
+	t.Run("empty filter falls through to List", func(t *testing.T) {
+		_, total, err := rs.SearchByBaseSpirit("", 1, 20)
+		if err != nil {
+			t.Fatalf("SearchByBaseSpirit empty: %v", err)
+		}
+		if total != 3 {
+			t.Errorf("expected 3 (all recipes), got %d", total)
+		}
+	})
+}
+
+func TestSearchByBaseSpiritAndIngredients(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+
+	recipeA := &model.Recipe{
+		ID:   uuid.NewString(),
+		Name: "Gimlet",
+		Ingredients: []model.Ingredient{
+			{Name: "gin", IsBaseSpirit: true},
+			{Name: "lime juice"},
+		},
+		Steps:     []string{"Shake", "Strain"},
+		CreatorID: uid,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	recipeB := &model.Recipe{
+		ID:   uuid.NewString(),
+		Name: "Dark and Stormy",
+		Ingredients: []model.Ingredient{
+			{Name: "rum", IsBaseSpirit: true},
+			{Name: "ginger beer"},
+		},
+		Steps:     []string{"Pour", "Stir"},
+		CreatorID: uid,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	for _, r := range []*model.Recipe{recipeA, recipeB} {
+		if err := rs.Create(r); err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+	}
+
+	t.Run("returns intersection (gin base + lime ingredient)", func(t *testing.T) {
+		got, total, err := rs.SearchByBaseSpiritAndIngredients("gin", []string{"lime"}, 1, 20)
+		if err != nil {
+			t.Fatalf("SearchByBaseSpiritAndIngredients: %v", err)
+		}
+		if total != 1 || got[0].ID != recipeA.ID {
+			t.Errorf("expected recipeA, got total=%d", total)
+		}
+	})
+
+	t.Run("gin base but missing ingredient returns empty", func(t *testing.T) {
+		got, total, err := rs.SearchByBaseSpiritAndIngredients("gin", []string{"rum"}, 1, 20)
+		if err != nil {
+			t.Fatalf("SearchByBaseSpiritAndIngredients: %v", err)
+		}
+		if total != 0 || len(got) != 0 {
+			t.Errorf("expected empty, got total=%d", total)
+		}
+	})
+
+	t.Run("rum base with ginger ingredient returns recipeB", func(t *testing.T) {
+		got, total, err := rs.SearchByBaseSpiritAndIngredients("rum", []string{"ginger"}, 1, 20)
+		if err != nil {
+			t.Fatalf("SearchByBaseSpiritAndIngredients: %v", err)
+		}
+		if total != 1 || got[0].ID != recipeB.ID {
+			t.Errorf("expected recipeB, got total=%d", total)
+		}
+	})
+
+	t.Run("rum base but no lime ingredient returns empty", func(t *testing.T) {
+		got, total, err := rs.SearchByBaseSpiritAndIngredients("rum", []string{"lime"}, 1, 20)
+		if err != nil {
+			t.Fatalf("SearchByBaseSpiritAndIngredients: %v", err)
+		}
+		if total != 0 || len(got) != 0 {
+			t.Errorf("expected empty, got total=%d", total)
+		}
+	})
+}

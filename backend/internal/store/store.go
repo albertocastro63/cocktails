@@ -14,6 +14,8 @@ type RecipeStore interface {
 	List(page, limit int) ([]*model.Recipe, int, error)
 	Search(query string, page, limit int) ([]*model.Recipe, int, error)
 	SearchByIngredients(ingredients []string, page, limit int) ([]*model.Recipe, int, error)
+	SearchByBaseSpirit(baseSpirit string, page, limit int) ([]*model.Recipe, int, error)
+	SearchByBaseSpiritAndIngredients(baseSpirit string, ingredients []string, page, limit int) ([]*model.Recipe, int, error)
 	Random() (*model.Recipe, error)
 	Update(recipe *model.Recipe) error
 	Delete(id string) error

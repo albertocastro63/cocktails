@@ -19,7 +19,7 @@ describe('RecipeList ingredient search hint', () => {
     const el = RecipeList();
     document.body.appendChild(el);
     const paragraphs = Array.from(document.body.querySelectorAll('p'));
-    const hint = paragraphs.find(p => /use.*and.*\+.*ingredient/i.test(p.textContent));
+    const hint = paragraphs.find(p => /ingredient.*use.*and.*\+/i.test(p.textContent));
     expect(hint).toBeDefined();
   });
 });

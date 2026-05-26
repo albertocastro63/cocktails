@@ -41,6 +41,7 @@ func NewRecipeHandler(rs store.RecipeStore) *RecipeHandler {
 
 func (h *RecipeHandler) List(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
+	baseSpirit := strings.TrimSpace(r.URL.Query().Get("base_spirit"))
 	page := queryInt(r, "page", 1)
 	limit := queryInt(r, "limit", 20)
 	if limit > 100 {
@@ -53,6 +54,10 @@ func (h *RecipeHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	tokens := parseIngredientQuery(q)
 	switch {
+	case baseSpirit != "" && len(tokens) >= 1:
+		recipes, total, err = h.recipes.SearchByBaseSpiritAndIngredients(baseSpirit, tokens, page, limit)
+	case baseSpirit != "":
+		recipes, total, err = h.recipes.SearchByBaseSpirit(baseSpirit, page, limit)
 	case len(tokens) >= 2:
 		recipes, total, err = h.recipes.SearchByIngredients(tokens, page, limit)
 	case len(tokens) == 1:

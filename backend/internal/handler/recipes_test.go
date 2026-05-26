@@ -584,3 +584,94 @@ func TestRecipeMine_EmptyForUserWithNoRecipes(t *testing.T) {
 		t.Errorf("expected 0 recipes, got %d", len(data))
 	}
 }
+
+func baseSpiritRecipe(id, name, spirit string) *model.Recipe {
+	return &model.Recipe{
+		ID:        id,
+		Name:      name,
+		Ingredients: []model.Ingredient{
+			{Name: spirit, IsBaseSpirit: true, Quantity: "50", Unit: "ml"},
+			{Name: "lime juice", Quantity: "20", Unit: "ml"},
+		},
+		Steps:     []string{"mix"},
+		CreatorID: "u1",
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+}
+
+func TestList_BaseSpiritFilter(t *testing.T) {
+	rs := newStubRecipeStore(
+		baseSpiritRecipe("r1", "Gimlet", "gin"),
+		baseSpiritRecipe("r2", "Daiquiri", "rum"),
+	)
+	h := handler.NewRecipeHandler(rs)
+
+	t.Run("base_spirit=gin returns only gin recipe", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/recipes?base_spirit=gin", nil)
+		rec := httptest.NewRecorder()
+		h.List(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("got %d want 200", rec.Code)
+		}
+		var resp map[string]any
+		json.NewDecoder(rec.Body).Decode(&resp)
+		data := resp["data"].([]any)
+		if len(data) != 1 {
+			t.Errorf("expected 1 recipe, got %d", len(data))
+		}
+		got := data[0].(map[string]any)
+		if got["id"] != "r1" {
+			t.Errorf("expected r1, got %v", got["id"])
+		}
+	})
+
+	t.Run("q=lime and base_spirit=gin returns intersection", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/recipes?q=lime&base_spirit=gin", nil)
+		rec := httptest.NewRecorder()
+		h.List(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("got %d want 200", rec.Code)
+		}
+		var resp map[string]any
+		json.NewDecoder(rec.Body).Decode(&resp)
+		data := resp["data"].([]any)
+		if len(data) != 1 {
+			t.Errorf("expected 1 recipe (intersection), got %d", len(data))
+		}
+	})
+
+	t.Run("empty base_spirit is ignored", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/recipes?base_spirit=", nil)
+		rec := httptest.NewRecorder()
+		h.List(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("got %d want 200", rec.Code)
+		}
+		var resp map[string]any
+		json.NewDecoder(rec.Body).Decode(&resp)
+		data := resp["data"].([]any)
+		if len(data) != 2 {
+			t.Errorf("expected 2 recipes (no filter), got %d", len(data))
+		}
+	})
+
+	t.Run("whitespace-only base_spirit is ignored", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/recipes?base_spirit=%20", nil)
+		rec := httptest.NewRecorder()
+		h.List(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("got %d want 200", rec.Code)
+		}
+		var resp map[string]any
+		json.NewDecoder(rec.Body).Decode(&resp)
+		data := resp["data"].([]any)
+		if len(data) != 2 {
+			t.Errorf("expected 2 recipes, got %d", len(data))
+		}
+	})
+}
