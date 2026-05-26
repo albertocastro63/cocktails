@@ -72,7 +72,7 @@ jobs:
       - name: Run backend tests with coverage
         run: |
           cd backend
-          go test -coverprofile=coverage.out -coverpkg=./internal/... ./...
+          go test -p 1 -coverprofile=coverage.out -coverpkg=./internal/... ./...
           go tool cover -func=coverage.out
           COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/{gsub(/%/,"",$3); print $3}')
           echo "Total coverage: ${COVERAGE}%"
