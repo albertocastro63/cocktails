@@ -409,7 +409,7 @@ describe('RecipeCard - garnish popover (T015)', () => {
     expect(popover.querySelector('em')).toBeNull();
   });
 
-  it('ingredient list is not truncated (no ellipsis) when garnishes are shown', () => {
+  it('ingredient list is not truncated (no ellipsis) when garnishes are shown and total < MAX_VISIBLE', () => {
     const r = {
       id: 'r1',
       name: 'Small Recipe',
@@ -420,5 +420,24 @@ describe('RecipeCard - garnish popover (T015)', () => {
     el.dispatchEvent(new MouseEvent('mouseenter'));
     const popover = document.body.querySelector('[data-popover]');
     expect(popover.textContent).not.toContain('…');
+  });
+
+  it('shows garnishes up to remaining slots and adds ellipsis when combined total exceeds MAX_VISIBLE', () => {
+    const r = {
+      id: 'r1',
+      name: 'Four Ingredient Recipe',
+      ingredients: [
+        { name: 'a' }, { name: 'b' }, { name: 'c' }, { name: 'd' },
+      ],
+      garnishes: ['First garnish', 'Second garnish'],
+    };
+    const el = RecipeCard({ recipe: r });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    const popover = document.body.querySelector('[data-popover]');
+    const ems = [...popover.querySelectorAll('em')];
+    expect(ems.length).toBe(1);
+    expect(ems[0].textContent).toBe('First garnish');
+    expect(popover.textContent).not.toContain('Second garnish');
+    expect(popover.textContent).toContain('…');
   });
 });

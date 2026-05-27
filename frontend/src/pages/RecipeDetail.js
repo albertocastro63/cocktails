@@ -95,29 +95,6 @@ export function RecipeDetail({ id }) {
       content.appendChild(IngredientList({ ingredients: recipe.ingredients }));
     }
 
-    if (recipe.steps && recipe.steps.length > 0) {
-      const h2 = document.createElement('h2');
-      h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2';
-      h2.textContent = 'Steps';
-      content.appendChild(h2);
-      const ol = document.createElement('ol');
-      ol.className = 'list-decimal list-inside space-y-1 text-stone-700';
-      recipe.steps.forEach((step) => {
-        const li = document.createElement('li');
-        li.textContent = step;
-        ol.appendChild(li);
-      });
-      content.appendChild(ol);
-    }
-
-    if (recipe.properties && Object.keys(recipe.properties).length > 0) {
-      const h2 = document.createElement('h2');
-      h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2';
-      h2.textContent = 'Properties';
-      content.appendChild(h2);
-      content.appendChild(PropertyTable({ properties: recipe.properties }));
-    }
-
     if (recipe.garnishes && recipe.garnishes.length > 0) {
       const h2 = document.createElement('h2');
       h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2';
@@ -135,6 +112,21 @@ export function RecipeDetail({ id }) {
       content.appendChild(ul);
     }
 
+    if (recipe.steps && recipe.steps.length > 0) {
+      const h2 = document.createElement('h2');
+      h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2';
+      h2.textContent = 'Steps';
+      content.appendChild(h2);
+      const ol = document.createElement('ol');
+      ol.className = 'list-decimal list-inside space-y-1 text-stone-700';
+      recipe.steps.forEach((step) => {
+        const li = document.createElement('li');
+        li.textContent = step;
+        ol.appendChild(li);
+      });
+      content.appendChild(ol);
+    }
+
     if (recipe.notes) {
       const h2 = document.createElement('h2');
       h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2';
@@ -144,6 +136,14 @@ export function RecipeDetail({ id }) {
       div.className = 'prose prose-stone max-w-none overflow-x-auto';
       div.innerHTML = renderMarkdown(recipe.notes);
       content.appendChild(div);
+    }
+
+    if (recipe.properties && Object.keys(recipe.properties).length > 0) {
+      const h2 = document.createElement('h2');
+      h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2';
+      h2.textContent = 'Properties';
+      content.appendChild(h2);
+      content.appendChild(PropertyTable({ properties: recipe.properties }));
     }
   }).catch((err) => {
     content.innerHTML = '';
