@@ -675,7 +675,6 @@ func TestList_BaseSpiritFilter(t *testing.T) {
 		}
 	})
 }
-
 // T001: Create with garnishes returns garnishes in response
 func TestRecipeCreate_WithGarnishes(t *testing.T) {
 	rs := newStubRecipeStore()

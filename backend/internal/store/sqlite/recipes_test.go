@@ -563,7 +563,6 @@ func TestSearchByBaseSpiritAndIngredients(t *testing.T) {
 		}
 	})
 }
-
 // T002: Create with garnishes persists and round-trips via GetByID
 func TestCreate_WithGarnishes(t *testing.T) {
 	rs, us := newTestStores(t)
