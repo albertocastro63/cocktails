@@ -56,6 +56,12 @@ func migrate(db *sql.DB) error {
 		return err
 	}
 
+	// Idempotent: add garnishes column to existing databases.
+	_, err = db.Exec(`ALTER TABLE recipes ADD COLUMN garnishes TEXT NOT NULL DEFAULT '[]'`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+
 	_, err = db.Exec(`
 		CREATE VIRTUAL TABLE IF NOT EXISTS recipes_fts USING fts5(
 			recipe_id UNINDEXED,

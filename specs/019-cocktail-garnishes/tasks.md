@@ -24,18 +24,18 @@
 
 ### Tests (write first — must FAIL before implementation)
 
-- [ ] T001 [P] Write failing handler tests for create/update/get with garnishes field in `backend/internal/handler/recipes_test.go`
-- [ ] T002 [P] Write failing SQLite store tests for garnishes persistence (create, update, read round-trip) in `backend/internal/store/sqlite/recipes_test.go`
-- [ ] T003 [P] Write failing admin handler tests for export/import garnishes round-trip in `backend/internal/handler/admin_recipes_test.go`
+- [X] T001 [P] Write failing handler tests for create/update/get with garnishes field in `backend/internal/handler/recipes_test.go`
+- [X] T002 [P] Write failing SQLite store tests for garnishes persistence (create, update, read round-trip) in `backend/internal/store/sqlite/recipes_test.go`
+- [X] T003 [P] Write failing admin handler tests for export/import garnishes round-trip in `backend/internal/handler/admin_recipes_test.go`
 
 ### Implementation
 
-- [ ] T004 Add `Garnishes []string` with `json:"garnishes,omitempty"` to `Recipe` struct in `backend/internal/model/model.go`
-- [ ] T005 Add idempotent `ALTER TABLE recipes ADD COLUMN garnishes TEXT NOT NULL DEFAULT '[]'` migration (follow existing pattern for `notes` column) in `backend/internal/store/sqlite/store.go`
-- [ ] T006 Update `Create` (INSERT), `Update` (SET), all SELECT queries, `scanRecipe`, and `scanRecipes` to marshal/unmarshal the `garnishes` column in `backend/internal/store/sqlite/recipes.go`
-- [ ] T007 [P] Add `Garnishes []string` field with `dynamodbav:"garnishes"` to `recipeItem`; update `toItem` and `unmarshalRecipe` to map the field in `backend/internal/store/dynamo/recipes.go`
-- [ ] T008 Add `Garnishes []string` to `Create` and `Update` request body structs; filter blank entries before assigning to recipe; initialise to `[]string{}` when nil in `backend/internal/handler/recipes.go`
-- [ ] T009 Add `Garnishes []string` to `recipeExport`; include in `ExportRecipes`; handle `garnishes` key in `ImportRecipes`; add `garnishes` array property to `recipeSchema` in `backend/internal/handler/admin_recipes.go`
+- [X] T004 Add `Garnishes []string` with `json:"garnishes,omitempty"` to `Recipe` struct in `backend/internal/model/model.go`
+- [X] T005 Add idempotent `ALTER TABLE recipes ADD COLUMN garnishes TEXT NOT NULL DEFAULT '[]'` migration (follow existing pattern for `notes` column) in `backend/internal/store/sqlite/store.go`
+- [X] T006 Update `Create` (INSERT), `Update` (SET), all SELECT queries, `scanRecipe`, and `scanRecipes` to marshal/unmarshal the `garnishes` column in `backend/internal/store/sqlite/recipes.go`
+- [X] T007 [P] Add `Garnishes []string` field with `dynamodbav:"garnishes"` to `recipeItem`; update `toItem` and `unmarshalRecipe` to map the field in `backend/internal/store/dynamo/recipes.go`
+- [X] T008 Add `Garnishes []string` to `Create` and `Update` request body structs; filter blank entries before assigning to recipe; initialise to `[]string{}` when nil in `backend/internal/handler/recipes.go`
+- [X] T009 Add `Garnishes []string` to `recipeExport`; include in `ExportRecipes`; handle `garnishes` key in `ImportRecipes`; add `garnishes` array property to `recipeSchema` in `backend/internal/handler/admin_recipes.go`
 
 **Checkpoint**: `go test ./...` passes. Create/update/get recipes with garnishes; export and re-import a recipe with garnishes — garnishes survive the round-trip.
 
@@ -49,12 +49,12 @@
 
 ### Tests (write first — must FAIL before implementation)
 
-- [ ] T010 [US1] Write failing Vitest tests covering: garnish section renders in form, add-row creates input, remove-row deletes input, blank entries are excluded from payload, saved garnishes are pre-populated on edit; note that auth-gating of the form itself is inherited from the existing recipe edit mechanism and does not require new test coverage in `frontend/src/pages/RecipeForm.test.js`
+- [X] T010 [US1] Write failing Vitest tests covering: garnish section renders in form, add-row creates input, remove-row deletes input, blank entries are excluded from payload, saved garnishes are pre-populated on edit; note that auth-gating of the form itself is inherited from the existing recipe edit mechanism and does not require new test coverage in `frontend/src/pages/RecipeForm.test.js`
 
 ### Implementation
 
-- [ ] T011 [US1] Add `garnishesSection` using `buildDynamicSection('Garnishes', 'Add Garnish', ...)` after `stepsSection`; each row is a single text input + remove button in `frontend/src/pages/RecipeForm.js`
-- [ ] T012 [US1] Collect garnishes in submit handler (filter blank strings, same pattern as `steps`); prefill garnish rows from `recipe.garnishes` in the edit pre-fill block in `frontend/src/pages/RecipeForm.js` (depends on T011)
+- [X] T011 [US1] Add `garnishesSection` using `buildDynamicSection('Garnishes', 'Add Garnish', ...)` after `stepsSection`; each row is a single text input + remove button in `frontend/src/pages/RecipeForm.js`
+- [X] T012 [US1] Collect garnishes in submit handler (filter blank strings, same pattern as `steps`); prefill garnish rows from `recipe.garnishes` in the edit pre-fill block in `frontend/src/pages/RecipeForm.js` (depends on T011)
 
 **Checkpoint**: Create a new recipe with garnishes via the form, save, open edit — garnishes persist and prefill correctly.
 
@@ -68,11 +68,11 @@
 
 ### Tests (write first — must FAIL before implementation)
 
-- [ ] T013 [US2] Write failing Vitest tests covering: garnish section appears when recipe has garnishes, each entry renders in `<em>`, section absent when garnishes empty/absent in `frontend/src/pages/RecipeDetail.test.js`
+- [X] T013 [US2] Write failing Vitest tests covering: garnish section appears when recipe has garnishes, each entry renders in `<em>`, section absent when garnishes empty/absent in `frontend/src/pages/RecipeDetail.test.js`
 
 ### Implementation
 
-- [ ] T014 [US2] After the ingredients block, add a `Garnishes` section: heading styled as `text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2`, each garnish entry wrapped in `<em>` in a list; section only rendered when `recipe.garnishes && recipe.garnishes.length > 0` in `frontend/src/pages/RecipeDetail.js`
+- [X] T014 [US2] After the ingredients block, add a `Garnishes` section: heading styled as `text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2`, each garnish entry wrapped in `<em>` in a list; section only rendered when `recipe.garnishes && recipe.garnishes.length > 0` in `frontend/src/pages/RecipeDetail.js`
 
 **Checkpoint**: Detail page shows garnishes in italics below ingredients; no section for garnish-free recipes.
 
@@ -86,11 +86,11 @@
 
 ### Tests (write first — must FAIL before implementation)
 
-- [ ] T015 [US3] Write failing Vitest tests covering: garnishes shown in popover when ingredients.length < MAX_VISIBLE, garnishes absent when ingredients.length >= MAX_VISIBLE, each garnish renders in `<em>`, no garnish section when recipe has no garnishes in `frontend/src/components/RecipeCard.test.js`
+- [X] T015 [US3] Write failing Vitest tests covering: garnishes shown in popover when ingredients.length < MAX_VISIBLE, garnishes absent when ingredients.length >= MAX_VISIBLE, each garnish renders in `<em>`, no garnish section when recipe has no garnishes in `frontend/src/components/RecipeCard.test.js`
 
 ### Implementation
 
-- [ ] T016 [US3] In `buildIngredientPopover`, after rendering the ingredient `<ul>`, check `if (ingredients.length < MAX_VISIBLE && garnishes && garnishes.length > 0)`: if true, append a garnish section (a `<ul>` of `<li><em>` entries) below the ingredient list; update function signature to accept `garnishes` array; update the `mouseenter` handler to pass `recipe.garnishes || []` in `frontend/src/components/RecipeCard.js`
+- [X] T016 [US3] In `buildIngredientPopover`, after rendering the ingredient `<ul>`, check `if (ingredients.length < MAX_VISIBLE && garnishes && garnishes.length > 0)`: if true, append a garnish section (a `<ul>` of `<li><em>` entries) below the ingredient list; update function signature to accept `garnishes` array; update the `mouseenter` handler to pass `recipe.garnishes || []` in `frontend/src/components/RecipeCard.js`
 
 **Checkpoint**: Hovering a short-ingredient recipe shows garnishes in italics; hovering a 5-ingredient recipe omits garnishes.
 
@@ -98,7 +98,7 @@
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T017 Run full test suite (`go test ./...` + `npm test` in `frontend/`) and confirm coverage ≥ 75% with no failures
+- [X] T017 Run full test suite (`go test ./...` + `npm test` in `frontend/`) and confirm coverage ≥ 75% with no failures
 - [ ] T018 [P] Verify italic rendering is visually consistent between detail page and hover preview, and confirm each garnish add/remove action completes in under 10 seconds (SC-001), by manually testing at least two recipes with garnishes
 - [ ] T019 [P] Verify legacy recipes (no garnishes) display correctly on detail page, hover preview, and round-trip through export/import with no data change
 

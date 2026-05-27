@@ -16,6 +16,7 @@ type Recipe struct {
 	Steps       []string          `json:"steps"`
 	Properties  map[string]string `json:"properties,omitempty"`
 	Notes       string            `json:"notes"`
+	Garnishes   []string          `json:"garnishes,omitempty"`
 	CreatorID   string            `json:"creator_id"`
 	CreatedAt   time.Time         `json:"created_at"`
 	UpdatedAt   time.Time         `json:"updated_at"`

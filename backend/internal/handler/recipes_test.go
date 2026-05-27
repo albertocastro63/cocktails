@@ -675,3 +675,128 @@ func TestList_BaseSpiritFilter(t *testing.T) {
 		}
 	})
 }
+
+// T001: Create with garnishes returns garnishes in response
+func TestRecipeCreate_WithGarnishes(t *testing.T) {
+	rs := newStubRecipeStore()
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Create))
+
+	token := validToken(t, "u1", "alice", false)
+	body := `{"name":"Old Fashioned","garnishes":["Express orange oil over the cocktail","Use orange peel to garnish"]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/recipes", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("got %d want 201: %s", rec.Code, rec.Body)
+	}
+	var resp map[string]any
+	json.NewDecoder(rec.Body).Decode(&resp)
+	data := resp["data"].(map[string]any)
+	garnishes, ok := data["garnishes"].([]any)
+	if !ok || len(garnishes) != 2 {
+		t.Errorf("garnishes: got %v want 2-element array", data["garnishes"])
+	}
+}
+
+// T001: Create filters blank garnish entries before storing
+func TestRecipeCreate_GarnishesBlanksFiltered(t *testing.T) {
+	rs := newStubRecipeStore()
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Create))
+
+	token := validToken(t, "u1", "alice", false)
+	body := `{"name":"Old Fashioned","garnishes":["Express orange oil","  ",""]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/recipes", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("got %d want 201: %s", rec.Code, rec.Body)
+	}
+	var resp map[string]any
+	json.NewDecoder(rec.Body).Decode(&resp)
+	data := resp["data"].(map[string]any)
+	garnishes, ok := data["garnishes"].([]any)
+	if !ok || len(garnishes) != 1 {
+		t.Errorf("garnishes: got %v want 1-element array (blanks filtered)", data["garnishes"])
+	}
+}
+
+// T001: Update with garnishes returns garnishes in response
+func TestRecipeUpdate_WithGarnishes(t *testing.T) {
+	rs := newStubRecipeStore(sampleRecipe("r1", "Old Fashioned", "u1"))
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Update))
+
+	token := validToken(t, "u1", "alice", false)
+	body := `{"garnishes":["Express orange oil over the cocktail"]}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/recipes/r1", strings.NewReader(body))
+	req.SetPathValue("id", "r1")
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d want 200: %s", rec.Code, rec.Body)
+	}
+	var resp map[string]any
+	json.NewDecoder(rec.Body).Decode(&resp)
+	garnishes, ok := resp["garnishes"].([]any)
+	if !ok || len(garnishes) != 1 {
+		t.Errorf("garnishes: got %v want 1-element array", resp["garnishes"])
+	}
+}
+
+// T001: Update omitting garnishes preserves existing garnishes
+func TestRecipeUpdate_PreservesGarnishes(t *testing.T) {
+	existing := sampleRecipe("r1", "Old Fashioned", "u1")
+	existing.Garnishes = []string{"Express orange oil over the cocktail"}
+	rs := newStubRecipeStore(existing)
+	h := handler.NewRecipeHandler(rs)
+	wrapped := handler.RequireAuth(http.HandlerFunc(h.Update))
+
+	token := validToken(t, "u1", "alice", false)
+	body := `{"name":"Old Fashioned Updated"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/recipes/r1", strings.NewReader(body))
+	req.SetPathValue("id", "r1")
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	wrapped.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d want 200: %s", rec.Code, rec.Body)
+	}
+	var resp map[string]any
+	json.NewDecoder(rec.Body).Decode(&resp)
+	garnishes, ok := resp["garnishes"].([]any)
+	if !ok || len(garnishes) != 1 {
+		t.Errorf("preserving garnishes: got %v want 1-element array", resp["garnishes"])
+	}
+}
+
+// T001: GetByID returns garnishes when present
+func TestRecipeGetByID_ReturnsGarnishes(t *testing.T) {
+	r := sampleRecipe("r1", "Old Fashioned", "u1")
+	r.Garnishes = []string{"Express orange oil over the cocktail"}
+	rs := newStubRecipeStore(r)
+	h := handler.NewRecipeHandler(rs)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/recipes/r1", nil)
+	req.SetPathValue("id", "r1")
+	rec := httptest.NewRecorder()
+	h.GetByID(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d want 200", rec.Code)
+	}
+	var resp map[string]any
+	json.NewDecoder(rec.Body).Decode(&resp)
+	garnishes, ok := resp["garnishes"].([]any)
+	if !ok || len(garnishes) != 1 {
+		t.Errorf("garnishes: got %v want 1-element array", resp["garnishes"])
+	}
+}

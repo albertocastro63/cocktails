@@ -26,11 +26,19 @@ func (s *RecipeStore) Create(r *model.Recipe) error {
 	if err != nil {
 		return err
 	}
+	garns := r.Garnishes
+	if garns == nil {
+		garns = []string{}
+	}
+	garnishes, err := json.Marshal(garns)
+	if err != nil {
+		return err
+	}
 	creatorID := sql.NullString{String: r.CreatorID, Valid: r.CreatorID != ""}
 	_, err = s.db.Exec(
-		`INSERT INTO recipes (id, name, ingredients, steps, properties, notes, creator_id, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		r.ID, r.Name, ing, steps, props, r.Notes, creatorID,
+		`INSERT INTO recipes (id, name, ingredients, steps, properties, notes, garnishes, creator_id, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		r.ID, r.Name, ing, steps, props, r.Notes, garnishes, creatorID,
 		r.CreatedAt.UTC().Format(time.RFC3339Nano),
 		r.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	)
@@ -42,7 +50,7 @@ func (s *RecipeStore) Create(r *model.Recipe) error {
 
 func (s *RecipeStore) GetByID(id string) (*model.Recipe, error) {
 	row := s.db.QueryRow(
-		`SELECT id, name, ingredients, steps, properties, notes, creator_id, created_at, updated_at
+		`SELECT id, name, ingredients, steps, properties, notes, garnishes, creator_id, created_at, updated_at
 		 FROM recipes WHERE id = ?`, id)
 	r, err := scanRecipe(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -58,7 +66,7 @@ func (s *RecipeStore) List(page, limit int) ([]*model.Recipe, int, error) {
 		return nil, 0, err
 	}
 	rows, err := s.db.Query(
-		`SELECT id, name, ingredients, steps, properties, notes, creator_id, created_at, updated_at
+		`SELECT id, name, ingredients, steps, properties, notes, garnishes, creator_id, created_at, updated_at
 		 FROM recipes ORDER BY created_at DESC LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
 		return nil, 0, err
@@ -79,7 +87,7 @@ func (s *RecipeStore) Search(query string, page, limit int) ([]*model.Recipe, in
 		return nil, 0, err
 	}
 	rows, err := s.db.Query(
-		`SELECT r.id, r.name, r.ingredients, r.steps, r.properties, r.notes, r.creator_id, r.created_at, r.updated_at
+		`SELECT r.id, r.name, r.ingredients, r.steps, r.properties, r.notes, r.garnishes, r.creator_id, r.created_at, r.updated_at
 		 FROM recipes r
 		 JOIN recipes_fts fts ON fts.recipe_id = r.id
 		 WHERE fts.search_text MATCH ?
@@ -94,7 +102,7 @@ func (s *RecipeStore) Search(query string, page, limit int) ([]*model.Recipe, in
 
 func (s *RecipeStore) Random() (*model.Recipe, error) {
 	row := s.db.QueryRow(
-		`SELECT id, name, ingredients, steps, properties, notes, creator_id, created_at, updated_at
+		`SELECT id, name, ingredients, steps, properties, notes, garnishes, creator_id, created_at, updated_at
 		 FROM recipes ORDER BY RANDOM() LIMIT 1`)
 	r, err := scanRecipe(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -116,10 +124,18 @@ func (s *RecipeStore) Update(r *model.Recipe) error {
 	if err != nil {
 		return err
 	}
+	garns := r.Garnishes
+	if garns == nil {
+		garns = []string{}
+	}
+	garnishes, err := json.Marshal(garns)
+	if err != nil {
+		return err
+	}
 	r.UpdatedAt = time.Now().UTC()
 	res, err := s.db.Exec(
-		`UPDATE recipes SET name=?, ingredients=?, steps=?, properties=?, notes=?, updated_at=? WHERE id=?`,
-		r.Name, ing, steps, props, r.Notes, r.UpdatedAt.UTC().Format(time.RFC3339Nano), r.ID,
+		`UPDATE recipes SET name=?, ingredients=?, steps=?, properties=?, notes=?, garnishes=?, updated_at=? WHERE id=?`,
+		r.Name, ing, steps, props, r.Notes, garnishes, r.UpdatedAt.UTC().Format(time.RFC3339Nano), r.ID,
 	)
 	if err != nil {
 		return err
@@ -156,7 +172,7 @@ func (s *RecipeStore) ListByCreator(creatorID string, page, limit int) ([]*model
 		return nil, 0, err
 	}
 	rows, err := s.db.Query(
-		`SELECT id, name, ingredients, steps, properties, notes, creator_id, created_at, updated_at
+		`SELECT id, name, ingredients, steps, properties, notes, garnishes, creator_id, created_at, updated_at
 		 FROM recipes WHERE creator_id = ? AND creator_id != ''
 		 ORDER BY created_at DESC LIMIT ? OFFSET ?`, creatorID, limit, offset)
 	if err != nil {
@@ -174,7 +190,7 @@ func (s *RecipeStore) ExistsByName(name string) (bool, error) {
 
 func (s *RecipeStore) ListAll() ([]*model.Recipe, error) {
 	rows, err := s.db.Query(
-		`SELECT id, name, ingredients, steps, properties, notes, creator_id, created_at, updated_at
+		`SELECT id, name, ingredients, steps, properties, notes, garnishes, creator_id, created_at, updated_at
 		 FROM recipes ORDER BY created_at ASC`)
 	if err != nil {
 		return nil, err
@@ -204,11 +220,16 @@ func (s *RecipeStore) ImportBatch(recipes []*model.Recipe, _ string) (int, int, 
 		ing, _ := json.Marshal(r.Ingredients)
 		steps, _ := json.Marshal(r.Steps)
 		props, _ := json.Marshal(r.Properties)
+		garns := r.Garnishes
+		if garns == nil {
+			garns = []string{}
+		}
+		garnishes, _ := json.Marshal(garns)
 		cid := sql.NullString{String: r.CreatorID, Valid: r.CreatorID != ""}
 		if _, err := tx.Exec(
-			`INSERT INTO recipes (id, name, ingredients, steps, properties, notes, creator_id, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			r.ID, r.Name, ing, steps, props, r.Notes, cid,
+			`INSERT INTO recipes (id, name, ingredients, steps, properties, notes, garnishes, creator_id, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			r.ID, r.Name, ing, steps, props, r.Notes, garnishes, cid,
 			r.CreatedAt.UTC().Format(time.RFC3339Nano),
 			r.UpdatedAt.UTC().Format(time.RFC3339Nano),
 		); err != nil {
@@ -242,7 +263,7 @@ func (s *RecipeStore) SearchByIngredients(ingredients []string, page, limit int)
 	offset := (page - 1) * limit
 	selectArgs := append(countArgs, limit, offset)
 	rows, err := s.db.Query(
-		`SELECT r.id, r.name, r.ingredients, r.steps, r.properties, r.notes, r.creator_id, r.created_at, r.updated_at
+		`SELECT r.id, r.name, r.ingredients, r.steps, r.properties, r.notes, r.garnishes, r.creator_id, r.created_at, r.updated_at
 		 FROM recipes r WHERE `+where+` ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
 		selectArgs...,
 	)
@@ -269,7 +290,7 @@ func (s *RecipeStore) SearchByBaseSpirit(baseSpirit string, page, limit int) ([]
 	}
 	offset := (page - 1) * limit
 	rows, err := s.db.Query(
-		`SELECT r.id, r.name, r.ingredients, r.steps, r.properties, r.notes, r.creator_id, r.created_at, r.updated_at
+		`SELECT r.id, r.name, r.ingredients, r.steps, r.properties, r.notes, r.garnishes, r.creator_id, r.created_at, r.updated_at
 		 FROM recipes r WHERE `+where+` ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
 		bs, limit, offset,
 	)
@@ -304,7 +325,7 @@ func (s *RecipeStore) SearchByBaseSpiritAndIngredients(baseSpirit string, ingred
 	offset := (page - 1) * limit
 	selectArgs := append(args, limit, offset)
 	rows, err := s.db.Query(
-		`SELECT r.id, r.name, r.ingredients, r.steps, r.properties, r.notes, r.creator_id, r.created_at, r.updated_at
+		`SELECT r.id, r.name, r.ingredients, r.steps, r.properties, r.notes, r.garnishes, r.creator_id, r.created_at, r.updated_at
 		 FROM recipes r WHERE `+where+` ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
 		selectArgs...,
 	)
@@ -336,10 +357,10 @@ func (s *RecipeStore) upsertFTS(r *model.Recipe) error {
 
 func scanRecipe(row *sql.Row) (*model.Recipe, error) {
 	var r model.Recipe
-	var ing, steps, props []byte
+	var ing, steps, props, garnishes []byte
 	var creatorID sql.NullString
 	var createdAt, updatedAt string
-	err := row.Scan(&r.ID, &r.Name, &ing, &steps, &props, &r.Notes, &creatorID, &createdAt, &updatedAt)
+	err := row.Scan(&r.ID, &r.Name, &ing, &steps, &props, &r.Notes, &garnishes, &creatorID, &createdAt, &updatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -353,6 +374,12 @@ func scanRecipe(row *sql.Row) (*model.Recipe, error) {
 	if err := json.Unmarshal(props, &r.Properties); err != nil {
 		return nil, err
 	}
+	if err := json.Unmarshal(garnishes, &r.Garnishes); err != nil {
+		return nil, err
+	}
+	if r.Garnishes == nil {
+		r.Garnishes = []string{}
+	}
 	r.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	r.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return &r, nil
@@ -362,10 +389,10 @@ func scanRecipes(rows *sql.Rows, total int) ([]*model.Recipe, int, error) {
 	var results []*model.Recipe
 	for rows.Next() {
 		var r model.Recipe
-		var ing, steps, props []byte
+		var ing, steps, props, garnishes []byte
 		var creatorID sql.NullString
 		var createdAt, updatedAt string
-		if err := rows.Scan(&r.ID, &r.Name, &ing, &steps, &props, &r.Notes, &creatorID, &createdAt, &updatedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.Name, &ing, &steps, &props, &r.Notes, &garnishes, &creatorID, &createdAt, &updatedAt); err != nil {
 			return nil, 0, err
 		}
 		r.CreatorID = creatorID.String
@@ -377,6 +404,12 @@ func scanRecipes(rows *sql.Rows, total int) ([]*model.Recipe, int, error) {
 		}
 		if err := json.Unmarshal(props, &r.Properties); err != nil {
 			return nil, 0, err
+		}
+		if err := json.Unmarshal(garnishes, &r.Garnishes); err != nil {
+			return nil, 0, err
+		}
+		if r.Garnishes == nil {
+			r.Garnishes = []string{}
 		}
 		r.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 		r.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)

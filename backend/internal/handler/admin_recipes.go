@@ -51,6 +51,11 @@ const recipeSchema = `{
     "notes": {
       "type": "string",
       "description": "Free-form notes about the recipe (markdown supported)"
+    },
+    "garnishes": {
+      "type": "array",
+      "description": "Ordered list of garnish instructions",
+      "items": { "type": "string" }
     }
   }
 }`
@@ -65,11 +70,12 @@ func NewAdminRecipeHandler(rs store.RecipeStore) *AdminRecipeHandler {
 
 // recipeExport is the wire format for export/import (no server-generated fields).
 type recipeExport struct {
-	Name        string            `json:"name"`
+	Name        string             `json:"name"`
 	Ingredients []model.Ingredient `json:"ingredients,omitempty"`
-	Steps       []string          `json:"steps,omitempty"`
-	Properties  map[string]string `json:"properties,omitempty"`
-	Notes       string            `json:"notes,omitempty"`
+	Steps       []string           `json:"steps,omitempty"`
+	Properties  map[string]string  `json:"properties,omitempty"`
+	Notes       string             `json:"notes,omitempty"`
+	Garnishes   []string           `json:"garnishes,omitempty"`
 }
 
 func (h *AdminRecipeHandler) ExportSchema(w http.ResponseWriter, r *http.Request) {
@@ -94,6 +100,7 @@ func (h *AdminRecipeHandler) ExportRecipes(w http.ResponseWriter, r *http.Reques
 			Steps:       rec.Steps,
 			Properties:  rec.Properties,
 			Notes:       rec.Notes,
+			Garnishes:   rec.Garnishes,
 		}
 	}
 
@@ -175,6 +182,13 @@ func (h *AdminRecipeHandler) ImportRecipes(w http.ResponseWriter, r *http.Reques
 		if v, ok := obj["notes"]; ok {
 			if err := json.Unmarshal(v, &rec.Notes); err != nil {
 				writeError(w, http.StatusBadRequest, "BAD_REQUEST", fmt.Sprintf("recipe at index %d: notes must be a string", i))
+				return
+			}
+		}
+
+		if v, ok := obj["garnishes"]; ok {
+			if err := json.Unmarshal(v, &rec.Garnishes); err != nil {
+				writeError(w, http.StatusBadRequest, "BAD_REQUEST", fmt.Sprintf("recipe at index %d: garnishes must be an array of strings", i))
 				return
 			}
 		}

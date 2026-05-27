@@ -112,6 +112,7 @@ func (h *RecipeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Steps       []string           `json:"steps"`
 		Properties  map[string]string  `json:"properties"`
 		Notes       *string            `json:"notes"`
+		Garnishes   []string           `json:"garnishes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
@@ -133,6 +134,16 @@ func (h *RecipeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		notes = *body.Notes
 	}
 
+	var garnishes []string
+	for _, g := range body.Garnishes {
+		if strings.TrimSpace(g) != "" {
+			garnishes = append(garnishes, g)
+		}
+	}
+	if garnishes == nil {
+		garnishes = []string{}
+	}
+
 	now := time.Now().UTC()
 	recipe := &model.Recipe{
 		ID:          uuid.NewString(),
@@ -141,6 +152,7 @@ func (h *RecipeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Steps:       body.Steps,
 		Properties:  body.Properties,
 		Notes:       notes,
+		Garnishes:   garnishes,
 		CreatorID:   claims.UserID,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -185,6 +197,7 @@ func (h *RecipeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Steps       []string           `json:"steps"`
 		Properties  map[string]string  `json:"properties"`
 		Notes       *string            `json:"notes"`
+		Garnishes   []string           `json:"garnishes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
@@ -208,6 +221,18 @@ func (h *RecipeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Notes != nil {
 		existing.Notes = *body.Notes
+	}
+	if body.Garnishes != nil {
+		var garnishes []string
+		for _, g := range body.Garnishes {
+			if strings.TrimSpace(g) != "" {
+				garnishes = append(garnishes, g)
+			}
+		}
+		if garnishes == nil {
+			garnishes = []string{}
+		}
+		existing.Garnishes = garnishes
 	}
 
 	if err := h.recipes.Update(existing); err != nil {
