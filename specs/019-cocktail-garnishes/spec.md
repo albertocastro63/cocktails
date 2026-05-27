@@ -12,6 +12,11 @@
 - Q: Should garnish data be included in recipe exports so it round-trips correctly through import? → A: Yes — garnishes must be included in export/import so data is not silently lost.
 - Q: What is the concrete threshold that determines when the hover preview is "full" and garnishes are hidden? → A: Reuse the existing preview's ingredient limit (from feature 005) — garnishes fill whatever space remains below that cap; no new threshold is defined.
 
+### Session 2026-05-27
+
+- Q: When garnishes are shown in the hover preview and there are more garnishes than remaining slots, should they be truncated with an ellipsis? → A: Yes — the combined total of ingredients and garnishes shown must not exceed MAX_VISIBLE (5); garnishes fill the remaining slots and an ellipsis is shown if any garnishes are hidden.
+- Q: What is the canonical section order for both the recipe edit form and the recipe detail page? → A: Name → Ingredients → Garnishes → Steps → Notes → Properties (edit form and detail page must match).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Add Garnishes When Creating or Editing a Recipe (Priority: P1)
@@ -72,18 +77,19 @@ When a viewer hovers over a recipe card, the hover preview shows garnishes below
 - Blank or whitespace-only garnish entries must not be saved.
 - Recipes created before this feature was introduced have no garnish data; they display as if no garnishes are set, with no visible change to existing views.
 - The garnish edit controls are only accessible to users with edit rights (owner or admin); read-only viewers see only the displayed garnish list.
-- If a recipe has garnishes but the hover preview is already fully occupied by ingredients, garnishes are silently omitted from the preview — no truncation indicator is shown.
+- If a recipe has garnishes but the hover preview is already fully occupied by ingredients (ingredients.length >= MAX_VISIBLE), garnishes are silently omitted — no truncation indicator is shown for garnishes in that case (the ingredient ellipsis already signals truncation).
+- If garnishes partially fill the remaining slots (e.g., 4 ingredients + 2 garnishes with MAX_VISIBLE=5), only the fitting garnishes are shown and an ellipsis is appended to the garnish list.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001**: The recipe data model MUST support an ordered list of garnish entries; zero garnishes is a valid state.
-- **FR-002**: The recipe create and edit pages MUST include a dedicated garnish section, visually and functionally separate from the ingredients section.
+- **FR-002**: The recipe create and edit pages MUST include a dedicated garnish section, visually and functionally separate from the ingredients section. The section order on the create/edit form MUST be: Name → Ingredients → Garnishes → Steps → Notes → Properties.
 - **FR-003**: Each garnish entry MUST be a free-text description field; the system MUST NOT persist entries with empty or whitespace-only text.
-- **FR-004**: The recipe detail page MUST display a "Garnishes" section below the ingredients section when at least one garnish is present.
+- **FR-004**: The recipe detail page MUST display a "Garnishes" section when at least one garnish is present. The section order on the detail page MUST be: Ingredients → Garnishes → Steps → Notes → Properties.
 - **FR-005**: Garnish entries on the detail page MUST be rendered in italics; each garnish is a single text field and the entire entry is italicized.
-- **FR-006**: The hover preview MUST display garnishes below ingredients when space is available; when the ingredient list fills the preview, garnishes MUST be omitted without truncating ingredients.
+- **FR-006**: The hover preview MUST display garnishes below ingredients when space is available; the combined total of displayed ingredients and garnishes MUST NOT exceed MAX_VISIBLE (5); garnishes fill the remaining slots and an ellipsis MUST be shown if any garnishes are hidden; when ingredients reach MAX_VISIBLE, garnishes MUST be omitted without truncating the ingredient list.
 - **FR-007**: Garnish entries in the hover preview MUST be rendered in italics, consistent with the detail page treatment.
 - **FR-008**: Recipes with no garnishes MUST NOT display a garnish section in any read-only view (detail page or hover preview).
 - **FR-009**: Legacy recipes with no garnish data MUST continue to display and edit correctly without requiring garnish data.
@@ -107,7 +113,7 @@ When a viewer hovers over a recipe card, the hover preview shows garnishes below
 ## Assumptions
 
 - Garnishes are ordered; the display order matches the order in which they were added. No drag-to-reorder interface is required for v1 — order is preserved but not explicitly managed by the author.
-- "Space" in the hover preview is determined by the existing ingredient cap established in feature 005. Garnishes fill any remaining slots below that cap; if all slots are occupied by ingredients, garnishes are omitted. No new threshold is defined — the existing limit is reused.
+- "Space" in the hover preview is determined by the existing ingredient cap (MAX_VISIBLE = 5) established in feature 005. Garnishes fill any remaining slots below that cap; if all slots are occupied by ingredients, garnishes are omitted. If garnishes exceed the remaining slots, they are truncated and an ellipsis is shown. No new threshold is defined — the existing limit is reused as a combined cap across ingredients and garnishes.
 - The garnish section label is "Garnishes" on both the detail page and hover preview.
 - Only recipe owners and admins can add or modify garnishes; all authenticated and anonymous viewers can see them.
 - There is no upper limit enforced on the number of garnishes per recipe; in practice, recipes rarely exceed 5 garnish entries.

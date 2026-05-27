@@ -39,15 +39,22 @@ function buildIngredientPopover(ingredients, garnishes) {
   popover.appendChild(ul);
 
   if (ingredients.length < MAX_VISIBLE && garnishes && garnishes.length > 0) {
+    const remaining = MAX_VISIBLE - ingredients.length;
     const garnishUl = document.createElement('ul');
     garnishUl.className = 'text-sm text-stone-500 space-y-1 mt-2';
-    garnishes.forEach((g) => {
+    garnishes.slice(0, remaining).forEach((g) => {
       const li = document.createElement('li');
       const em = document.createElement('em');
       em.textContent = g;
       li.appendChild(em);
       garnishUl.appendChild(li);
     });
+    if (garnishes.length > remaining) {
+      const li = document.createElement('li');
+      li.className = 'text-gray-400';
+      li.textContent = '…';
+      garnishUl.appendChild(li);
+    }
     popover.appendChild(garnishUl);
   }
 
