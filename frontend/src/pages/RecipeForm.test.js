@@ -180,6 +180,84 @@ describe('RecipeForm page', () => {
   });
 });
 
+describe('RecipeForm — garnishes section (T010)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = '';
+  });
+  afterEach(() => { document.body.innerHTML = ''; });
+
+  it('renders a button to add garnishes', () => {
+    const el = RecipeForm({});
+    document.body.appendChild(el);
+    const btns = [...document.body.querySelectorAll('button')];
+    const found = btns.some(b => b.textContent.toLowerCase().includes('garnish'));
+    expect(found).toBe(true);
+  });
+
+  it('clicking Add Garnish creates a garnish input row', () => {
+    const el = RecipeForm({});
+    document.body.appendChild(el);
+    const addBtn = [...document.body.querySelectorAll('button')].find(b =>
+      b.textContent.toLowerCase().includes('add garnish')
+    );
+    addBtn.click();
+    expect(document.body.querySelector('[name="garnish"]')).not.toBeNull();
+  });
+
+  it('clicking remove on a garnish row removes the input', () => {
+    const el = RecipeForm({});
+    document.body.appendChild(el);
+    const addBtn = [...document.body.querySelectorAll('button')].find(b =>
+      b.textContent.toLowerCase().includes('add garnish')
+    );
+    addBtn.click();
+    const row = document.body.querySelector('[name="garnish"]').closest('div');
+    row.querySelector('button').click();
+    expect(document.body.querySelector('[name="garnish"]')).toBeNull();
+  });
+
+  it('blank garnish entries are excluded from the submit payload', async () => {
+    createRecipe.mockResolvedValue({ data: { id: 'r1', name: 'Sour' }, warnings: [] });
+    const el = RecipeForm({});
+    document.body.appendChild(el);
+    document.body.querySelector('[name="name"]').value = 'Sour';
+
+    const addBtn = [...document.body.querySelectorAll('button')].find(b =>
+      b.textContent.toLowerCase().includes('add garnish')
+    );
+    addBtn.click();
+    addBtn.click();
+    const inputs = [...document.body.querySelectorAll('[name="garnish"]')];
+    inputs[0].value = 'Express orange oil';
+    inputs[1].value = '   ';
+
+    document.body.querySelector('form').dispatchEvent(new Event('submit'));
+    await vi.waitFor(() => expect(createRecipe).toHaveBeenCalled());
+    const payload = createRecipe.mock.calls[0][0];
+    expect(payload.garnishes).toEqual(['Express orange oil']);
+  });
+
+  it('saved garnishes are pre-populated in edit mode', async () => {
+    getRecipe.mockResolvedValue({
+      name: 'Old Fashioned',
+      ingredients: [],
+      steps: [],
+      properties: {},
+      notes: '',
+      garnishes: ['Express orange oil over the cocktail', 'Use orange peel to garnish'],
+    });
+    const el = RecipeForm({ id: 'r1' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => {
+      const inputs = [...document.body.querySelectorAll('[name="garnish"]')];
+      expect(inputs.length).toBe(2);
+      expect(inputs[0].value).toBe('Express orange oil over the cocktail');
+      expect(inputs[1].value).toBe('Use orange peel to garnish');
+    });
+  });
+});
+
 describe('RecipeForm — base spirit toggle', () => {
   beforeEach(() => {
     vi.clearAllMocks();

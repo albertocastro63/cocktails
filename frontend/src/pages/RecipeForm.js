@@ -32,9 +32,6 @@ export function RecipeForm({ id, onSave } = {}) {
 
   form.appendChild(field('Name *', 'name', 'e.g. Mojito'));
 
-  let editorEl = MarkdownEditor({ name: 'notes', placeholder: 'Personal notes, substitutions, tips…', value: '' });
-  form.appendChild(editorEl);
-
   // Ingredients section
   const ingredientsSection = buildDynamicSection(
     'Ingredients',
@@ -64,7 +61,24 @@ export function RecipeForm({ id, onSave } = {}) {
       return row;
     }
   );
+  // Garnishes section
+  const garnishesSection = buildDynamicSection(
+    'Garnishes',
+    'Add Garnish',
+    () => {
+      const row = document.createElement('div');
+      row.className = 'flex gap-2 items-start';
+      row.innerHTML = `
+        <input name="garnish" placeholder="e.g. Express orange oil over the cocktail" class="flex-1 border rounded px-2 py-1 text-sm" />
+        <button type="button" class="text-red-400 hover:text-red-600 text-lg px-1">×</button>
+      `;
+      row.querySelector('button').addEventListener('click', () => row.remove());
+      return row;
+    }
+  );
+
   form.appendChild(ingredientsSection);
+  form.appendChild(garnishesSection);
 
   // Steps section
   const stepsSection = buildDynamicSection(
@@ -82,6 +96,9 @@ export function RecipeForm({ id, onSave } = {}) {
     }
   );
   form.appendChild(stepsSection);
+
+  let editorEl = MarkdownEditor({ name: 'notes', placeholder: 'Personal notes, substitutions, tips…', value: '' });
+  form.appendChild(editorEl);
 
   // Properties section
   const propertiesSection = buildDynamicSection(
@@ -133,6 +150,10 @@ export function RecipeForm({ id, onSave } = {}) {
         row.querySelector('[name="prop_key"]').value = k;
         row.querySelector('[name="prop_val"]').value = v;
       });
+      (recipe.garnishes || []).forEach((g) => {
+        const row = garnishesSection._addRow();
+        row.querySelector('[name="garnish"]').value = g;
+      });
       const newEditor = MarkdownEditor({ name: 'notes', placeholder: 'Personal notes, substitutions, tips…', value: recipe.notes || '' });
       form.replaceChild(newEditor, editorEl);
       editorEl = newEditor;
@@ -173,7 +194,13 @@ export function RecipeForm({ id, onSave } = {}) {
     });
 
     const notes = (form.querySelector('[name="notes"]') || {}).value?.trim() || '';
-    const payload = { name, ingredients, steps, properties, notes };
+
+    const garnishes = [...garnishesSection._rows.children].map((row) => {
+      const input = row.querySelector('[name="garnish"]');
+      return input ? input.value.trim() : '';
+    }).filter(Boolean);
+
+    const payload = { name, ingredients, steps, properties, notes, garnishes };
     const token = getToken();
 
     try {

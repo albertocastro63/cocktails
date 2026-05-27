@@ -118,6 +118,23 @@ export function RecipeDetail({ id }) {
       content.appendChild(PropertyTable({ properties: recipe.properties }));
     }
 
+    if (recipe.garnishes && recipe.garnishes.length > 0) {
+      const h2 = document.createElement('h2');
+      h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2';
+      h2.textContent = 'Garnishes';
+      content.appendChild(h2);
+      const ul = document.createElement('ul');
+      ul.className = 'space-y-1 text-stone-700';
+      recipe.garnishes.forEach((g) => {
+        const li = document.createElement('li');
+        const em = document.createElement('em');
+        em.textContent = g;
+        li.appendChild(em);
+        ul.appendChild(li);
+      });
+      content.appendChild(ul);
+    }
+
     if (recipe.notes) {
       const h2 = document.createElement('h2');
       h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-6 mb-2';

@@ -250,3 +250,87 @@ describe('RecipeDetail - favorites', () => {
     });
   });
 });
+
+// T013: RecipeDetail garnishes section (US2)
+describe('RecipeDetail — garnishes section (T013)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = '';
+    getFavoriteStatus.mockResolvedValue({ is_favorite: false });
+  });
+  afterEach(() => { document.body.innerHTML = ''; });
+
+  it('renders a Garnishes heading and italic entries when recipe has garnishes', async () => {
+    getRecipe.mockResolvedValue({
+      id: 'r1',
+      name: 'Old Fashioned',
+      ingredients: [{ name: 'bourbon', quantity: '60', unit: 'ml' }],
+      steps: [],
+      properties: {},
+      garnishes: ['Express orange oil over the cocktail', 'Use orange peel to garnish'],
+    });
+    const el = RecipeDetail({ id: 'r1' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => {
+      const h2s = [...document.body.querySelectorAll('h2')].map(h => h.textContent);
+      expect(h2s).toContain('Garnishes');
+    });
+    const ems = [...document.body.querySelectorAll('em')];
+    const texts = ems.map(e => e.textContent);
+    expect(texts).toContain('Express orange oil over the cocktail');
+    expect(texts).toContain('Use orange peel to garnish');
+  });
+
+  it('each garnish entry is wrapped in an <em> element', async () => {
+    getRecipe.mockResolvedValue({
+      id: 'r1',
+      name: 'Old Fashioned',
+      ingredients: [],
+      steps: [],
+      properties: {},
+      garnishes: ['Express orange oil over the cocktail'],
+    });
+    const el = RecipeDetail({ id: 'r1' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => {
+      const em = document.body.querySelector('em');
+      expect(em).not.toBeNull();
+      expect(em.textContent).toBe('Express orange oil over the cocktail');
+    });
+  });
+
+  it('does not render a Garnishes section when garnishes is empty', async () => {
+    getRecipe.mockResolvedValue({
+      id: 'r1',
+      name: 'Simple Cocktail',
+      ingredients: [],
+      steps: [],
+      properties: {},
+      garnishes: [],
+    });
+    const el = RecipeDetail({ id: 'r1' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('Simple Cocktail');
+    });
+    const h2s = [...document.body.querySelectorAll('h2')].map(h => h.textContent);
+    expect(h2s).not.toContain('Garnishes');
+  });
+
+  it('does not render a Garnishes section when garnishes is absent', async () => {
+    getRecipe.mockResolvedValue({
+      id: 'r1',
+      name: 'Legacy Cocktail',
+      ingredients: [],
+      steps: [],
+      properties: {},
+    });
+    const el = RecipeDetail({ id: 'r1' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain('Legacy Cocktail');
+    });
+    const h2s = [...document.body.querySelectorAll('h2')].map(h => h.textContent);
+    expect(h2s).not.toContain('Garnishes');
+  });
+});

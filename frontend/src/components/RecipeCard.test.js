@@ -339,3 +339,86 @@ describe('RecipeCard - popup overlay (body portal)', () => {
     expect(document.body.querySelector('[data-popover]')).toBeNull();
   });
 });
+
+// T015: RecipeCard garnish popover (US3)
+describe('RecipeCard - garnish popover (T015)', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'scrollX', { value: 0, writable: true, configurable: true });
+    Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
+  });
+
+  afterEach(() => {
+    document.body.querySelector('[data-popover]')?.remove();
+  });
+
+  it('shows garnishes in <em> in popover when ingredients.length < MAX_VISIBLE (5)', () => {
+    const r = {
+      id: 'r1',
+      name: 'Old Fashioned',
+      ingredients: [
+        { name: 'bourbon', quantity: '60', unit: 'ml' },
+        { name: 'sugar', quantity: '5', unit: 'ml' },
+      ],
+      garnishes: ['Express orange oil over the cocktail', 'Use orange peel to garnish'],
+    };
+    const el = RecipeCard({ recipe: r });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    const popover = document.body.querySelector('[data-popover]');
+    const ems = [...popover.querySelectorAll('em')];
+    expect(ems.length).toBe(2);
+    expect(ems[0].textContent).toBe('Express orange oil over the cocktail');
+  });
+
+  it('does not show garnishes when ingredients.length >= MAX_VISIBLE (5)', () => {
+    const r = {
+      id: 'r1',
+      name: 'Complex Cocktail',
+      ingredients: [
+        { name: 'a' }, { name: 'b' }, { name: 'c' }, { name: 'd' }, { name: 'e' },
+      ],
+      garnishes: ['Express orange oil over the cocktail'],
+    };
+    const el = RecipeCard({ recipe: r });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    const popover = document.body.querySelector('[data-popover]');
+    expect(popover.querySelector('em')).toBeNull();
+  });
+
+  it('does not show garnishes when recipe has no garnishes', () => {
+    const r = {
+      id: 'r1',
+      name: 'Simple Cocktail',
+      ingredients: [{ name: 'vodka' }, { name: 'soda' }],
+      garnishes: [],
+    };
+    const el = RecipeCard({ recipe: r });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    const popover = document.body.querySelector('[data-popover]');
+    expect(popover.querySelector('em')).toBeNull();
+  });
+
+  it('does not show garnishes when recipe.garnishes is absent', () => {
+    const r = {
+      id: 'r1',
+      name: 'Legacy Cocktail',
+      ingredients: [{ name: 'rum' }, { name: 'lime' }],
+    };
+    const el = RecipeCard({ recipe: r });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    const popover = document.body.querySelector('[data-popover]');
+    expect(popover.querySelector('em')).toBeNull();
+  });
+
+  it('ingredient list is not truncated (no ellipsis) when garnishes are shown', () => {
+    const r = {
+      id: 'r1',
+      name: 'Small Recipe',
+      ingredients: [{ name: 'bourbon' }, { name: 'ice' }],
+      garnishes: ['Express orange oil'],
+    };
+    const el = RecipeCard({ recipe: r });
+    el.dispatchEvent(new MouseEvent('mouseenter'));
+    const popover = document.body.querySelector('[data-popover]');
+    expect(popover.textContent).not.toContain('…');
+  });
+});

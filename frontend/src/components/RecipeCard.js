@@ -1,4 +1,4 @@
-function buildIngredientPopover(ingredients) {
+function buildIngredientPopover(ingredients, garnishes) {
   const popover = document.createElement('div');
   popover.className = 'absolute top-full left-0 z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl p-3';
   popover.setAttribute('data-popover', '');
@@ -37,6 +37,20 @@ function buildIngredientPopover(ingredients) {
     ul.appendChild(li);
   }
   popover.appendChild(ul);
+
+  if (ingredients.length < MAX_VISIBLE && garnishes && garnishes.length > 0) {
+    const garnishUl = document.createElement('ul');
+    garnishUl.className = 'text-sm text-stone-500 space-y-1 mt-2';
+    garnishes.forEach((g) => {
+      const li = document.createElement('li');
+      const em = document.createElement('em');
+      em.textContent = g;
+      li.appendChild(em);
+      garnishUl.appendChild(li);
+    });
+    popover.appendChild(garnishUl);
+  }
+
   return popover;
 }
 
@@ -80,7 +94,7 @@ export function RecipeCard({ recipe, currentUser = null, isFavorite = false }) {
   const ingredients = recipe.ingredients || [];
   el.addEventListener('mouseenter', () => {
     const rect = el.getBoundingClientRect();
-    const popup = buildIngredientPopover(ingredients);
+    const popup = buildIngredientPopover(ingredients, recipe.garnishes || []);
     popup.style.position = 'fixed';
     popup.style.top = '-9999px';
     popup.style.left = `${rect.left}px`;

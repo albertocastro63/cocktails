@@ -223,3 +223,65 @@ func TestExportSchema(t *testing.T) {
 		t.Errorf("schema missing 'name' field")
 	}
 }
+
+// T003: Export includes garnishes when present on recipe
+func TestExportRecipes_WithGarnishes(t *testing.T) {
+	r := &model.Recipe{
+		ID:        "id-1",
+		Name:      "Old Fashioned",
+		Garnishes: []string{"Express orange oil over the cocktail"},
+		CreatorID: "user-1",
+	}
+	h := newAdminRecipeHandler(r)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/recipes/export", nil)
+	rec := httptest.NewRecorder()
+	h.ExportRecipes(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d want 200", rec.Code)
+	}
+	var result []map[string]interface{}
+	if err := json.NewDecoder(rec.Body).Decode(&result); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 recipe, got %d", len(result))
+	}
+	garnishes, ok := result[0]["garnishes"].([]interface{})
+	if !ok || len(garnishes) != 1 {
+		t.Errorf("garnishes: got %v want 1-element array", result[0]["garnishes"])
+	}
+}
+
+// T003: Import with garnishes round-trips successfully
+func TestImportRecipes_WithGarnishes(t *testing.T) {
+	h := newAdminRecipeHandler()
+	body := `[{"name":"Old Fashioned","garnishes":["Express orange oil over the cocktail","Use orange peel to garnish"]}]`
+	rec := importRequest(t, h, body)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d want 200: %s", rec.Code, rec.Body.String())
+	}
+	var result map[string]int
+	if err := json.NewDecoder(rec.Body).Decode(&result); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if result["imported"] != 1 {
+		t.Errorf("imported: got %d want 1", result["imported"])
+	}
+}
+
+// T003: Schema includes garnishes as array property
+func TestExportSchema_IncludesGarnishes(t *testing.T) {
+	h := newAdminRecipeHandler()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/schema", nil)
+	rec := httptest.NewRecorder()
+	h.ExportSchema(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d want 200", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), `"garnishes"`) {
+		t.Error("schema missing 'garnishes' property")
+	}
+}

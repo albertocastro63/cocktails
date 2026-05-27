@@ -563,3 +563,66 @@ func TestSearchByBaseSpiritAndIngredients(t *testing.T) {
 		}
 	})
 }
+// T002: Create with garnishes persists and round-trips via GetByID
+func TestCreate_WithGarnishes(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	r := sampleRecipe(uid)
+	r.Garnishes = []string{"Express orange oil over the cocktail", "Use orange peel to garnish"}
+	if err := rs.Create(r); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	got, err := rs.GetByID(r.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(got.Garnishes) != 2 {
+		t.Errorf("garnishes: got %d want 2", len(got.Garnishes))
+	}
+	if got.Garnishes[0] != "Express orange oil over the cocktail" {
+		t.Errorf("garnishes[0]: got %q want %q", got.Garnishes[0], "Express orange oil over the cocktail")
+	}
+}
+
+// T002: Update garnishes replaces existing garnishes
+func TestUpdate_ReplacesGarnishes(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	r := sampleRecipe(uid)
+	r.Garnishes = []string{"Original garnish"}
+	if err := rs.Create(r); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	r.Garnishes = []string{"New garnish A", "New garnish B"}
+	if err := rs.Update(r); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	got, err := rs.GetByID(r.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(got.Garnishes) != 2 {
+		t.Errorf("garnishes after update: got %d want 2", len(got.Garnishes))
+	}
+}
+
+// T002: Create with nil garnishes returns non-nil empty slice
+func TestCreate_NilGarnishesTreatedAsEmpty(t *testing.T) {
+	rs, us := newTestStores(t)
+	uid := seedUser(t, us)
+	r := sampleRecipe(uid)
+	r.Garnishes = nil
+	if err := rs.Create(r); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	got, err := rs.GetByID(r.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Garnishes == nil {
+		t.Error("garnishes: got nil, want non-nil empty slice")
+	}
+	if len(got.Garnishes) != 0 {
+		t.Errorf("garnishes: got %d items, want 0", len(got.Garnishes))
+	}
+}
