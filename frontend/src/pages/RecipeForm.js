@@ -32,9 +32,6 @@ export function RecipeForm({ id, onSave } = {}) {
 
   form.appendChild(field('Name *', 'name', 'e.g. Mojito'));
 
-  let editorEl = MarkdownEditor({ name: 'notes', placeholder: 'Personal notes, substitutions, tips…', value: '' });
-  form.appendChild(editorEl);
-
   // Ingredients section
   const ingredientsSection = buildDynamicSection(
     'Ingredients',
@@ -64,7 +61,24 @@ export function RecipeForm({ id, onSave } = {}) {
       return row;
     }
   );
+  // Garnishes section
+  const garnishesSection = buildDynamicSection(
+    'Garnishes',
+    'Add Garnish',
+    () => {
+      const row = document.createElement('div');
+      row.className = 'flex gap-2 items-start';
+      row.innerHTML = `
+        <input name="garnish" placeholder="e.g. Express orange oil over the cocktail" class="flex-1 border rounded px-2 py-1 text-sm" />
+        <button type="button" class="text-red-400 hover:text-red-600 text-lg px-1">×</button>
+      `;
+      row.querySelector('button').addEventListener('click', () => row.remove());
+      return row;
+    }
+  );
+
   form.appendChild(ingredientsSection);
+  form.appendChild(garnishesSection);
 
   // Steps section
   const stepsSection = buildDynamicSection(
@@ -83,6 +97,9 @@ export function RecipeForm({ id, onSave } = {}) {
   );
   form.appendChild(stepsSection);
 
+  let editorEl = MarkdownEditor({ name: 'notes', placeholder: 'Personal notes, substitutions, tips…', value: '' });
+  form.appendChild(editorEl);
+
   // Properties section
   const propertiesSection = buildDynamicSection(
     'Properties',
@@ -100,23 +117,6 @@ export function RecipeForm({ id, onSave } = {}) {
     }
   );
   form.appendChild(propertiesSection);
-
-  // Garnishes section (T011)
-  const garnishesSection = buildDynamicSection(
-    'Garnishes',
-    'Add Garnish',
-    () => {
-      const row = document.createElement('div');
-      row.className = 'flex gap-2 items-start';
-      row.innerHTML = `
-        <input name="garnish" placeholder="e.g. Express orange oil over the cocktail" class="flex-1 border rounded px-2 py-1 text-sm" />
-        <button type="button" class="text-red-400 hover:text-red-600 text-lg px-1">×</button>
-      `;
-      row.querySelector('button').addEventListener('click', () => row.remove());
-      return row;
-    }
-  );
-  form.appendChild(garnishesSection);
 
   const errorMsg = document.createElement('p');
   errorMsg.className = 'text-red-600 text-sm hidden';
