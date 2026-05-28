@@ -5,6 +5,18 @@
 **Status**: Draft  
 **Input**: User description: "I want to have test environments in AWS. For each PR the code would be deployed to a new Lambda and Frontend. The Frontend code will be deployed in the same bucket as the production frontend, but in a directory named after the PR. There would be a new Lambda for each test environment and the path to access the frontend would be the current custom path + / PR name. Each new iteration of the code while working on the PR will be deployed that way. Once the PR is successfully merged an automatic deployment to Prod would be initiated."
 
+## Clarifications
+
+### Session 2026-05-28
+
+- Q: What is the data isolation strategy for preview backend environments? → A: Separate per-PR DynamoDB tables, seeded with a snapshot of production data; previews have full read/write access to their own isolated tables.
+- Q: How does the preview frontend reach the preview backend Lambda? → A: A shared API Gateway routes requests by path prefix (e.g., `/pr-42/*`) to the corresponding PR Lambda; no per-PR API Gateway is provisioned.
+- Q: How are preview environment AWS resources (Lambda, DynamoDB tables, API Gateway routes) provisioned and torn down? → A: Via AWS CLI/SDK scripts run directly in the CI pipeline; preview resources are managed outside Terraform to keep the production infrastructure state clean.
+- Q: Should preview environment URLs be access-controlled or publicly accessible? → A: Publicly accessible — anyone with the URL can view the preview, identical to production access rules.
+- Q: Is preview DynamoDB seed data refreshed on subsequent pushes, or fixed at environment creation? → A: Seeded once when the preview is first created; subsequent pushes to the PR update code only, leaving preview data unchanged.
+
+---
+
 ## Overview
 
 Every open pull request gets its own isolated preview environment automatically. When code is pushed to a PR branch, the backend and frontend are deployed to a dedicated AWS environment scoped to that PR. The environment is accessible at a URL derived from the PR identifier. On successful merge to main, production is updated automatically. When a PR is closed or merged, its preview environment is torn down.
@@ -79,19 +91,21 @@ When a PR is closed (merged or abandoned), its preview environment is automatica
 - **FR-001**: Every push to an open pull request branch MUST trigger an automated deployment to a dedicated preview environment for that PR.
 - **FR-002**: The preview environment MUST be accessible at `cocktails.albertomcastro.com/<pr-identifier>`, where `<pr-identifier>` is a consistent, URL-safe identifier derived from the PR number (e.g., `pr-42`).
 - **FR-003**: The frontend assets for a PR preview MUST be deployed to a subdirectory of the production S3 bucket named after the PR identifier.
-- **FR-004**: Each PR preview MUST have its own dedicated backend function, isolated from production and from other PR previews.
-- **FR-005**: The PR preview backend MUST use the production-compatible data store; it MUST NOT write to or modify production data.
+- **FR-004**: Each PR preview MUST have its own dedicated backend function, isolated from production and from other PR previews. API requests to preview backends MUST be routed via a shared API Gateway using path-based routing (e.g., all requests to `/api/pr-42/*` are forwarded to the `pr-42` Lambda).
+- **FR-005**: Each PR preview environment MUST have its own dedicated DynamoDB tables (recipes, users, favorites), seeded once from a production data export when the preview is first created. Previews have full read/write access to their own tables. Subsequent pushes to the PR MUST update only the Lambda code; DynamoDB tables MUST NOT be re-seeded or reset. Previews MUST NOT access or modify production tables.
 - **FR-006**: Subsequent pushes to the same PR MUST update the existing preview environment rather than creating a new one.
 - **FR-007**: On successful merge to main, an automated production deployment MUST be triggered and completed without manual intervention.
 - **FR-008**: When a PR is merged or closed, its dedicated backend function and frontend assets MUST be removed automatically.
 - **FR-009**: Preview environments MUST be isolated from production — a failure or data mutation in a preview environment MUST NOT affect production.
 - **FR-010**: The CI pipeline MUST report deployment success or failure as a status check visible on the PR.
+- **FR-011**: Preview environment URLs MUST be publicly accessible without any additional authentication; access rules are identical to the production site.
 
 ### Non-Functional Requirements
 
 - **NFR-001**: A preview environment MUST be accessible within 5 minutes of a push completing the CI build.
 - **NFR-002**: Teardown of a preview environment MUST complete within 5 minutes of a PR being closed or merged.
 - **NFR-003**: Preview deployments MUST NOT require manual infrastructure changes for each new PR; the system MUST scale to multiple concurrent PRs automatically.
+- **NFR-004**: Preview AWS resources (Lambda functions, DynamoDB tables, API Gateway routes) MUST be provisioned and torn down via CI pipeline scripts, without modifying the production Terraform state.
 
 ---
 
@@ -111,9 +125,10 @@ When a PR is closed (merged or abandoned), its preview environment is automatica
 
 - The PR identifier used in URLs and resource names is `pr-<PR number>` (e.g., `pr-42`). This is stable for the lifetime of a PR and URL-safe.
 - The existing CloudFront distribution can serve frontend assets from S3 subdirectories without requiring a per-PR CloudFront distribution change; path-based routing to S3 subdirectories is sufficient.
-- Preview backend functions connect to separate read-only or isolated data store instances, not the production data. The exact isolation strategy (separate DynamoDB tables per PR vs. shared read-only access) is a planning decision.
+- Each PR preview has its own DynamoDB tables (recipes, users, favorites) provisioned at environment creation time and seeded once from a production data export. Subsequent pushes to the PR update only the Lambda code; seed data persists unchanged until the environment is torn down. These tables are removed with the rest of the preview environment when the PR is closed or merged.
 - The CI system is GitHub Actions, consistent with the existing pipeline.
 - Backend functions for preview environments are named deterministically from the PR number (e.g., `cocktails-pr-42-api`).
 - Frontend assets for a PR are stored at a dedicated path in the production bucket and served at the corresponding sub-path of the custom domain.
-- No per-PR API Gateway deployment or custom domain is needed; API routing to the correct backend function is handled at the CI/frontend-config level.
+- A single shared API Gateway handles routing for all preview backends using path prefixes (e.g., `/api/pr-42/*` → `cocktails-pr-42-api` Lambda). When a preview is created, a new route is added to the shared API Gateway; when torn down, the route is removed. No per-PR API Gateway is provisioned.
+- Preview environment AWS resources are created and destroyed by CI pipeline scripts using the AWS CLI/SDK. These resources are not tracked in the production Terraform state to avoid state pollution.
 - PR environments do not require separate authentication credentials; they use the same user pool or a seeded read-only dataset.
