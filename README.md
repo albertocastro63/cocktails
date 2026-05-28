@@ -43,7 +43,7 @@ Built with Go (net/http) on the backend and Vite + TailwindCSS on the frontend. 
 ## Requirements
 
 - Go 1.22+
-- Node.js 20+
+- Node.js 24+
 
 ## Running Locally
 
