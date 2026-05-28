@@ -1,9 +1,9 @@
-import { getRecipes } from '../api/client.js';
+import { getRecipes, getMyFavorites } from '../api/client.js';
 import { RecipeCard } from '../components/RecipeCard.js';
 import { EmptyState } from '../components/EmptyState.js';
 import { SearchBar } from '../components/SearchBar.js';
 import { SortButtonGroup } from '../components/SortButtonGroup.js';
-import { getUserID, isAdmin } from '../api/auth.js';
+import { getUserID, isAdmin, getToken } from '../api/auth.js';
 
 export function normaliseWhisky(q) {
   return q.replace(/\bwhisky\b/gi, (m) => m.slice(0, -1) + 'ey');
@@ -48,6 +48,7 @@ export function RecipeList() {
   let currentQ = '';
   let currentSortDir = null;
   let loadedData = [];
+  let favoriteIds = new Set();
 
   function renderGrid(data, q) {
     const currentUser = getUserID() ? { id: getUserID(), isAdmin: isAdmin() } : null;
@@ -58,7 +59,7 @@ export function RecipeList() {
       const displayData = currentSortDir ? sortRecipes(data, currentSortDir) : data;
       const grid = document.createElement('div');
       grid.className = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
-      displayData.forEach((recipe) => grid.appendChild(RecipeCard({ recipe, currentUser })));
+      displayData.forEach((recipe) => grid.appendChild(RecipeCard({ recipe, currentUser, isFavorite: favoriteIds.has(recipe.id) })));
       content.appendChild(grid);
     }
   }
@@ -83,7 +84,13 @@ export function RecipeList() {
     const params = {};
     if (q) params.q = q;
     if (baseSpirit) params.base_spirit = baseSpirit;
-    getRecipes(params).then(({ data }) => {
+
+    const token = getToken();
+    const favoritesPromise = token
+      ? getMyFavorites(token).then(({ data }) => { favoriteIds = new Set((data || []).map((r) => r.id)); }).catch(() => {})
+      : Promise.resolve();
+
+    Promise.all([getRecipes(params), favoritesPromise]).then(([{ data }]) => {
       loadedData = data || [];
       renderGrid(loadedData, q || baseSpirit);
     }).catch(() => {
