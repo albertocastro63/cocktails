@@ -177,8 +177,9 @@ lambda.Start(httpadapter.NewV2(h).ProxyWithContext)
 function handler(event) {
   var request = event.request;
   var uri = request.uri;
-  if (/^\/pr-\d+(\/)?$/.test(uri)) {
-    request.uri = uri.replace(/\/?$/, '/index.html').replace('//', '/');
+  var prMatch = uri.match(/^(\/pr-\d+)(\/.*)?$/);
+  if (prMatch && !/\.[a-zA-Z0-9]+$/.test(uri)) {
+    request.uri = prMatch[1] + '/index.html';
   }
   return request;
 }
@@ -229,7 +230,7 @@ Key implementation details:
 - Use `aws dynamodb scan` + `jq` to extract items; `aws dynamodb batch-write-item` to seed (handles 25-item batch limit with a loop)
 - Use `aws lambda get-function` to check if Lambda exists; branch on `create-function` vs `update-function-code`
 - Use `aws apigatewayv2 get-routes` + `jq` to find existing route; branch on `create-route` vs skip
-- Post PR comment via `gh pr comment` with preview URL (requires `GH_TOKEN` in workflow)
+- Print preview URL to stdout: `echo "https://cocktails.albertomcastro.com/pr-${PR_NUMBER}/"`. The calling workflow step captures this output and posts the PR comment via `gh pr comment` (requires `GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}` in the workflow env block)
 
 ### 2.2 `preview-teardown.sh`
 
@@ -250,12 +251,15 @@ jobs:
       id-token: write
       contents: read
       pull-requests: write  # for PR comments
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - checkout
       - build Lambda binary (CGO_ENABLED=0 GOOS=linux GOARCH=arm64)
       - build frontend (VITE_API_PATH_PREFIX=/api/pr-${{ github.event.pull_request.number }})
       - configure AWS credentials (OIDC)
-      - run preview-deploy.sh
+      - run preview-deploy.sh (captures stdout for PR comment URL)
+      - post PR comment: gh pr comment ${{ github.event.pull_request.number }} --body "Preview: https://cocktails.albertomcastro.com/pr-${{ github.event.pull_request.number }}/"
 ```
 
 ### 2.4 `preview-teardown.yml`
@@ -306,7 +310,7 @@ jobs:
 | Name | Type | Description |
 |---|---|---|
 | `AWS_CI_ROLE_ARN` | Variable | Already exists; must be expanded with new permissions |
-| `PROD_JWT_SECRET` | Secret | JWT secret for Lambda (existing, may need renaming from `JWT_SECRET`) |
+| `PROD_JWT_SECRET` | Secret | JWT signing secret; passed to Lambda as env var `JWT_SECRET` (i.e., `JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}` in workflow env block) |
 | `PREVIEW_LAMBDA_ROLE_ARN` | Variable | ARN of the Terraform-created preview execution role |
 | `API_GATEWAY_ID` | Variable | Production HTTP API Gateway ID |
 | `FRONTEND_BUCKET` | Variable | `cocktails-prod-frontend` |
@@ -314,6 +318,7 @@ jobs:
 | `PROD_RECIPES_TABLE` | Variable | `cocktails-recipes` |
 | `PROD_USERS_TABLE` | Variable | `cocktails-users` |
 | `PROD_FAVORITES_TABLE` | Variable | `cocktails-favorites` |
+| `GH_TOKEN` | Workflow env | Set to `${{ secrets.GITHUB_TOKEN }}` (auto-provided by GitHub Actions); required for `gh pr comment` in `preview-deploy.yml` |
 
 ### 2.7 CI IAM Role Permission Additions
 
@@ -333,3 +338,4 @@ The `AWS_CI_ROLE_ARN` role needs these additional permissions:
 No constitution violations. All complexity is justified:
 - The CI scripts are shell scripts, not application code — complexity limits (40-line functions, CC ≤ 10) apply to the Go and JS application code only.
 - The one-time Terraform changes are additive and do not touch production routing logic.
+- NFR-001/NFR-002 (5-minute timing SLAs): No automated CI gate measures end-to-end deploy/teardown duration. Validated manually via the T033 acceptance walkthrough. A future enhancement could timestamp workflow start and assert completion within 300 seconds using the GitHub Actions elapsed-time context.

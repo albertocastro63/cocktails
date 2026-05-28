@@ -11,7 +11,7 @@
 
 **⚠️ CRITICAL**: Phase 2 and all user story phases depend on the preview IAM role ARN produced here.
 
-- [ ] T001 Write CloudFront Function for PR SPA routing in `infra/cloudfront-function-spa.js` (handles `/pr-{digits}/` → `/pr-{digits}/index.html` viewer-request rewrite)
+- [ ] T001 Write CloudFront Function for PR SPA routing in `infra/cloudfront-function-spa.js` (handles any path starting with `/pr-{digits}` that has no file extension → rewrites to `/pr-{digits}/index.html` for SPA deep-link support)
 - [ ] T002 Add `aws_cloudfront_function` resource and `aws_iam_role` preview Lambda execution role to `infra/main.tf`; add `preview_lambda_role_arn` to `infra/outputs.tf`
 - [ ] T003 Add CloudFront Function association to the CDN module's default cache behavior viewer-request handler in `infra/main.tf`
 - [ ] T004 Expand CI IAM role policy in `infra/main.tf` (or via AWS console) to include Lambda create/delete/update, DynamoDB create/delete/describe/scan/batch-write, API Gateway v2 route/integration CRUD, S3 PutObject/DeleteObject on `cocktails-prod-frontend`, CloudFront CreateInvalidation, and `iam:PassRole` on the preview Lambda role
@@ -52,9 +52,10 @@
 - [ ] T015 [US1] Implement production data seeding in `preview-deploy.sh`: scan each production table with `aws dynamodb scan`, batch-write to PR tables in 25-item batches; skip seeding if tables already existed (idempotent guard)
 - [ ] T016 [US1] Implement Lambda function provisioning in `preview-deploy.sh`: `aws lambda create-function` with binary zip, `provided.al2023` runtime, `arm64` architecture, `PREVIEW_LAMBDA_ROLE_ARN`, and env vars per data-model.md; on update use `aws lambda update-function-code`
 - [ ] T017 [US1] Implement API Gateway route management in `preview-deploy.sh`: check for existing route `ANY /api/pr-{number}/{proxy+}` via `aws apigatewayv2 get-routes | jq`; create integration + route if absent; add `aws lambda add-permission` for API Gateway invocation
-- [ ] T018 [US1] Implement frontend upload step in `preview-deploy.sh`: `aws s3 sync frontend/dist/ s3://${FRONTEND_BUCKET}/pr-${PR_NUMBER}/ --delete --content-type-suffix` with correct content-type mapping
-- [ ] T019 [US1] Write `.github/workflows/preview-deploy.yml` — triggered on `pull_request` types `[opened, synchronize, reopened]` targeting `main`; jobs: build Lambda binary (CGO_ENABLED=0 GOOS=linux GOARCH=arm64), build frontend (`VITE_API_PATH_PREFIX=/api/pr-${{ github.event.pull_request.number }}`), configure OIDC credentials, run `preview-deploy.sh`, post PR comment with preview URL via `gh pr comment`
+- [ ] T018 [US1] Implement frontend upload step in `preview-deploy.sh`: `aws s3 sync frontend/dist/ s3://${FRONTEND_BUCKET}/pr-${PR_NUMBER}/ --delete` (AWS CLI infers content-type from file extensions automatically)
+- [ ] T019 [US1] Write `.github/workflows/preview-deploy.yml` — triggered on `pull_request` types `[opened, synchronize, reopened]` targeting `main`; jobs: build Lambda binary (CGO_ENABLED=0 GOOS=linux GOARCH=arm64), build frontend (`VITE_API_PATH_PREFIX=/api/pr-${{ github.event.pull_request.number }}`), configure OIDC credentials, run `preview-deploy.sh` (script prints URL to stdout), post PR comment via `gh pr comment --body "Preview: $(./preview-deploy.sh | tail -1)"` using `env: GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}`
 - [ ] T020 [US1] Add all required secrets and variables to GitHub Actions repository settings: `PREVIEW_LAMBDA_ROLE_ARN`, `API_GATEWAY_ID`, `FRONTEND_BUCKET`, `CLOUDFRONT_DISTRIBUTION_ID`, `PROD_RECIPES_TABLE`, `PROD_USERS_TABLE`, `PROD_FAVORITES_TABLE` (document values from `terraform output`)
+- [ ] T020a [US1] Verify that the GitHub Actions secret for the JWT signing key is named `PROD_JWT_SECRET`; confirm the workflow maps it to `JWT_SECRET` in the Lambda env vars (e.g., `JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}`); update the secret name in the workflow if it differs
 
 **Checkpoint**: Open a real PR → push a commit → `deploy-preview` job passes → preview URL comment appears on PR → `https://cocktails.albertomcastro.com/pr-{number}/` loads the SPA with isolated data.
 
@@ -87,7 +88,7 @@
 - [ ] T024 [US3] Write `.github/scripts/preview-teardown.sh` — idempotent teardown script per contracts/ci-scripts.md: delete Lambda function (ignore NotFound), delete API GW route + integration (iterate `get-routes` to find PR-specific routes), delete DynamoDB tables (ignore NotFound, wait for deletion), delete S3 objects under `pr-{number}/`, create CloudFront invalidation for `/pr-{number}/*`
 - [ ] T025 [US3] Implement Lambda deletion in `preview-teardown.sh`: `aws lambda delete-function --function-name cocktails-pr-${PR_NUMBER}-api`; use `|| true` to continue on NotFound
 - [ ] T026 [US3] Implement API Gateway cleanup in `preview-teardown.sh`: query routes with `aws apigatewayv2 get-routes | jq`; extract route ID for `/api/pr-{number}/{proxy+}`; `aws apigatewayv2 delete-route` then `aws apigatewayv2 delete-integration`; continue on NotFound
-- [ ] T027 [US3] Implement DynamoDB teardown in `preview-teardown.sh`: `aws dynamodb delete-table` for all three tables; wait for deletion with `aws dynamodb wait table-not-exists`; use `|| true` on NotFound
+- [ ] T027 [US3] Implement DynamoDB teardown in `preview-teardown.sh`: `aws dynamodb delete-table` for all three tables; wait for deletion with `aws dynamodb wait table-not-exists`; use `|| true` on NotFound. Also delete the Lambda log group: `aws logs delete-log-group --log-group-name /aws/lambda/cocktails-pr-${PR_NUMBER}-api || true`
 - [ ] T028 [US3] Implement S3 cleanup in `preview-teardown.sh`: `aws s3 rm s3://${FRONTEND_BUCKET}/pr-${PR_NUMBER}/ --recursive`
 - [ ] T029 [US3] Implement CloudFront invalidation in `preview-teardown.sh`: `aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths "/pr-${PR_NUMBER}/*"`
 - [ ] T030 [US3] Write `.github/workflows/preview-teardown.yml` — triggered on `pull_request` type `[closed]` targeting `main`; job: configure OIDC credentials, run `preview-teardown.sh`; ensure `PR_NUMBER` is derived from `${{ github.event.pull_request.number }}`
@@ -100,6 +101,7 @@
 
 - [ ] T031 [P] Make `preview-deploy.sh` and `preview-teardown.sh` executable (`chmod +x`) and add `#!/usr/bin/env bash` + `set -euo pipefail` headers; verify no shellcheck warnings (`shellcheck .github/scripts/*.sh`)
 - [ ] T032 [P] Update `README.md`: add a "Preview Environments" subsection under Infrastructure documenting the preview URL pattern, how to find the URL on a PR, and that production deploys automatically on merge
+- [ ] T032a Verify that CloudFront returns a 404 (not 403) when a torn-down preview URL is visited: configure a custom error response in the CDN module (403 → 404 with a redirect to `/`) or confirm the existing error page is acceptable; update spec User Story 3 acceptance scenario 3 if 403 is sufficient
 - [ ] T033 Run the full acceptance scenario from `quickstart.md` end-to-end: open a test PR, verify deploy, verify data isolation (write a recipe in preview, confirm it is absent in production), merge PR, verify prod deploy, verify teardown
 - [ ] T034 Verify frontend test coverage remains ≥75% after client.js change (`cd frontend && npm test -- --coverage`)
 - [ ] T035 Verify backend test coverage remains ≥75% after main.go change (`cd backend && go test -p 1 -coverprofile=coverage.out -coverpkg=./internal/... ./... && go tool cover -func=coverage.out`)
@@ -113,7 +115,7 @@
 - **Phase 1 (Setup)**: No dependencies — start immediately. Produces `preview_lambda_role_arn` needed by T016/T019.
 - **Phase 2 (Foundational)**: Independent of Phase 1 — application code changes can proceed in parallel with Terraform work.
 - **Phase 3 (US1)**: Depends on Phase 1 (IAM role) + Phase 2 (client.js + main.go) being complete.
-- **Phase 4 (US2)**: Independent of Phase 3 — production deploy workflow does not depend on preview scripts.
+- **Phase 4 (US2)**: Independent of Phase 3 scripts, but T022 reuses `FRONTEND_BUCKET` and `CLOUDFRONT_DISTRIBUTION_ID` variables first provisioned in T020. T020 must complete before T022.
 - **Phase 5 (US3)**: Independent of Phase 3 — teardown scripts do not depend on deploy scripts.
 - **Phase 6 (Polish)**: Depends on all prior phases complete.
 
