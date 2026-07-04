@@ -23,7 +23,7 @@ cd ..
 
 # 2. Build frontend with PR-specific API prefix
 cd frontend
-VITE_API_PATH_PREFIX=/api/pr-99 npm run build
+VITE_API_PATH_PREFIX=/pr-99/api npm run build
 cd ..
 
 # 3. Run deploy script
@@ -35,8 +35,6 @@ export FRONTEND_BUCKET=cocktails-prod-frontend
 export CLOUDFRONT_DISTRIBUTION_ID=EX7HUB6P225MV
 export JWT_SECRET=<from-env>
 export PROD_RECIPES_TABLE=cocktails-recipes
-export PROD_USERS_TABLE=cocktails-users
-export PROD_FAVORITES_TABLE=cocktails-favorites
 
 .github/scripts/preview-deploy.sh
 ```
@@ -44,10 +42,9 @@ export PROD_FAVORITES_TABLE=cocktails-favorites
 Expected output:
 ```
 [preview-deploy] Creating DynamoDB tables for pr-99...
-[preview-deploy] Seeding recipes table from production...
-[preview-deploy] Seeding users table from production...
+[preview-deploy] Seeding cocktails-pr-99-recipes from cocktails-recipes...
 [preview-deploy] Creating Lambda function cocktails-pr-99-api...
-[preview-deploy] Adding API Gateway route ANY /api/pr-99/{proxy+}...
+[preview-deploy] Adding API Gateway route ANY /pr-99/api/{proxy+}...
 [preview-deploy] Uploading frontend assets to s3://cocktails-prod-frontend/pr-99/...
 [preview-deploy] ✓ Preview environment ready: https://cocktails.albertomcastro.com/pr-99/
 ```
@@ -61,14 +58,14 @@ aws lambda get-function --function-name cocktails-pr-99-api --region us-east-1
 # Check DynamoDB tables
 aws dynamodb describe-table --table-name cocktails-pr-99-recipes --region us-east-1
 
-# Check API Gateway route (should show a route for /api/pr-99/{proxy+})
+# Check API Gateway route (should show a route for /pr-99/api/{proxy+})
 aws apigatewayv2 get-routes --api-id <API_GATEWAY_ID> --region us-east-1 | jq '.Items[] | select(.RouteKey | contains("pr-99"))'
 
 # Check S3 objects
 aws s3 ls s3://cocktails-prod-frontend/pr-99/ --human-readable
 
 # Test API endpoint via CloudFront
-curl -s https://cocktails.albertomcastro.com/api/pr-99/v1/recipes | jq '.total'
+curl -s https://cocktails.albertomcastro.com/pr-99/api/v1/recipes | jq '.total'
 
 # Open preview in browser
 open https://cocktails.albertomcastro.com/pr-99/

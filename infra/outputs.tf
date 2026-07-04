@@ -22,3 +22,8 @@ output "users_table_name" {
   description = "DynamoDB table name for users"
   value       = module.users_table.dynamodb_table_id
 }
+
+output "preview_lambda_role_arn" {
+  description = "ARN of the shared IAM execution role for PR preview Lambda functions"
+  value       = aws_iam_role.preview_lambda.arn
+}

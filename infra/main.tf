@@ -128,7 +128,7 @@ module "favorites_table" {
   range_key    = "recipe_id"
 
   attributes = [
-    { name = "user_id",   type = "S" },
+    { name = "user_id", type = "S" },
     { name = "recipe_id", type = "S" },
   ]
 
@@ -350,11 +350,30 @@ module "cdn" {
     compress               = true
     use_forwarded_values   = false
     cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized (AWS managed)
+
+    function_association = {
+      viewer-request = {
+        function_arn = aws_cloudfront_function.spa_pr_routing.arn
+      }
+    }
   }
 
   ordered_cache_behavior = [
     {
       path_pattern             = "/api/*"
+      target_origin_id         = "api"
+      viewer_protocol_policy   = "redirect-to-https"
+      allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+      cached_methods           = ["GET", "HEAD"]
+      use_forwarded_values     = false
+      cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled (AWS managed)
+      origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac" # AllViewerExceptHostHeader (AWS managed)
+    },
+    {
+      # Preview API traffic: /pr-<n>/api/* is forwarded to the shared API Gateway
+      # origin. This behavior is matched before the default (S3) behavior, so the
+      # SPA viewer-request function never rewrites preview API calls to index.html.
+      path_pattern             = "/pr-*/api/*"
       target_origin_id         = "api"
       viewer_protocol_policy   = "redirect-to-https"
       allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
@@ -484,6 +503,76 @@ resource "null_resource" "sam_metadata_lambda_function" {
   }
 
   depends_on = [module.lambda_function]
+}
+
+# ─────────────────────────────────────────────
+# Feature 021 — PR Preview: CloudFront Function for SPA routing
+# Rewrites /pr-{N} and /pr-{N}/deep/link to /pr-{N}/index.html so the SPA
+# loads correctly on first visit and on browser refresh at any sub-path.
+# Paths with a file extension (assets) pass through unchanged.
+# ─────────────────────────────────────────────
+
+resource "aws_cloudfront_function" "spa_pr_routing" {
+  name    = "${var.project_name}-spa-pr-routing"
+  runtime = "cloudfront-js-2.0"
+  comment = "Rewrite PR preview paths to index.html for SPA routing"
+  publish = true
+  code    = file("${path.module}/cloudfront-function-spa.js")
+}
+
+# ─────────────────────────────────────────────
+# Feature 021 — PR Preview: Shared Lambda Execution Role
+# All preview Lambdas share this role. DynamoDB access is scoped to
+# cocktails-pr-* table ARNs; CloudWatch Logs scoped to /aws/lambda/cocktails-pr-*.
+# ─────────────────────────────────────────────
+
+data "aws_iam_policy_document" "preview_lambda_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "preview_lambda_policy" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem",
+      "dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan",
+      "dynamodb:BatchGetItem", "dynamodb:BatchWriteItem",
+    ]
+    resources = ["arn:aws:dynamodb:*:*:table/${var.project_name}-pr-*"]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+    ]
+    resources = ["arn:aws:logs:*:*:log-group:/aws/lambda/${var.project_name}-pr-*:*"]
+  }
+}
+
+resource "aws_iam_role" "preview_lambda" {
+  name               = "${var.project_name}-preview-lambda-role"
+  assume_role_policy = data.aws_iam_policy_document.preview_lambda_assume.json
+
+  tags = {
+    project    = var.project_name
+    managed-by = "terraform"
+  }
+}
+
+resource "aws_iam_role_policy" "preview_lambda" {
+  name   = "${var.project_name}-preview-lambda-policy"
+  role   = aws_iam_role.preview_lambda.id
+  policy = data.aws_iam_policy_document.preview_lambda_policy.json
 }
 
 # ─────────────────────────────────────────────

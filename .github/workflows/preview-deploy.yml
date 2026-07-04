@@ -1,0 +1,94 @@
+name: Deploy Preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  deploy-preview:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record deploy start time (NFR-001 SLA)
+        run: echo "DEPLOY_START=$(date +%s)" >> "${GITHUB_ENV}"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build Lambda binary
+        run: |
+          cd backend
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./cmd/lambda/
+          zip -j bin/bootstrap.zip bin/bootstrap
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          VITE_API_PATH_PREFIX=/pr-${{ github.event.pull_request.number }}/api npm run build
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Deploy preview environment
+        id: deploy
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AWS_REGION: us-east-1
+          LAMBDA_ROLE_ARN: ${{ vars.PREVIEW_LAMBDA_ROLE_ARN }}
+          API_GATEWAY_ID: ${{ vars.API_GATEWAY_ID }}
+          FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+          PROD_RECIPES_TABLE: ${{ vars.PROD_RECIPES_TABLE }}
+        run: |
+          PREVIEW_URL=$(.github/scripts/preview-deploy.sh | tail -1)
+          echo "preview_url=${PREVIEW_URL}" >> "${GITHUB_OUTPUT}"
+
+      - name: Post preview URL as PR comment
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "🚀 **Preview environment ready:** ${{ steps.deploy.outputs.preview_url }}" \
+            --edit-last || \
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "🚀 **Preview environment ready:** ${{ steps.deploy.outputs.preview_url }}"
+
+      - name: Enforce 5-minute deploy SLA (NFR-001)
+        run: |
+          ELAPSED=$(( $(date +%s) - DEPLOY_START ))
+          echo "Preview deploy completed in ${ELAPSED}s (budget: 300s)"
+          if [ "${ELAPSED}" -gt 300 ]; then
+            echo "::error::preview deploy exceeded 5-minute SLA (${ELAPSED}s)"
+            exit 1
+          fi

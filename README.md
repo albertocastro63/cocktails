@@ -38,7 +38,24 @@ Built with Go (net/http) on the backend and Vite + TailwindCSS on the frontend. 
 - **Dual store** — SQLite with FTS5 for local development; DynamoDB for production; switched via `STORE_BACKEND` environment variable
 - **AWS deployment** — Lambda + API Gateway + S3 + CloudFront + DynamoDB, provisioned with Terraform (serverless.tf modules); custom domain with HTTPS via ACM
 - **CI pipeline** — GitHub Actions runs Go tests, frontend Vitest tests, and builds on every PR and push to main; failing checks block merging
+- **Preview environments** — every open PR gets an isolated environment at `cocktails.albertomcastro.com/pr-{number}/`; the URL is posted as a PR comment after the `Deploy Preview` workflow completes; production deploys automatically on merge to main
 - **Public read API** — all read endpoints require no authentication, suitable for external consumers
+
+### Preview Environments
+
+Each open pull request has its own isolated environment:
+
+| Resource | Pattern | Example (PR 42) |
+|---|---|---|
+| Frontend URL | `cocktails.albertomcastro.com/pr-{number}/` | `cocktails.albertomcastro.com/pr-42/` |
+| Backend Lambda | `cocktails-pr-{number}-api` | `cocktails-pr-42-api` |
+| DynamoDB tables | `cocktails-pr-{number}-{recipes,users,favorites}` | `cocktails-pr-42-recipes` |
+
+**How it works:**
+1. Push to a PR branch → `Deploy Preview` workflow builds the Lambda + frontend and deploys to a PR-scoped environment; the preview URL is posted as a PR comment.
+2. Subsequent pushes update the Lambda code; DynamoDB tables and seed data are preserved.
+3. Merge or close the PR → `Teardown Preview` workflow removes all PR resources automatically.
+4. Merge to `main` → `Deploy Production` workflow updates the production Lambda and frontend without any manual steps.
 
 ## Requirements
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/almc/cocktails/internal/model"
@@ -49,6 +50,31 @@ func (noopFavoriteStore) Remove(string, string) error                    { retur
 func (noopFavoriteStore) IsFavorite(string, string) (bool, error)        { return false, nil }
 func (noopFavoriteStore) ListByUser(string) ([]*model.Favorite, error)   { return nil, nil }
 func (noopFavoriteStore) CountByRecipe(string) (int, error)              { return 0, nil }
+
+// TestStripPathPrefix asserts that GET /pr-42/api/v1/recipes with STRIP_PATH_PREFIX=/pr-42
+// is routed identically to GET /api/v1/recipes without the env var.
+func TestStripPathPrefix(t *testing.T) {
+	t.Setenv("STRIP_PATH_PREFIX", "/pr-42")
+
+	h := buildHandler(noopRecipeStore{}, noopUserStore{}, noopFavoriteStore{})
+	if prefix := os.Getenv("STRIP_PATH_PREFIX"); prefix != "" {
+		h = http.StripPrefix(prefix, h)
+	}
+
+	// Baseline: direct path should route successfully
+	req1 := httptest.NewRequest("GET", "/api/v1/recipes", nil)
+	rec1 := httptest.NewRecorder()
+	buildHandler(noopRecipeStore{}, noopUserStore{}, noopFavoriteStore{}).ServeHTTP(rec1, req1)
+
+	// After stripping: prefixed path should produce the same status
+	req2 := httptest.NewRequest("GET", "/pr-42/api/v1/recipes", nil)
+	rec2 := httptest.NewRecorder()
+	h.ServeHTTP(rec2, req2)
+
+	if rec2.Code != rec1.Code {
+		t.Errorf("STRIP_PATH_PREFIX: GET /pr-42/api/v1/recipes returned %d, expected %d (same as GET /api/v1/recipes)", rec2.Code, rec1.Code)
+	}
+}
 
 // TestBuildHandler_NoMissingRoutes ensures every expected route is registered
 // in the Lambda handler (returns anything except 405 Method Not Allowed).

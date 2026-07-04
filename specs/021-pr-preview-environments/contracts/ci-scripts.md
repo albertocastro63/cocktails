@@ -20,21 +20,19 @@
 | `FRONTEND_BUCKET` | Production S3 frontend bucket name | `cocktails-prod-frontend` |
 | `CLOUDFRONT_DISTRIBUTION_ID` | Production CloudFront distribution ID | `EX7HUB6P225MV` |
 | `JWT_SECRET` | JWT signing secret | (from GitHub secret) |
-| `PROD_RECIPES_TABLE` | Production recipes DynamoDB table name | `cocktails-recipes` |
-| `PROD_USERS_TABLE` | Production users DynamoDB table name | `cocktails-users` |
-| `PROD_FAVORITES_TABLE` | Production favorites DynamoDB table name | `cocktails-favorites` |
+| `PROD_RECIPES_TABLE` | Production recipes DynamoDB table name (the only table seeded into previews) | `cocktails-recipes` |
 
 ### Inputs (positional / artifacts)
 
 | Input | Description |
 |---|---|
 | `backend/bin/bootstrap` | Pre-built Lambda binary (arm64/linux) |
-| `frontend/dist/` | Pre-built frontend assets (built with `VITE_API_PATH_PREFIX=/api/pr-${PR_NUMBER}`) |
+| `frontend/dist/` | Pre-built frontend assets (built with `VITE_API_PATH_PREFIX=/pr-${PR_NUMBER}/api`) |
 
 ### Steps (idempotent)
 
 1. Derive names: `PR_ID=pr-${PR_NUMBER}`, table names, function name
-2. **Tables**: If `cocktails-pr-${PR_NUMBER}-recipes` does not exist → create all three tables + seed from production. If exists → skip.
+2. **Tables**: If `cocktails-pr-${PR_NUMBER}-recipes` does not exist → create all three tables + seed the **recipes** table only from production (users/favorites created empty — no production PII in a public preview). If exists → skip.
 3. **Lambda**: If function `cocktails-pr-${PR_NUMBER}-api` does not exist → create with env vars + role. If exists → update function code only.
 4. **API Gateway**: If integration for this PR does not exist → create integration + route. If exists → update integration Lambda ARN.
 5. **Frontend**: `aws s3 sync frontend/dist/ s3://${FRONTEND_BUCKET}/pr-${PR_NUMBER}/ --delete`
@@ -67,7 +65,7 @@
 ### Steps (idempotent — each step continues even if the resource does not exist)
 
 1. Delete Lambda function `cocktails-pr-${PR_NUMBER}-api` (ignore NotFound)
-2. Delete API Gateway route + integration for `/api/pr-${PR_NUMBER}/{proxy+}` (ignore NotFound)
+2. Delete API Gateway route + integration for `/pr-${PR_NUMBER}/api/{proxy+}` (ignore NotFound)
 3. Delete DynamoDB tables `cocktails-pr-${PR_NUMBER}-{recipes,users,favorites}` (ignore NotFound)
 4. Delete S3 objects under prefix `pr-${PR_NUMBER}/`
 5. Create CloudFront invalidation for paths `/pr-${PR_NUMBER}/*`
@@ -131,7 +129,7 @@ STRIP_PATH_PREFIX=/pr-{number}
 Preview frontend builds MUST set:
 
 ```
-VITE_API_PATH_PREFIX=/api/pr-{number}
+VITE_API_PATH_PREFIX=/pr-{number}/api
 ```
 
 Production builds use the default (`/api`) — no variable required.

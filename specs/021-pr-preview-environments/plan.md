@@ -81,13 +81,15 @@ infra/main.tf                          ← Add preview IAM role + CloudFront Fun
 Browser: https://cocktails.albertomcastro.com/pr-42/
   └─ CloudFront: viewer-request Function rewrites /pr-42/ → /pr-42/index.html
   └─ S3 origin: serves s3://cocktails-prod-frontend/pr-42/index.html
-     └─ SPA loads; frontend built with VITE_API_PATH_PREFIX=/api/pr-42
-        └─ API call: GET https://cocktails.albertomcastro.com/api/pr-42/v1/recipes
-           └─ CloudFront: /api/* behavior → HTTP API Gateway
-              └─ API Gateway: route ANY /api/pr-42/{proxy+} → cocktails-pr-42-api Lambda
-                 └─ Lambda: STRIP_PATH_PREFIX=/pr-42 → strips /pr-42 → Go mux /api/v1/recipes
+     └─ SPA loads; frontend built with VITE_API_PATH_PREFIX=/pr-42/api
+        └─ API call: GET https://cocktails.albertomcastro.com/pr-42/api/v1/recipes
+           └─ CloudFront: /pr-*/api/* behavior → HTTP API Gateway (SPA function NOT attached)
+              └─ API Gateway: route ANY /pr-42/api/{proxy+} → cocktails-pr-42-api Lambda
+                 └─ Lambda: STRIP_PATH_PREFIX=/pr-42 → http.StripPrefix strips leading /pr-42 → Go mux /api/v1/recipes
                     └─ DynamoDB: cocktails-pr-42-recipes (seeded, isolated)
 ```
+
+**Routing note**: The PR segment is a *leading* prefix (`/pr-42/api/...`), not embedded after `/api`. This is required so `http.StripPrefix("/pr-42", h)` can strip it in one operation and hand the Go mux its native `/api/v1/...` paths. A dedicated CloudFront behavior `/pr-*/api/*` (added in Phase 1) forwards these to the API Gateway origin and is matched before the default S3 behavior, so the SPA viewer-request function never rewrites preview API calls to `index.html`.
 
 ### One-Time Terraform Additions
 
@@ -99,15 +101,20 @@ Browser: https://cocktails.albertomcastro.com/pr-42/
 **2. CloudFront Function** (`spa-pr-routing`)
 - Event: `viewer-request`
 - Logic: if path matches `/pr-{digits}` or `/pr-{digits}/`, append `/index.html`
-- Attached to: CloudFront default cache behavior
+- Attached to: CloudFront **default** cache behavior only (S3 origin)
+
+**3. CloudFront cache behavior** (`/pr-*/api/*`)
+- Path pattern: `/pr-*/api/*` → API Gateway origin (same policies as the production `/api/*` behavior)
+- SPA function **not** attached, so preview API calls are forwarded, not rewritten to `index.html`
+- Ordered before the default behavior so it matches preview API traffic first
 
 ### Per-PR CI Operations (no Terraform)
 
 **Deploy** (idempotent — safe to re-run):
-1. Check if DynamoDB tables exist → if not, create and seed from production
+1. Check if DynamoDB tables exist → if not, create all three; seed **only** the recipes table from production (users and favorites stay empty — no production PII in a public preview)
 2. Check if Lambda exists → if not, create; if yes, update code
-3. Check if API GW route exists → if not, create; if yes, update integration
-4. Build frontend with `VITE_API_PATH_PREFIX=/api/pr-{number}`
+3. Check if API GW route exists (`ANY /pr-{number}/api/{proxy+}`) → if not, create; if yes, update integration
+4. Build frontend with `VITE_API_PATH_PREFIX=/pr-{number}/api`
 5. Sync frontend to `s3://cocktails-prod-frontend/pr-{number}/`
 6. Post preview URL as PR comment
 
@@ -142,7 +149,7 @@ const API_PREFIX = import.meta.env.VITE_API_PATH_PREFIX || '/api';
 All hardcoded `/api/v1/...` paths in `client.js` are replaced with `${API_PREFIX}/v1/...`.
 
 **Tests** (written first):
-- `client.test.js`: `getRecipes()` with `VITE_API_PATH_PREFIX=/api/pr-42` calls `/api/pr-42/v1/recipes`
+- `client.test.js`: `getRecipes()` with `VITE_API_PATH_PREFIX=/pr-42/api` calls `/pr-42/api/v1/recipes`
 - `client.test.js`: `getRecipes()` with no prefix env var calls `/api/v1/recipes` (unchanged behaviour)
 
 ### 0.2 Backend — `STRIP_PATH_PREFIX`
@@ -256,7 +263,7 @@ jobs:
     steps:
       - checkout
       - build Lambda binary (CGO_ENABLED=0 GOOS=linux GOARCH=arm64)
-      - build frontend (VITE_API_PATH_PREFIX=/api/pr-${{ github.event.pull_request.number }})
+      - build frontend (VITE_API_PATH_PREFIX=/pr-${{ github.event.pull_request.number }}/api)
       - configure AWS credentials (OIDC)
       - run preview-deploy.sh (captures stdout for PR comment URL)
       - post PR comment: gh pr comment ${{ github.event.pull_request.number }} --body "Preview: https://cocktails.albertomcastro.com/pr-${{ github.event.pull_request.number }}/"
@@ -315,9 +322,7 @@ jobs:
 | `API_GATEWAY_ID` | Variable | Production HTTP API Gateway ID |
 | `FRONTEND_BUCKET` | Variable | `cocktails-prod-frontend` |
 | `CLOUDFRONT_DISTRIBUTION_ID` | Variable | `EX7HUB6P225MV` |
-| `PROD_RECIPES_TABLE` | Variable | `cocktails-recipes` |
-| `PROD_USERS_TABLE` | Variable | `cocktails-users` |
-| `PROD_FAVORITES_TABLE` | Variable | `cocktails-favorites` |
+| `PROD_RECIPES_TABLE` | Variable | `cocktails-recipes` (only table seeded into previews) |
 | `GH_TOKEN` | Workflow env | Set to `${{ secrets.GITHUB_TOKEN }}` (auto-provided by GitHub Actions); required for `gh pr comment` in `preview-deploy.yml` |
 
 ### 2.7 CI IAM Role Permission Additions
@@ -338,4 +343,4 @@ The `AWS_CI_ROLE_ARN` role needs these additional permissions:
 No constitution violations. All complexity is justified:
 - The CI scripts are shell scripts, not application code — complexity limits (40-line functions, CC ≤ 10) apply to the Go and JS application code only.
 - The one-time Terraform changes are additive and do not touch production routing logic.
-- NFR-001/NFR-002 (5-minute timing SLAs): No automated CI gate measures end-to-end deploy/teardown duration. Validated manually via the T033 acceptance walkthrough. A future enhancement could timestamp workflow start and assert completion within 300 seconds using the GitHub Actions elapsed-time context.
+- NFR-001/NFR-002 (5-minute timing SLAs): Enforced by an automated CI gate (T033a) that timestamps the workflow job and fails if end-to-end deploy/teardown exceeds 300 seconds. Also spot-checked during the T033 acceptance walkthrough.

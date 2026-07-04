@@ -17,7 +17,7 @@ All preview resources follow the pattern `cocktails-pr-{number}-{resource}` wher
 | DynamoDB users table | `cocktails-users` | `cocktails-pr-42-users` |
 | DynamoDB favorites table | `cocktails-favorites` | `cocktails-pr-42-favorites` |
 | S3 frontend prefix | `(root)` | `pr-42/` |
-| API Gateway route | `$default` | `ANY /api/pr-42/{proxy+}` |
+| API Gateway route | `$default` | `ANY /pr-42/api/{proxy+}` |
 | API Gateway integration | `production-integration` | `cocktails-pr-42-integration` |
 
 ---
@@ -43,6 +43,8 @@ Billing: `PAY_PER_REQUEST`. No GSI required (full-scan search acceptable for pre
 
 ### Users Table — `cocktails-pr-{number}-users`
 
+Created **empty** — not seeded from production (previews are public; production user records/PII must not be copied in). Authenticated preview flows require creating a user within the preview.
+
 | Attribute | Type | Role |
 |---|---|---|
 | `id` | String (S) | Hash key |
@@ -52,6 +54,8 @@ Billing: `PAY_PER_REQUEST`. No GSI required (full-scan search acceptable for pre
 | `created_at` | String | ISO 8601 timestamp |
 
 ### Favorites Table — `cocktails-pr-{number}-favorites`
+
+Created **empty** — not seeded from production (favorites reference user records and are treated as user PII).
 
 | Attribute | Type | Role |
 |---|---|---|
@@ -79,7 +83,7 @@ GSI on `recipe_id` omitted for preview tables (not required for preview function
 
 | Variable | Production Value | Preview Value (PR 42) |
 |---|---|---|
-| `VITE_API_PATH_PREFIX` | `/api` (default) | `/api/pr-42` |
+| `VITE_API_PATH_PREFIX` | `/api` (default) | `/pr-42/api` |
 
 ---
 
@@ -87,7 +91,7 @@ GSI on `recipe_id` omitted for preview tables (not required for preview function
 
 ```
 PR opened / push to PR branch
-  → Tables exist? No → Create tables + seed from prod → Deploy Lambda → Add API GW route → Build & upload frontend
+  → Tables exist? No → Create all 3 tables + seed recipes only from prod (users/favorites empty) → Deploy Lambda → Add API GW route → Build & upload frontend
   → Tables exist? Yes → Deploy Lambda (code update only) → Update API GW integration → Build & upload frontend
 
 PR merged or closed
