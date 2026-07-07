@@ -13,11 +13,11 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  test:
-    uses: ./.github/workflows/ci.yml
-
+  # The CI workflow runs independently on the same pull_request event and
+  # provides the test signal on the PR; gate merges on it via branch protection
+  # if a hard gate is required. Kept decoupled here so preview deploys are not
+  # blocked by reusable-workflow resolution.
   deploy-preview:
-    needs: test
     runs-on: ubuntu-latest
     permissions:
       id-token: write
