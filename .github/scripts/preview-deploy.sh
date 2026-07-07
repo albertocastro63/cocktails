@@ -158,14 +158,25 @@ provision_api_route() {
   LAMBDA_ARN=$(aws lambda get-function --function-name "${FUNCTION_NAME}" \
     --region "${AWS_REGION}" --query 'Configuration.FunctionArn' --output text)
 
-  # Grant API Gateway permission to invoke the Lambda (idempotent via || true)
+  # Account ID is required in the source ARN — a wildcard (*) in the account
+  # field fails ARN validation, which silently left API Gateway unable to
+  # invoke the Lambda (500 Internal Server Error). Derive it from the ARN.
+  local ACCOUNT_ID
+  ACCOUNT_ID=$(echo "${LAMBDA_ARN}" | cut -d: -f5)
+
+  # Grant API Gateway permission to invoke the Lambda. Remove any stale
+  # statement first (idempotent), then add without masking real failures.
+  aws lambda remove-permission \
+    --function-name "${FUNCTION_NAME}" \
+    --statement-id "apigw-${PR_ID}" \
+    --region "${AWS_REGION}" > /dev/null 2>&1 || true
   aws lambda add-permission \
     --function-name "${FUNCTION_NAME}" \
     --statement-id "apigw-${PR_ID}" \
     --action lambda:InvokeFunction \
     --principal apigateway.amazonaws.com \
-    --source-arn "arn:aws:execute-api:${AWS_REGION}:*:${API_GATEWAY_ID}/*/*" \
-    --region "${AWS_REGION}" > /dev/null 2>&1 || true
+    --source-arn "arn:aws:execute-api:${AWS_REGION}:${ACCOUNT_ID}:${API_GATEWAY_ID}/*/*" \
+    --region "${AWS_REGION}" > /dev/null
 
   local EXISTING_ROUTE_ID
   EXISTING_ROUTE_ID=$(aws apigatewayv2 get-routes \
