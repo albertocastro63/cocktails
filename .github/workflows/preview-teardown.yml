@@ -5,9 +5,6 @@ on:
     branches: [main]
     types: [closed]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   teardown:
     runs-on: ubuntu-latest
@@ -16,13 +13,13 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Record teardown start time (NFR-002 SLA)
         run: echo "TEARDOWN_START=$(date +%s)" >> "${GITHUB_ENV}"
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
           aws-region: us-east-1

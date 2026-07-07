@@ -9,9 +9,6 @@ concurrency:
   group: preview-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   # The CI workflow runs independently on the same pull_request event and
   # provides the test signal on the PR; gate merges on it via branch protection
@@ -27,12 +24,12 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Record deploy start time (NFR-001 SLA)
         run: echo "DEPLOY_START=$(date +%s)" >> "${GITHUB_ENV}"
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
@@ -43,9 +40,9 @@ jobs:
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./cmd/lambda/
           zip -j bin/bootstrap.zip bin/bootstrap
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: lts/*
+          node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -57,7 +54,7 @@ jobs:
             npm run build -- --base=/pr-${{ github.event.pull_request.number }}/
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
           aws-region: us-east-1
