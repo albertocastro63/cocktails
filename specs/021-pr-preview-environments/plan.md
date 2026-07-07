@@ -330,7 +330,7 @@ jobs:
 The `AWS_CI_ROLE_ARN` role needs these additional permissions:
 - `lambda:CreateFunction`, `lambda:DeleteFunction`, `lambda:UpdateFunctionCode`, `lambda:GetFunction`, `lambda:AddPermission`, `lambda:RemovePermission`
 - `dynamodb:CreateTable`, `dynamodb:DeleteTable`, `dynamodb:DescribeTable`, `dynamodb:Scan`, `dynamodb:BatchWriteItem`
-- `apigatewayv2:CreateRoute`, `apigatewayv2:DeleteRoute`, `apigatewayv2:GetRoutes`, `apigatewayv2:CreateIntegration`, `apigatewayv2:DeleteIntegration`, `apigatewayv2:GetIntegrations`, `apigatewayv2:UpdateIntegration`
+- API Gateway route/integration management. **Note**: there is no `apigatewayv2` IAM action namespace — API Gateway (both v1 and v2) authorizes control-plane calls with HTTP-verb actions on the management resource ARNs. Grant `apigateway:GET` (get-routes/get-route), `apigateway:POST` (create-route/create-integration), `apigateway:DELETE` (delete-route/delete-integration), and `apigateway:PATCH` (update-integration) on `arn:aws:apigateway:<region>::/apis/<API_GATEWAY_ID>/routes*` and `.../integrations*` (note the empty account field — the double `::` — in API Gateway ARNs)
 - `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket` on `cocktails-prod-frontend`
 - `cloudfront:CreateInvalidation`
 - `iam:PassRole` on the preview Lambda execution role ARN
