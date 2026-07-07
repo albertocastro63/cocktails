@@ -53,7 +53,8 @@ jobs:
         run: |
           cd frontend
           npm ci
-          VITE_API_PATH_PREFIX=/pr-${{ github.event.pull_request.number }}/api npm run build
+          VITE_API_PATH_PREFIX=/pr-${{ github.event.pull_request.number }}/api \
+            npm run build -- --base=/pr-${{ github.event.pull_request.number }}/
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -73,7 +74,9 @@ jobs:
           JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
           PROD_RECIPES_TABLE: ${{ vars.PROD_RECIPES_TABLE }}
         run: |
-          PREVIEW_URL=$(.github/scripts/preview-deploy.sh | tail -1)
+          # No pipe: the script must be able to fail the step. It prints only
+          # the preview URL to stdout (all logs go to stderr).
+          PREVIEW_URL=$(.github/scripts/preview-deploy.sh)
           echo "preview_url=${PREVIEW_URL}" >> "${GITHUB_OUTPUT}"
 
       - name: Post preview URL as PR comment

@@ -6,7 +6,10 @@ set -euo pipefail
 #   FRONTEND_BUCKET, CLOUDFRONT_DISTRIBUTION_ID, JWT_SECRET,
 #   PROD_RECIPES_TABLE
 
-log() { echo "[preview-deploy] $*"; }
+# Logs go to stderr so the only thing on stdout is the final preview URL,
+# which the workflow captures. Mixing logs into stdout previously caused the
+# PR comment to show a log line instead of the URL.
+log() { echo "[preview-deploy] $*" >&2; }
 
 PR_ID="pr-${PR_NUMBER}"
 FUNCTION_NAME="cocktails-${PR_ID}-api"
@@ -39,14 +42,30 @@ dst   = os.environ['_SEED_DST']
 region = os.environ['AWS_REGION']
 batch = []
 
-def flush(b):
-    req = {'RequestItems': {dst: [{'PutRequest': {'Item': i}} for i in b]}}
-    subprocess.run(
+def write_items(request_items):
+    # NOTE: the CLI --request-items value IS the {TableName: [...]} map itself,
+    # NOT wrapped in a {'RequestItems': ...} object (that wrapper is only for
+    # the boto3/API shape and causes a ParamValidation error via the CLI).
+    p = subprocess.run(
         ['aws', 'dynamodb', 'batch-write-item',
-         '--request-items', json.dumps(req),
+         '--request-items', json.dumps(request_items),
          '--region', region],
-        check=True, capture_output=True
+        capture_output=True, text=True
     )
+    if p.returncode != 0:
+        sys.stderr.write(p.stderr)
+        raise SystemExit(f'batch-write-item failed (exit {p.returncode})')
+    return json.loads(p.stdout or '{}').get('UnprocessedItems') or {}
+
+def flush(b):
+    unprocessed = write_items({dst: [{'PutRequest': {'Item': i}} for i in b]})
+    # Retry any throttled/unprocessed items a few times before giving up.
+    for _ in range(5):
+        if not unprocessed:
+            break
+        unprocessed = write_items(unprocessed)
+    if unprocessed:
+        raise SystemExit('batch-write-item left unprocessed items after retries')
 
 for item in items:
     batch.append(item)
@@ -181,9 +200,10 @@ provision_api_route() {
 
 upload_frontend() {
   log "Uploading frontend assets to s3://${FRONTEND_BUCKET}/${PR_ID}/..."
+  # Send sync progress to stderr so stdout stays clean for the preview URL.
   aws s3 sync frontend/dist/ "s3://${FRONTEND_BUCKET}/${PR_ID}/" \
     --delete \
-    --region "${AWS_REGION}"
+    --region "${AWS_REGION}" >&2
 }
 
 # ── Main ─────────────────────────────────────────────────────────────────────
