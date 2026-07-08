@@ -78,7 +78,7 @@ A visitor who is not signed in sees the appropriate reduced navigation (browse r
 ### Functional Requirements
 
 - **FR-001**: On phone-sized viewports (width below 768px), the system MUST present site navigation as a bar fixed to the bottom of the screen, replacing the current top navigation links.
-- **FR-002**: On phone-sized viewports, the top of the page MUST show at most a slim brand/header area that does not wrap, clip, or cause horizontal overflow.
+- **FR-002**: On phone-sized viewports, the top of the page MUST show at most a slim brand/header area that does not wrap, clip, or cause horizontal overflow. The brand/header MUST link to the Home page (`#/`) so Home remains reachable on mobile, since Home is not a separate bottom-bar destination (mirroring the current desktop behavior where the brand links Home).
 - **FR-003**: The bottom navigation MUST remain visible and in a fixed position while the user scrolls page content.
 - **FR-004**: Page content MUST never be obscured by the bottom navigation; the end of any scrollable page must be fully viewable.
 - **FR-005**: The bottom navigation MUST show the destinations appropriate to the user's state: visitor, signed-in regular user, or signed-in admin.
