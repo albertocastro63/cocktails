@@ -70,6 +70,7 @@ jobs:
           CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
           JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
           PROD_RECIPES_TABLE: ${{ vars.PROD_RECIPES_TABLE }}
+          PROD_USERS_TABLE: ${{ vars.PROD_USERS_TABLE }}
         run: |
           # No pipe: the script must be able to fail the step. It prints only
           # the preview URL to stdout (all logs go to stderr).
