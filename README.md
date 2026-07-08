@@ -59,6 +59,35 @@ Each open pull request has its own isolated environment:
 
 Once a preview is torn down (or for any unknown URL), the site returns a branded **HTTP 404** page rather than the production app. Live previews and real production content are unaffected.
 
+**Test accounts:** each preview's `users` table is seeded on creation with a fixed set of production accounts (`PREVIEW_SEED_USERNAMES` in `preview-deploy.yml`, default `admin alberto`) so you can log in with those accounts' real passwords. Recipes are seeded from production; favorites start empty.
+
+#### Adding another account to a running preview
+
+Seeding only happens when a preview's tables are first created. To add another **existing** production account to a preview that's already up (e.g. PR 42), copy it from the production `users` table by username — the record (including its bcrypt password hash) is copied verbatim, so the account's real password works:
+
+```bash
+PR=42                       # preview PR number
+USERNAME=jorge              # an existing production username
+export AWS_REGION=us-east-1
+
+# Look the user up in production via the username-index, then write the record
+# into the preview's users table.
+ITEM=$(aws dynamodb query \
+  --table-name cocktails-users \
+  --index-name username-index \
+  --key-condition-expression 'username = :u' \
+  --expression-attribute-values "{\":u\":{\"S\":\"$USERNAME\"}}" \
+  --region "$AWS_REGION" --query 'Items[0]' --output json)
+
+aws dynamodb put-item \
+  --table-name "cocktails-pr-${PR}-users" \
+  --item "$ITEM" --region "$AWS_REGION"
+```
+
+Requires AWS credentials with DynamoDB access. To change which accounts are seeded automatically for *new* previews, edit `PREVIEW_SEED_USERNAMES` in `.github/workflows/preview-deploy.yml`.
+
+> ⚠️ This copies real user records (emails, bcrypt password hashes) into a **publicly reachable** preview. Only use accounts you're comfortable exposing for testing; everything is removed when the PR is closed or merged.
+
 ## Requirements
 
 - Go 1.22+
