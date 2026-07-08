@@ -336,6 +336,21 @@ The `AWS_CI_ROLE_ARN` role needs these additional permissions:
 - `iam:PassRole` on the preview Lambda execution role ARN
 - `logs:CreateLogGroup`, `logs:DeleteLogGroup` on `/aws/lambda/cocktails-pr-*`
 
+The Lambda/DynamoDB/logs permissions above are scoped to the per-PR preview
+resources (`cocktails-pr-*`). The **production** deploy workflow (`prod-deploy.yml`,
+US2) additionally requires the CI role to write the production function:
+
+- `lambda:UpdateFunctionCode`, `lambda:GetFunction` on
+  `arn:aws:lambda:<region>:<account>:function:cocktails-prod-api`
+
+The S3 (`cocktails-prod-frontend`) and `cloudfront:CreateInvalidation`
+permissions listed above already cover the production frontend sync and cache
+invalidation, since previews and production share the same bucket and
+distribution. In this project these are attached to `github-ci-role` as two
+inline policies: `Preview_Environments` (the per-PR grants) and `Prod_Deploy`
+(the production Lambda grant above). Missing the latter causes the merge-time
+production deploy to fail with `AccessDeniedException` on `lambda:UpdateFunctionCode`.
+
 ---
 
 ## Complexity Tracking
