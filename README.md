@@ -57,6 +57,8 @@ Each open pull request has its own isolated environment:
 3. Merge or close the PR → `Teardown Preview` workflow removes all PR resources automatically.
 4. Merge to `main` → `Deploy Production` workflow updates the production Lambda and frontend without any manual steps.
 
+Once a preview is torn down (or for any unknown URL), the site returns a branded **HTTP 404** page rather than the production app. Live previews and real production content are unaffected.
+
 ## Requirements
 
 - Go 1.22+

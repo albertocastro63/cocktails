@@ -68,8 +68,8 @@
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T014 [P] Accessibility & branding review of `frontend/public/404.html`: WCAG 2.1 AA — sufficient color contrast, `lang` attribute, a document `<title>`, semantic landmark/heading structure, and a keyboard-focusable "back to home" link.
-- [ ] T015 [P] Update `README.md` (Preview Environments section) and add a note in `specs/021-pr-preview-environments/` that torn-down and unknown URLs now return `404` (branded page), explicitly superseding feature 021 task T032a and its US3 acceptance scenario 3 wording.
+- [X] T014 [P] Accessibility & branding review of `frontend/public/404.html`: WCAG 2.1 AA — sufficient color contrast, `lang` attribute, a document `<title>`, semantic landmark/heading structure, and a keyboard-focusable "back to home" link.
+- [X] T015 [P] Update `README.md` (Preview Environments section) and add a note in `specs/021-pr-preview-environments/` that torn-down and unknown URLs now return `404` (branded page), explicitly superseding feature 021 task T032a and its US3 acceptance scenario 3 wording.
 - [ ] T016 Run the full `quickstart.md` acceptance matrix (C1–C12) end-to-end and record pass/fail results.
 
 ---
