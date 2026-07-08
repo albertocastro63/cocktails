@@ -384,17 +384,15 @@ module "cdn" {
     }
   ]
 
+  # Missing frontend objects come back from S3 as 403 (OAC grants GetObject only,
+  # not ListBucket) — including torn-down preview paths and any unknown path.
+  # Serve the branded /404.html with a real 404 status. Origin 404s (from the API)
+  # are intentionally NOT remapped, so API JSON error responses pass through.
   custom_error_response = [
     {
-      error_code            = 404
-      response_code         = 200
-      response_page_path    = "/index.html"
-      error_caching_min_ttl = 0
-    },
-    {
       error_code            = 403
-      response_code         = 200
-      response_page_path    = "/index.html"
+      response_code         = 404
+      response_page_path    = "/404.html"
       error_caching_min_ttl = 0
     },
   ]
