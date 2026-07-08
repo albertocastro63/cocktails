@@ -40,11 +40,11 @@
 
 **⚠️ Ordering**: T006 (publish `404.html`) MUST complete before T007 (apply the CloudFront change), otherwise the distribution would reference a `/404.html` that does not yet exist.
 
-- [ ] T006 [US1] Publish `404.html` to production **first**: merge to `main` so `prod-deploy.yml` syncs `dist/404.html` to `s3://cocktails-prod-frontend/404.html` (for pre-merge testing instead: `aws s3 cp frontend/dist/404.html s3://cocktails-prod-frontend/404.html`). Confirm `GET https://cocktails.albertomcastro.com/404.html` returns `200`.
-- [ ] T007 [US1] Apply the CloudFront change: `terraform apply` from `infra/` (only after T006), then `aws cloudfront create-invalidation --distribution-id EX7HUB6P225MV --paths "/*"`.
-- [ ] T008 [US1] Acceptance C7/C8/C9: `curl -s -o /dev/null -w "%{http_code}"` for `/pr-9999/` and `/pr-9999` both return `404`; response body contains the branded "not found" marker and does NOT contain production SPA markers.
-- [ ] T009 [US1] Acceptance C4: an unknown non-preview path (e.g. `/random-typo-<timestamp>`) returns `404` with the branded page.
-- [ ] T010 [US1] Acceptance C10: a removed preview's API path (e.g. `/pr-9999/api/v1/recipes`) returns `404` (non-success), not production or application content.
+- [X] T006 [US1] Publish `404.html` to production **first**: merge to `main` so `prod-deploy.yml` syncs `dist/404.html` to `s3://cocktails-prod-frontend/404.html` (for pre-merge testing instead: `aws s3 cp frontend/dist/404.html s3://cocktails-prod-frontend/404.html`). Confirm `GET https://cocktails.albertomcastro.com/404.html` returns `200`.
+- [X] T007 [US1] Apply the CloudFront change: `terraform apply` from `infra/` (only after T006), then `aws cloudfront create-invalidation --distribution-id EX7HUB6P225MV --paths "/*"`.
+- [X] T008 [US1] Acceptance C7/C8/C9: `curl -s -o /dev/null -w "%{http_code}"` for `/pr-9999/` and `/pr-9999` both return `404`; response body contains the branded "not found" marker and does NOT contain production SPA markers.
+- [X] T009 [US1] Acceptance C4: an unknown non-preview path (e.g. `/random-typo-<timestamp>`) returns `404` with the branded page.
+- [X] T010 [US1] Acceptance C10: a removed preview's API path (e.g. `/pr-9999/api/v1/recipes`) returns `404` (non-success), not production or application content.
 
 **Checkpoint**: Removed/unknown paths return branded `404`; core feature value delivered (MVP).
 
@@ -58,9 +58,9 @@
 
 **Dependency**: Verifies the same change applied in T007.
 
-- [ ] T011 [US2] Acceptance C1/C2/C3: `GET /`, an existing `/assets/<hashed>.js`, and `GET /404.html` each return `200` and load normally.
-- [ ] T012 [US2] Acceptance C11 (regression + bug-fix): `GET /api/v1/recipes/<unknown-id>` returns `404` AND the body is JSON (assert it does NOT contain `<!DOCTYPE html`), confirming API errors are no longer rewritten to HTML.
-- [ ] T013 [US2] Acceptance C5/C6 with a live preview: on an open PR with a deployed preview, `GET /pr-<n>/` and an existing `/pr-<n>/assets/*` return `200`, and `GET /pr-<n>/api/v1/recipes` returns `200` JSON. If no live preview is open, verify on the next preview PR and record the result.
+- [X] T011 [US2] Acceptance C1/C2/C3: `GET /`, an existing `/assets/<hashed>.js`, and `GET /404.html` each return `200` and load normally.
+- [X] T012 [US2] Acceptance C11 (regression + bug-fix): `GET /api/v1/recipes/<unknown-id>` returns `404` AND the body is JSON (assert it does NOT contain `<!DOCTYPE html`), confirming API errors are no longer rewritten to HTML.
+- [X] T013 [US2] Acceptance C5/C6 with a live preview: on an open PR with a deployed preview, `GET /pr-<n>/` and an existing `/pr-<n>/assets/*` return `200`, and `GET /pr-<n>/api/v1/recipes` returns `200` JSON. Verified on the pr-26 preview (this feature's bookkeeping PR): root, asset, and API all returned `200` (API total=26) after the 404 change — no regression to live previews.
 
 **Checkpoint**: No regressions — production, API errors, and live previews behave correctly.
 
@@ -70,7 +70,7 @@
 
 - [X] T014 [P] Accessibility & branding review of `frontend/public/404.html`: WCAG 2.1 AA — sufficient color contrast, `lang` attribute, a document `<title>`, semantic landmark/heading structure, and a keyboard-focusable "back to home" link.
 - [X] T015 [P] Update `README.md` (Preview Environments section) and add a note in `specs/021-pr-preview-environments/` that torn-down and unknown URLs now return `404` (branded page), explicitly superseding feature 021 task T032a and its US3 acceptance scenario 3 wording.
-- [ ] T016 Run the full `quickstart.md` acceptance matrix (C1–C12) end-to-end and record pass/fail results.
+- [X] T016 Run the full `quickstart.md` acceptance matrix (C1–C12) end-to-end and record pass/fail results.
 
 ---
 
