@@ -87,11 +87,15 @@ create_and_seed_tables() {
     --key-schema AttributeName=id,KeyType=HASH \
     --region "${AWS_REGION}" > /dev/null
 
+  # The users table needs the same username-index GSI as production: the backend
+  # looks up users by username via that index (login/auth). Without it, any
+  # seeded login fails with "Invalid Credentials".
   aws dynamodb create-table \
     --table-name "${USERS_TABLE}" \
     --billing-mode PAY_PER_REQUEST \
-    --attribute-definitions AttributeName=id,AttributeType=S \
+    --attribute-definitions AttributeName=id,AttributeType=S AttributeName=username,AttributeType=S \
     --key-schema AttributeName=id,KeyType=HASH \
+    --global-secondary-indexes '[{"IndexName":"username-index","KeySchema":[{"AttributeName":"username","KeyType":"HASH"}],"Projection":{"ProjectionType":"ALL"}}]' \
     --region "${AWS_REGION}" > /dev/null
 
   aws dynamodb create-table \
