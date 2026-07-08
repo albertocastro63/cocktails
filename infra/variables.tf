@@ -27,6 +27,17 @@ variable "jwt_secret" {
   sensitive   = true
 }
 
+# Declared so the value supplied in terraform.tfvars is recognized (silences the
+# "Value for undeclared variable" warning). Intentionally NOT wired into any
+# resource: the admin bootstrap password is provided to the running app via the
+# ADMIN_BOOTSTRAP_PASSWORD env var out of band, not managed through Terraform.
+variable "admin_bootstrap_password" {
+  description = "Initial admin account password; consumed by the app at runtime, not by this Terraform configuration"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
 variable "cloudflare_api_token" {
   description = "Cloudflare API token with DNS edit permissions for the albertomcastro.com zone"
   type        = string

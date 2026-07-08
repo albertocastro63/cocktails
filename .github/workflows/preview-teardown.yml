@@ -1,0 +1,43 @@
+name: Teardown Preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+jobs:
+  teardown:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Record teardown start time (NFR-002 SLA)
+        run: echo "TEARDOWN_START=$(date +%s)" >> "${GITHUB_ENV}"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Tear down preview environment
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AWS_REGION: us-east-1
+          API_GATEWAY_ID: ${{ vars.API_GATEWAY_ID }}
+          FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: .github/scripts/preview-teardown.sh
+
+      - name: Enforce 5-minute teardown SLA (NFR-002)
+        run: |
+          ELAPSED=$(( $(date +%s) - TEARDOWN_START ))
+          echo "Preview teardown completed in ${ELAPSED}s (budget: 300s)"
+          if [ "${ELAPSED}" -gt 300 ]; then
+            echo "::error::preview teardown exceeded 5-minute SLA (${ELAPSED}s)"
+            exit 1
+          fi

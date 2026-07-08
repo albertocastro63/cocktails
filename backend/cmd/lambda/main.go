@@ -25,6 +25,9 @@ func main() {
 	recipeStore, userStore, favoriteStore := openStore()
 	bootstrapAdmin(userStore)
 	h := buildHandler(recipeStore, userStore, favoriteStore)
+	if prefix := os.Getenv("STRIP_PATH_PREFIX"); prefix != "" {
+		h = http.StripPrefix(prefix, h)
+	}
 	lambda.Start(httpadapter.NewV2(h).ProxyWithContext)
 }
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import {
   getRecipes, getRandomRecipe, getMyRecipes, getRecipe,
   login, createRecipe, updateRecipe, deleteRecipe,
@@ -229,6 +229,32 @@ describe('fetchBlob() via admin export endpoints', () => {
     const result = await importRecipes([{ name: 'Mojito' }], 'tok');
     expect(global.fetch.mock.calls[0][0]).toContain('/api/v1/admin/recipes/import');
     expect(result).toEqual({ imported: 2, skipped: 1 });
+  });
+});
+
+describe('VITE_API_PATH_PREFIX support', () => {
+  beforeEach(() => vi.unstubAllEnvs());
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('getRecipes with VITE_API_PATH_PREFIX=/pr-42/api calls /pr-42/api/v1/recipes', async () => {
+    vi.stubEnv('VITE_API_PATH_PREFIX', '/pr-42/api');
+    mockFetch(200, { data: [], total: 0 });
+    await getRecipes();
+    expect(global.fetch.mock.calls[0][0]).toContain('/pr-42/api/v1/recipes');
+  });
+
+  it('getRecipes with no VITE_API_PATH_PREFIX falls back to /api/v1/recipes', async () => {
+    mockFetch(200, { data: [], total: 0 });
+    await getRecipes();
+    expect(global.fetch.mock.calls[0][0]).toContain('/api/v1/recipes');
+    expect(global.fetch.mock.calls[0][0]).not.toContain('/pr-');
+  });
+
+  it('login with VITE_API_PATH_PREFIX=/pr-42/api calls /pr-42/api/v1/auth/login', async () => {
+    vi.stubEnv('VITE_API_PATH_PREFIX', '/pr-42/api');
+    mockFetch(200, { token: 'jwt' });
+    await login('alice', 'pass');
+    expect(global.fetch.mock.calls[0][0]).toContain('/pr-42/api/v1/auth/login');
   });
 });
 

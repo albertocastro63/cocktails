@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/019-cocktail-garnishes/plan.md
+at specs/021-pr-preview-environments/plan.md
 <!-- SPECKIT END -->

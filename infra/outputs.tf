@@ -22,3 +22,18 @@ output "users_table_name" {
   description = "DynamoDB table name for users"
   value       = module.users_table.dynamodb_table_id
 }
+
+output "preview_lambda_role_arn" {
+  description = "ARN of the shared IAM execution role for PR preview Lambda functions"
+  value       = aws_iam_role.preview_lambda.arn
+}
+
+output "api_gateway_id" {
+  description = "HTTP API Gateway ID — set as the API_GATEWAY_ID GitHub Actions variable for preview routing"
+  value       = module.api_gateway.api_id
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID — set as the CLOUDFRONT_DISTRIBUTION_ID GitHub Actions variable"
+  value       = module.cdn.cloudfront_distribution_id
+}

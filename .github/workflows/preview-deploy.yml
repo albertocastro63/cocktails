@@ -1,0 +1,94 @@
+name: Deploy Preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # The CI workflow runs independently on the same pull_request event and
+  # provides the test signal on the PR; gate merges on it via branch protection
+  # if a hard gate is required. Kept decoupled here so preview deploys are not
+  # blocked by reusable-workflow resolution.
+  deploy-preview:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Record deploy start time (NFR-001 SLA)
+        run: echo "DEPLOY_START=$(date +%s)" >> "${GITHUB_ENV}"
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build Lambda binary
+        run: |
+          cd backend
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/bootstrap ./cmd/lambda/
+          zip -j bin/bootstrap.zip bin/bootstrap
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          VITE_API_PATH_PREFIX=/pr-${{ github.event.pull_request.number }}/api \
+            npm run build -- --base=/pr-${{ github.event.pull_request.number }}/
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Deploy preview environment
+        id: deploy
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AWS_REGION: us-east-1
+          LAMBDA_ROLE_ARN: ${{ vars.PREVIEW_LAMBDA_ROLE_ARN }}
+          API_GATEWAY_ID: ${{ vars.API_GATEWAY_ID }}
+          FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+          PROD_RECIPES_TABLE: ${{ vars.PROD_RECIPES_TABLE }}
+        run: |
+          # No pipe: the script must be able to fail the step. It prints only
+          # the preview URL to stdout (all logs go to stderr).
+          PREVIEW_URL=$(.github/scripts/preview-deploy.sh)
+          echo "preview_url=${PREVIEW_URL}" >> "${GITHUB_OUTPUT}"
+
+      - name: Post preview URL as PR comment
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "🚀 **Preview environment ready:** ${{ steps.deploy.outputs.preview_url }}" \
+            --edit-last || \
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "🚀 **Preview environment ready:** ${{ steps.deploy.outputs.preview_url }}"
+
+      - name: Enforce 5-minute deploy SLA (NFR-001)
+        run: |
+          ELAPSED=$(( $(date +%s) - DEPLOY_START ))
+          echo "Preview deploy completed in ${ELAPSED}s (budget: 300s)"
+          if [ "${ELAPSED}" -gt 300 ]; then
+            echo "::error::preview deploy exceeded 5-minute SLA (${ELAPSED}s)"
+            exit 1
+          fi
