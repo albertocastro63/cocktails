@@ -53,6 +53,8 @@ Created **empty** — not seeded from production (previews are public; productio
 | `is_admin` | Boolean | Admin flag |
 | `created_at` | String | ISO 8601 timestamp |
 
+The table is created with the `username-index` GSI (`username` HASH, projection ALL), matching production — the backend looks up users by username through it for login/auth. Without the GSI, any user later added to the preview cannot authenticate.
+
 ### Favorites Table — `cocktails-pr-{number}-favorites`
 
 Created **empty** — not seeded from production (favorites reference user records and are treated as user PII).
