@@ -13,7 +13,7 @@
 
 **Purpose**: Record the current state and confirm the precondition the design relies on.
 
-- [ ] T001 Capture baseline and confirm precondition: record the distribution's current custom error responses (`aws cloudfront get-distribution-config --id EX7HUB6P225MV --query 'DistributionConfig.CustomErrorResponses.Items'` → expect 403→200 and 404→200 `/index.html`) and confirm the frontend bucket policy grants only `s3:GetObject` (`aws s3api get-bucket-policy --bucket cocktails-prod-frontend`), which means S3 returns `403` for missing objects. Note results in the PR description.
+- [X] T001 Capture baseline and confirm precondition: record the distribution's current custom error responses (`aws cloudfront get-distribution-config --id EX7HUB6P225MV --query 'DistributionConfig.CustomErrorResponses.Items'` → expect 403→200 and 404→200 `/index.html`) and confirm the frontend bucket policy grants only `s3:GetObject` (`aws s3api get-bucket-policy --bucket cocktails-prod-frontend`), which means S3 returns `403` for missing objects. Note results in the PR description.
 
 **Checkpoint**: Precondition confirmed (S3 misses → 403); baseline recorded for rollback reference.
 
@@ -23,10 +23,10 @@
 
 **Purpose**: The single CloudFront change plus the branded page that together deliver the feature. Both user stories are acceptance-verified against this one change.
 
-- [ ] T002 [P] Create the branded not-found page at `frontend/public/404.html`: a self-contained page (inline CSS matching the site's stone/amber palette, `<html lang="en">`, a semantic "Page not found" heading, a short plain-language message, and a clearly labeled link back to `/`). No references to hashed build assets.
-- [ ] T003 [P] Edit `infra/main.tf` (`module.cdn` `custom_error_response`): replace the two existing entries with a single entry `{ error_code = 403, response_code = 404, response_page_path = "/404.html", error_caching_min_ttl = 0 }`, and remove the `404 → 200 /index.html` mapping so API `404`s pass through unchanged.
-- [ ] T004 Run `terraform fmt`, `terraform validate`, and `terraform plan` from `infra/`; confirm the ONLY planned change is `module.cdn` custom error responses (no other resource drift).
-- [ ] T005 Verify the page ships in the build: `cd frontend && npm run build`, then confirm `frontend/dist/404.html` exists (so the existing `prod-deploy.yml` S3 sync publishes it to the bucket root).
+- [X] T002 [P] Create the branded not-found page at `frontend/public/404.html`: a self-contained page (inline CSS matching the site's stone/amber palette, `<html lang="en">`, a semantic "Page not found" heading, a short plain-language message, and a clearly labeled link back to `/`). No references to hashed build assets.
+- [X] T003 [P] Edit `infra/main.tf` (`module.cdn` `custom_error_response`): replace the two existing entries with a single entry `{ error_code = 403, response_code = 404, response_page_path = "/404.html", error_caching_min_ttl = 0 }`, and remove the `404 → 200 /index.html` mapping so API `404`s pass through unchanged.
+- [X] T004 Run `terraform fmt`, `terraform validate`, and `terraform plan` from `infra/`; confirm the ONLY planned change is `module.cdn` custom error responses (no other resource drift).
+- [X] T005 Verify the page ships in the build: `cd frontend && npm run build`, then confirm `frontend/dist/404.html` exists (so the existing `prod-deploy.yml` S3 sync publishes it to the bucket root).
 
 **Checkpoint**: `terraform plan` shows only the error-response change; `dist/404.html` is produced by the build.
 
