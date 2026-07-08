@@ -43,7 +43,7 @@ Billing: `PAY_PER_REQUEST`. No GSI required (full-scan search acceptable for pre
 
 ### Users Table — `cocktails-pr-{number}-users`
 
-Created **empty** — not seeded from production (previews are public; production user records/PII must not be copied in). Authenticated preview flows require creating a user within the preview.
+Seeded with a **fixed, small set of test accounts** (`PREVIEW_SEED_USERNAMES`, default `admin alberto`) copied verbatim from production so previews are testable via login with the accounts' real passwords. This intentionally copies real user records (incl. bcrypt hashes) into a public preview, scoped to those test accounts only — it overrides the original "created empty, no PII" approach. All other production users are **not** copied.
 
 | Attribute | Type | Role |
 |---|---|---|

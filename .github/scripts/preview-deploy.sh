@@ -4,7 +4,10 @@ set -euo pipefail
 # Required env vars (injected by preview-deploy.yml):
 #   PR_NUMBER, AWS_REGION, LAMBDA_ROLE_ARN, API_GATEWAY_ID,
 #   FRONTEND_BUCKET, CLOUDFRONT_DISTRIBUTION_ID, JWT_SECRET,
-#   PROD_RECIPES_TABLE
+#   PROD_RECIPES_TABLE, PROD_USERS_TABLE
+# Optional:
+#   PREVIEW_SEED_USERNAMES (default "admin alberto") — the prod usernames whose
+#   records are copied into the preview users table so it is testable via login.
 
 # Logs go to stderr so the only thing on stdout is the final preview URL,
 # which the workflow captures. Mixing logs into stdout previously caused the
@@ -77,6 +80,34 @@ if batch:
 "
 }
 
+# Copy a fixed set of production users (by username) into the preview users
+# table so the preview is testable via login. Uses the production username-index
+# GSI to look each account up, then writes it verbatim (keeping the same password
+# hash, so the account's real password works). Missing usernames are skipped.
+seed_users() {
+  local names="${PREVIEW_SEED_USERNAMES:-admin alberto}"
+  log "Seeding preview users (${names}) from ${PROD_USERS_TABLE}..."
+  for uname in ${names}; do
+    local item
+    item=$(aws dynamodb query \
+      --table-name "${PROD_USERS_TABLE}" \
+      --index-name username-index \
+      --key-condition-expression 'username = :u' \
+      --expression-attribute-values "{\":u\":{\"S\":\"${uname}\"}}" \
+      --region "${AWS_REGION}" \
+      --query 'Items[0]' --output json)
+    if [[ "${item}" == "null" || -z "${item}" ]]; then
+      log "  user '${uname}' not found in ${PROD_USERS_TABLE}, skipping."
+      continue
+    fi
+    aws dynamodb put-item \
+      --table-name "${USERS_TABLE}" \
+      --item "${item}" \
+      --region "${AWS_REGION}"
+    log "  seeded user '${uname}'."
+  done
+}
+
 create_and_seed_tables() {
   log "Creating DynamoDB tables for ${PR_ID}..."
 
@@ -110,10 +141,13 @@ create_and_seed_tables() {
   aws dynamodb wait table-exists --table-name "${USERS_TABLE}"     --region "${AWS_REGION}"
   aws dynamodb wait table-exists --table-name "${FAVORITES_TABLE}" --region "${AWS_REGION}"
 
-  # Only the recipes table is seeded from production. The users and favorites
-  # tables are created empty: previews are publicly accessible (FR-011), so
-  # production user records and their favorites (PII) are never copied into them.
+  # Recipes are seeded in full. For users, only a fixed, small set of accounts
+  # (PREVIEW_SEED_USERNAMES, default "admin alberto") is copied so the preview is
+  # testable via login. NOTE: this intentionally copies real user records (incl.
+  # bcrypt password hashes) into a publicly accessible preview — scoped to these
+  # test accounts only. The favorites table is left empty.
   seed_table "${PROD_RECIPES_TABLE}" "${RECIPES_TABLE}"
+  seed_users
 }
 
 maybe_create_tables() {
