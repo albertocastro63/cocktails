@@ -60,7 +60,7 @@
 
 - [X] T011 [US2] Acceptance C1/C2/C3: `GET /`, an existing `/assets/<hashed>.js`, and `GET /404.html` each return `200` and load normally.
 - [X] T012 [US2] Acceptance C11 (regression + bug-fix): `GET /api/v1/recipes/<unknown-id>` returns `404` AND the body is JSON (assert it does NOT contain `<!DOCTYPE html`), confirming API errors are no longer rewritten to HTML.
-- [ ] T013 [US2] Acceptance C5/C6 with a live preview: on an open PR with a deployed preview, `GET /pr-<n>/` and an existing `/pr-<n>/assets/*` return `200`, and `GET /pr-<n>/api/v1/recipes` returns `200` JSON. If no live preview is open, verify on the next preview PR and record the result.
+- [X] T013 [US2] Acceptance C5/C6 with a live preview: on an open PR with a deployed preview, `GET /pr-<n>/` and an existing `/pr-<n>/assets/*` return `200`, and `GET /pr-<n>/api/v1/recipes` returns `200` JSON. Verified on the pr-26 preview (this feature's bookkeeping PR): root, asset, and API all returned `200` (API total=26) after the 404 change — no regression to live previews.
 
 **Checkpoint**: No regressions — production, API errors, and live previews behave correctly.
 
