@@ -41,7 +41,7 @@ in every branch the HTTP response is the same neutral 200
 
 ## Password complexity rule (new-password validation)
 
-Valid iff: length ≥ 12 AND contains ≥ 1 upper-case AND ≥ 1 lower-case AND ≥ 1 digit AND ≥ 1 symbol (common punctuation/special character). No comparison against the previous password (per clarification).
+Valid iff: length ≥ 12 bytes AND ≤ 72 bytes (bcrypt's effective input limit — reject longer so nothing is silently truncated) AND ≥ 1 upper-case AND ≥ 1 lower-case AND ≥ 1 digit AND ≥ 1 symbol, where a **symbol** is any non-alphanumeric printable ASCII character (`` !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ``). No comparison against the previous password (per clarification).
 
 ## Account state changed by a successful reset
 

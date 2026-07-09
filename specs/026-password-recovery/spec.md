@@ -84,11 +84,11 @@ If the user opens a link that has expired (older than 15 minutes), has already b
 - **FR-005**: The reset link MUST expire 15 minutes after it is issued and MUST NOT work after expiry.
 - **FR-006**: The reset link MUST be single-use (invalidated after a successful reset) and MUST be invalidated when a newer reset is requested for the same account.
 - **FR-007**: The set-new-password page MUST require the new password to be entered twice, and MUST reject the request if the two entries do not match.
-- **FR-008**: The new password MUST be at least 12 characters and contain at least one upper-case letter, one lower-case letter, one number, and one symbol; the system MUST reject passwords that fail any rule with a clear message. The new password is NOT required to differ from the account's current password (no comparison against the previous password is performed).
+- **FR-008**: The new password MUST be at least 12 characters and at most 72 bytes (the effective limit of the password-hashing scheme), and contain at least one upper-case letter, one lower-case letter, one number, and one symbol (a "symbol" is any non-alphanumeric printable ASCII character, e.g. `` !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ``); the system MUST reject passwords that fail any rule with a clear message. The new password is NOT required to differ from the account's current password (no comparison against the previous password is performed).
 - **FR-009**: On a successful reset, the system MUST update the account's password so the user can sign in with it, and the old password MUST no longer work.
 - **FR-010**: On a successful reset, the system MUST invalidate the account's existing signed-in sessions (the user must sign in again).
 - **FR-011**: Expired, already-used, or invalid links MUST show a clear message and a path to request a new link, without allowing a password change and without disclosing why the link is invalid.
-- **FR-012**: Reset requests MUST be rate-limited to prevent abuse (e.g., repeated emails to the same address in a short period).
+- **FR-012**: Reset requests MUST be rate-limited to at most 6 per hour for any given user (per resolved account). Because the request endpoint is public and unauthenticated (and a request for an unknown email cannot be attributed to a user), the endpoint MUST also be protected against blanket abuse by a coarse request throttle at the edge/gateway (independent of the per-user limit).
 - **FR-013**: The reset email MUST visually match the website's overall design (branding, colors, tone).
 - **FR-014**: Complexity and match errors MUST be presented to the user clearly enough to correct the input before the reset succeeds.
 
@@ -113,7 +113,8 @@ If the user opens a link that has expired (older than 15 minutes), has already b
 - **No account enumeration**: the request step always returns the same neutral confirmation; this is the intended security default even though it means a user who mistypes their email still sees "email sent."
 - **Session invalidation**: a successful reset invalidates existing sessions for the account (the account model already supports a per-account session/token validity marker).
 - **Single active link**: only the most recent reset link for an account is valid; older ones are superseded.
-- **Symbols**: "symbol" means a common special/punctuation character (e.g., `! @ # $ % ^ & * ( ) - _ = +` and similar).
+- **Symbols & length bounds**: "symbol" means any non-alphanumeric printable ASCII character (`` !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ ``). Passwords are bounded to 12–72 bytes (the upper bound matches the password-hashing scheme so nothing is silently truncated).
+- **Unauthenticated-request abuse**: the per-user 6/hour limit applies only to requests that resolve to a real account; requests for unknown emails cannot be attributed to a user. Blanket abuse of the public request endpoint (which resolves the email against the user store) is mitigated by a coarse edge/gateway throttle rather than per-user state.
 - **Reset by email, sign-in by username**: the user requests the reset with their email; after resetting, they sign in with their existing username and the new password.
 - **Email capability**: the system can send transactional email (a new capability for this application); the specific email provider is an implementation decision.
 - **Rate limiting**: a reasonable default limit applies to reset requests per email address over a short window; exact thresholds are a planning detail.

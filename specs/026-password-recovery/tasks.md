@@ -24,8 +24,8 @@
 **⚠ §II**: each test task precedes its implementation.
 
 - [ ] T004 Add reset + rate-limit fields (`ResetTokenHash`, `ResetTokenExpires`, `ResetWindowStart`, `ResetRequestCount`, all `omitempty`) to `backend/internal/model/model.go` `User`, and map them in `backend/internal/store/dynamo/users.go` (persisted by the existing `Update`).
-- [ ] T005 [P] Write failing tests in `backend/internal/auth/password_test.go` for `ValidateComplexity`: rejects <12 chars or missing upper/lower/digit/symbol (one case each), accepts a compliant password.
-- [ ] T006 [P] Implement `ValidateComplexity(pw) error` in `backend/internal/auth/password.go` (≥12 and ≥1 upper, lower, digit, symbol), returning the unmet rule(s) — making T005 pass.
+- [ ] T005 [P] Write failing tests in `backend/internal/auth/password_test.go` for `ValidateComplexity`: rejects < 12 bytes, rejects > 72 bytes, rejects missing upper/lower/digit/symbol (one case each), accepts a compliant password, and treats a boundary symbol (e.g. `~` or `_`) as a valid symbol.
+- [ ] T006 [P] Implement `ValidateComplexity(pw) error` in `backend/internal/auth/password.go` — length 12–72 bytes and ≥ 1 upper, lower, digit, and symbol (symbol = any non-alphanumeric printable ASCII), returning the unmet rule(s) — making T005 pass.
 - [ ] T007 [P] Write failing tests in `backend/internal/auth/reset_test.go`: `GenerateToken` returns a high-entropy base64url string; `HashToken` is SHA-256; a constant-time verify accepts the matching token and rejects others.
 - [ ] T008 [P] Implement `GenerateToken()`, `HashToken(token)`, and `VerifyToken(token, hash)` (constant-time) in `backend/internal/auth/reset.go` — making T007 pass.
 - [ ] T009 [P] Create `backend/internal/email/email.go` (`Sender` interface + `PasswordResetData`) and `backend/internal/email/stub.go` (recording no-op sender) with a stub test — the seam that lets handlers be tested without SES.
@@ -43,7 +43,7 @@
 
 - [ ] T011 [US1] Write failing handler tests in `backend/internal/handler/password_reset_test.go` for `ForgotPassword` using a stub sender: F1 (registered→token fields set + email recorded), F2 (unknown→neutral, no send), F3 (≥6 requests/hour→neutral, no send), F4 (missing/invalid email→400), F5 (identical body across F1–F3).
 - [ ] T012 [US1] Implement `ForgotPassword` in `backend/internal/handler/password_reset.go`: `GetByEmail`; fixed-window rate check (6/hour via `ResetWindowStart`/`ResetRequestCount`); on allow, `GenerateToken`+store `HashToken`/expiry via `Update` and call `Sender`; always return the neutral 200 — making T011 pass.
-- [ ] T013 [US1] Implement the SES sender in `backend/internal/email/ses.go` (SES v2 `SendEmail`, multipart HTML+text per `contracts/email-contract.md`, from `MAIL_FROM`, link built from `APP_BASE_URL` = `.../#/reset?uid=&token=`).
+- [ ] T013 [US1] Implement the reset email in `backend/internal/email/`: a pure `BuildResetEmail(data) (subject, html, text)` in `email.go` with a test (`email_test.go`) asserting the content contract (single `.../#/reset?uid=&token=` link, 15-minute note, NO credential, brand markers per `contracts/email-contract.md`); and a thin SES v2 `SendEmail` wrapper in `ses.go` that sends the built message from `MAIL_FROM` (link base = `APP_BASE_URL`).
 - [ ] T014 [US1] Wire the sender (SES in prod from env, stub otherwise) and register `POST /api/v1/auth/forgot-password` in `backend/cmd/lambda/main.go`.
 - [ ] T015 [US1] Write failing Vitest in `frontend/src/pages/ForgotPassword.test.js` (submitting an email calls the client and shows the neutral confirmation) and add a `requestPasswordReset` case in `frontend/src/api/client.test.js`.
 - [ ] T016 [US1] Implement `frontend/src/pages/ForgotPassword.js` (email form → neutral confirmation), add the "Forgot password?" link to `frontend/src/pages/Login.js`, register route `#/forgot` in `frontend/src/main.js`, and add `requestPasswordReset(email)` to `frontend/src/api/client.js` — making T015 pass.
@@ -87,7 +87,8 @@
 - [ ] T025 [P] Accessibility pass on `ForgotPassword.js` and `ResetPassword.js` (labelled inputs, error/success announced, visible focus, keyboard operable) — WCAG 2.1 AA (§III) — and a visual review of the branded email against `contracts/email-contract.md`.
 - [ ] T026 [P] Add the timing-neutrality mitigation for `ForgotPassword` (send the email after writing the response, or apply a uniform minimum handler duration) per research Decision 5, in `backend/internal/handler/password_reset.go`.
 - [ ] T027 [P] Coverage: `cd backend && go test -p 1 -coverprofile=coverage.out -coverpkg=./internal/... ./...` and `cd frontend && npm test -- --coverage`; confirm ≥ 75% and no regressions.
-- [ ] T028 Deploy/verify: `terraform apply` the SES/DKIM/IAM changes, confirm domain + DKIM verified, **request SES production access** (and verify recipient addresses while in sandbox), then run the `quickstart.md` end-to-end flow with a real email.
+- [ ] T028 [P] Add a coarse edge/gateway throttle on `POST /api/v1/auth/forgot-password` (CloudFront/API Gateway rate limit in `infra/main.tf`) to mitigate unauthenticated blanket abuse of the email-resolving Scan (M2), independent of the per-user 6/hour limit.
+- [ ] T029 Deploy/verify: `terraform apply` the SES/DKIM/IAM/throttle changes, confirm domain + DKIM verified, **request SES production access** (and verify recipient addresses while in sandbox), then run the `quickstart.md` end-to-end flow with a real email.
 
 ---
 

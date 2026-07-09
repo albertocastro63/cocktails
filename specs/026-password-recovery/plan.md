@@ -112,7 +112,9 @@ Reset:   POST /api/v1/auth/reset-password {uid, token, password}
 - **Neutral response (FR-003, SC-005)**: identical 200 body for found/absent/rate-limited. Residual timing signal (SES latency for real users) noted in research with a mitigation.
 - **Rate limit (6/hour/user)**: fixed-window counter on the user item (`ResetWindowStart`, `ResetRequestCount`); over-limit requests still return neutral and send nothing.
 - **Session invalidation (FR-010)**: `TokenVersion++` on reset; `RequireAuthWithStore` then rejects old JWTs.
-- **Complexity (FR-008)**: backend is authoritative (`auth.ValidateComplexity`); frontend mirrors it for live UX only.
+- **Complexity (FR-008)**: backend is authoritative (`auth.ValidateComplexity`); frontend mirrors it for live UX only. Length is bounded **12–72 bytes** (reject > 72 so bcrypt never silently truncates); a "symbol" is any non-alphanumeric printable ASCII character (exact set tested at the boundary).
+- **Unauthenticated-endpoint abuse (M2)**: `forgot-password` is public and resolves the email via `GetByEmail` (a Scan); the per-user 6/hour limit only covers resolved accounts. A coarse **edge/gateway throttle** (CloudFront/API Gateway on `/api/v1/auth/forgot-password`) mitigates blanket/unknown-email abuse without per-request server state.
+- **Email content is testable (M3)**: the reset email is assembled by a pure `BuildResetEmail(data)` (subject/HTML/text) so the content contract (link, 15-min note, no credentials, branding) is unit-tested; the SES transport call remains a thin, manually-verified wrapper.
 
 ### Email (SES, from the site domain)
 
