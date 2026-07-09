@@ -10,6 +10,8 @@ import { AdminRecipes } from './pages/AdminRecipes.js';
 import { MyRecipes } from './pages/MyRecipes.js';
 import { isLoggedIn, isAdmin, clearToken } from './api/auth.js';
 import { Footer } from './components/Footer.js';
+import { navDestinations } from './nav/destinations.js';
+import { buildBottomNav } from './components/BottomNav.js';
 
 const routes = [
   { pattern: /^\/admin\/users\/([^/]+)\/edit$/, factory: (m) => AdminUserForm({ id: m[1], onSave: () => navigate('#/admin/users') }) },
@@ -52,6 +54,9 @@ function renderPage() {
   const path = getPath();
   const root = document.getElementById('app');
   root.innerHTML = '';
+  // Clear the fixed mobile bottom bar (plus safe-area inset) so page content —
+  // including the footer — scrolls fully into view; no effect at md+.
+  root.className = 'pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0';
   root.appendChild(buildNav());
 
   // Admin route guard
@@ -98,9 +103,31 @@ function renderPage() {
   root.appendChild(Footer());
 }
 
+function currentState() {
+  if (!isLoggedIn()) return 'visitor';
+  return isAdmin() ? 'admin' : 'user';
+}
+
+// Composes the navigation for the current auth state: the existing top nav
+// (shown at >=768px, markup unchanged) plus a slim mobile brand header and the
+// bottom bar (both shown only below 768px). CSS handles the top/bottom switch.
 export function buildNav() {
+  const container = document.createElement('div');
+  container.appendChild(buildTopNav());
+
+  const brand = document.createElement('header');
+  brand.className = 'bg-stone-900 px-4 py-3 flex md:hidden items-center';
+  brand.innerHTML =
+    '<a href="#/" class="text-stone-100 font-semibold text-lg hover:text-amber-400">Cocktails</a>';
+  container.appendChild(brand);
+
+  container.appendChild(buildBottomNav(navDestinations(currentState())));
+  return container;
+}
+
+function buildTopNav() {
   const nav = document.createElement('nav');
-  nav.className = 'bg-stone-900 px-6 py-3 flex items-center gap-6';
+  nav.className = 'bg-stone-900 px-6 py-3 hidden md:flex items-center gap-6';
   nav.innerHTML = `
     <a href="#/" class="text-stone-100 hover:text-amber-400 font-semibold text-lg">Cocktails</a>
     <a href="#/recipes" class="text-stone-100 hover:text-amber-400">All Recipes</a>
@@ -150,7 +177,19 @@ export function buildNav() {
   return nav;
 }
 
+// While a text field is focused (on-screen keyboard likely open on mobile),
+// hide the fixed bottom bar so it never covers the input being edited.
+function isTextField(el) {
+  return el && typeof el.matches === 'function' && el.matches('input, textarea');
+}
+
 if (document.getElementById('app')) {
+  document.addEventListener('focusin', (e) => {
+    if (isTextField(e.target)) document.body.classList.add('kb-open');
+  });
+  document.addEventListener('focusout', (e) => {
+    if (isTextField(e.target)) document.body.classList.remove('kb-open');
+  });
   window.addEventListener('hashchange', renderPage);
   renderPage();
 }

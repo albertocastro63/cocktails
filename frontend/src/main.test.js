@@ -60,11 +60,15 @@ describe('admin route guard', () => {
 });
 
 describe('navigation redesign', () => {
-  it('buildNav has bg-stone-900 class', () => {
+  it('buildNav top nav has bg-stone-900 class', () => {
     isLoggedIn.mockReturnValue(false);
     isAdmin.mockReturnValue(false);
     const nav = buildNav();
-    expect(nav.className).toContain('bg-stone-900');
+    // buildNav now returns a container: desktop top nav (hidden below md) + a
+    // slim mobile brand header + the bottom bar. The top nav keeps its styling.
+    const topNav = nav.querySelector('nav.md\\:flex');
+    expect(topNav).toBeTruthy();
+    expect(topNav.className).toContain('bg-stone-900');
   });
 });
 
@@ -89,5 +93,34 @@ describe('admin nav link', () => {
     const nav = buildNav();
     expect(nav.querySelector('[href="#/admin/users"]')).toBeTruthy();
     expect(nav.querySelector('[href="#/admin/recipes"]')).toBeTruthy();
+  });
+});
+
+describe('responsive nav contract (US3)', () => {
+  it('desktop top nav is hidden below md; bottom bar + brand header are md:hidden (N1/N2, SC-004)', () => {
+    isLoggedIn.mockReturnValue(false);
+    isAdmin.mockReturnValue(false);
+    const nav = buildNav();
+
+    const topNav = nav.querySelector('nav.md\\:flex');
+    expect(topNav.className).toContain('hidden');
+    expect(topNav.className).toContain('md:flex');
+
+    const bottom = nav.querySelector('nav[aria-label="Primary"]');
+    expect(bottom.className).toContain('md:hidden');
+
+    const brand = nav.querySelector('header');
+    expect(brand.className).toContain('md:hidden');
+    expect(brand.querySelector('[href="#/"]')).toBeTruthy(); // Home reachable on mobile
+  });
+
+  it('visitor bottom bar shows only visitor destinations (N3)', () => {
+    isLoggedIn.mockReturnValue(false);
+    isAdmin.mockReturnValue(false);
+    const bottom = buildNav().querySelector('nav[aria-label="Primary"]');
+    const items = bottom.querySelectorAll('[data-nav-item]');
+    expect(items).toHaveLength(2);
+    expect(bottom.querySelector('[href="#/recipes"]')).toBeTruthy();
+    expect(bottom.querySelector('[href="#/login"]')).toBeTruthy();
   });
 });

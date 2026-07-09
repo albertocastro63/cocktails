@@ -7,3 +7,9 @@
     @apply bg-stone-50;
   }
 }
+
+/* Hide the mobile bottom nav while an on-screen keyboard is likely open
+   (a text input/textarea is focused) so it never covers the field. */
+.kb-open .bottom-nav {
+  display: none !important;
+}
