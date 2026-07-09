@@ -120,3 +120,38 @@ describe('Home page', () => {
     });
   });
 });
+
+describe('compact landing header on mobile (responsive classes)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = '';
+    getRandomRecipe.mockReturnValue(new Promise(() => {})); // keep hero rendered
+  });
+
+  it('hero wrapper is compact on phones and full at md+ (H1, SC-001/SC-003)', () => {
+    const hero = Home().querySelector('.from-stone-900');
+    expect(hero.className).toContain('py-8');
+    expect(hero.className).toContain('md:py-16');
+  });
+
+  it('title shrinks on phones and restores at md+, text unchanged (H2/H4)', () => {
+    const h1 = Home().querySelector('h1');
+    expect(h1.className).toContain('text-2xl');
+    expect(h1.className).toContain('md:text-4xl');
+    expect(h1.textContent).toBe('Cocktail Recipes');
+  });
+
+  it('subtitle shrinks on phones and restores at md+, token + text unchanged (H3/H5/H7)', () => {
+    const sub = Home().querySelector('.from-stone-900 p');
+    expect(sub.className).toContain('text-base');
+    expect(sub.className).toContain('md:text-lg');
+    expect(sub.className).toContain('text-amber-400');
+    expect(sub.textContent).toBe('Discover your next favorite drink');
+  });
+
+  it('CTA is unchanged (H6)', () => {
+    const cta = Home().querySelector('a[href="#/recipes"]');
+    expect(cta).not.toBeNull();
+    expect(cta.textContent).toBe('All Recipes');
+  });
+});
