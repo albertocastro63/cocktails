@@ -23,12 +23,12 @@ The landing (home) page hero uses fixed sizes (`py-16`, `text-4xl` title, `text-
 
 | Element | Today | Planned (mobile default → `md:` restores desktop) |
 |---------|-------|---------------------------------------------------|
-| hero wrapper | `... py-16 px-4` | `... py-8 md:py-16 px-4` |
-| title `h1` | `text-4xl font-bold mb-3` | `text-2xl md:text-4xl font-bold mb-1 md:mb-3` |
-| subtitle `p` | `text-amber-400 text-lg mb-6` | `text-amber-400 text-base md:text-lg mb-4 md:mb-6` |
+| hero wrapper | `... py-16 px-4` | `... py-4 md:py-16 px-4` |
+| title `h1` | `text-4xl font-bold mb-3` | `text-xl md:text-4xl font-bold mb-0.5 md:mb-3` |
+| subtitle `p` | `text-amber-400 text-lg mb-6` | `text-amber-400 text-sm md:text-lg mb-3 md:mb-6` |
 | CTA `a` | (unchanged) | (unchanged) |
 
-At `md` and above every value equals today's, so desktop/tablet render identically (SC-003). On phones the banner's vertical footprint drops by roughly 35–40% (halved padding + smaller title/subtitle + tighter margins), meeting SC-001 and surfacing the CTA sooner (SC-002). Exact values are tunable during implementation to hit the target while staying legible.
+At `md` and above every value equals today's, so desktop/tablet render identically (SC-003). On phones the banner's vertical footprint drops by roughly 50% (quarter padding vs. today's `py-16`, smaller title/subtitle, tighter margins), meeting SC-001 and surfacing the CTA sooner (SC-002). Exact values are tunable while staying legible.
 
 ## Constitution Check
 

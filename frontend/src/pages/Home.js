@@ -8,14 +8,14 @@ export function Home() {
   const el = document.createElement('div');
 
   const hero = document.createElement('div');
-  hero.className = 'bg-gradient-to-br from-stone-900 to-stone-800 text-white py-8 md:py-16 px-4';
+  hero.className = 'bg-gradient-to-br from-stone-900 to-stone-800 text-white py-4 md:py-16 px-4';
   const heroInner = document.createElement('div');
   heroInner.className = 'max-w-2xl mx-auto';
   const heroHeading = document.createElement('h1');
-  heroHeading.className = 'text-2xl md:text-4xl font-bold mb-1 md:mb-3';
+  heroHeading.className = 'text-xl md:text-4xl font-bold mb-0.5 md:mb-3';
   heroHeading.textContent = 'Cocktail Recipes';
   const heroSub = document.createElement('p');
-  heroSub.className = 'text-amber-400 text-base md:text-lg mb-4 md:mb-6';
+  heroSub.className = 'text-amber-400 text-sm md:text-lg mb-3 md:mb-6';
   heroSub.textContent = 'Discover your next favorite drink';
   const heroCTA = document.createElement('a');
   heroCTA.href = '#/recipes';

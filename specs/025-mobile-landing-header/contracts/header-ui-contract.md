@@ -8,9 +8,9 @@ The observable contract is the hero element's responsive classes and content. Ro
 
 | # | Element | MUST include | Meaning | Maps to |
 |---|---------|--------------|---------|---------|
-| H1 | hero wrapper | `py-8` and `md:py-16` | compact padding on phones, today's padding at md+ | FR-001, FR-003 |
-| H2 | title `h1` | `text-2xl` and `md:text-4xl` | smaller title on phones, today's at md+ | FR-001, FR-003 |
-| H3 | subtitle `p` | `text-base` and `md:text-lg` | smaller subtitle on phones, today's at md+ | FR-001, FR-003 |
+| H1 | hero wrapper | `py-4` and `md:py-16` | compact padding on phones, today's padding at md+ | FR-001, FR-003 |
+| H2 | title `h1` | `text-xl` and `md:text-4xl` | smaller title on phones, today's at md+ | FR-001, FR-003 |
+| H3 | subtitle `p` | `text-sm` and `md:text-lg` | smaller subtitle on phones, today's at md+ | FR-001, FR-003 |
 | H4 | title `h1` | text = "Cocktail Recipes" | content unchanged | FR-002 |
 | H5 | subtitle `p` | text = "Discover your next favorite drink" | content unchanged | FR-002 |
 | H6 | CTA `a` | href `#/recipes`, text "All Recipes" | CTA unchanged | FR-005 |

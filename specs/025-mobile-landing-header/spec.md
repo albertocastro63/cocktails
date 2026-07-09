@@ -51,7 +51,7 @@ Someone opens the landing (home) page on a phone. Today the header banner — th
 
 ### Measurable Outcomes
 
-- **SC-001**: On a typical phone screen, the landing header banner's vertical height is reduced by at least ~40% compared to the current design.
+- **SC-001**: On a typical phone screen, the landing header banner's vertical height is reduced by at least ~50% compared to the current design (the header should be clearly slim, not just marginally smaller).
 - **SC-002**: On a typical phone screen, the primary call-to-action ("All Recipes") is visible without scrolling (or reachable with a single short scroll), where it currently requires more scrolling.
 - **SC-003**: On tablet and desktop screens, the landing header is pixel-for-pixel unchanged from the current release.
 - **SC-004**: 100% of phone, tablet, and desktop states render the landing page with no horizontal overflow and no clipped or truncated header text.
