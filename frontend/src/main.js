@@ -3,6 +3,8 @@ import { Home } from './pages/Home.js';
 import { RecipeList } from './pages/RecipeList.js';
 import { RecipeDetail } from './pages/RecipeDetail.js';
 import { Login } from './pages/Login.js';
+import { ForgotPassword } from './pages/ForgotPassword.js';
+import { ResetPassword } from './pages/ResetPassword.js';
 import { RecipeForm } from './pages/RecipeForm.js';
 import { AdminUserList } from './pages/AdminUserList.js';
 import { AdminUserForm } from './pages/AdminUserForm.js';
@@ -24,6 +26,8 @@ const routes = [
   { pattern: /^\/recipes\/([^/]+)$/, factory: (m) => RecipeDetail({ id: m[1] }) },
   { pattern: /^\/recipes$/, factory: () => RecipeList() },
   { pattern: /^\/login$/, factory: () => Login({ onSuccess: () => navigate('#/') }) },
+  { pattern: /^\/forgot$/, factory: () => ForgotPassword() },
+  { pattern: /^\/reset/, factory: () => ResetPassword() },
   { pattern: /^\/$/, factory: () => Home() },
 ];
 

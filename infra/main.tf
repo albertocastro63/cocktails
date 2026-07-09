@@ -194,6 +194,9 @@ module "lambda_function" {
     USERS_TABLE     = module.users_table.dynamodb_table_id
     FAVORITES_TABLE = module.favorites_table.dynamodb_table_id
     JWT_SECRET      = var.jwt_secret
+    # Feature 026 — transactional email (password recovery)
+    MAIL_FROM    = local.ses_sender_address
+    APP_BASE_URL = "https://${var.domain_name}"
   }
 
   # IAM: least-privilege access to DynamoDB tables and CloudWatch logs.
@@ -235,6 +238,16 @@ module "lambda_function" {
         "${aws_cloudwatch_log_group.lambda_logs.arn}:*",
       ]
     }
+
+    # Feature 026 — send password-recovery email via SES, scoped to our identity.
+    ses = {
+      effect = "Allow"
+      actions = [
+        "ses:SendEmail",
+        "ses:SendRawEmail",
+      ]
+      resources = [aws_sesv2_email_identity.domain.arn]
+    }
   }
 
   depends_on = [aws_cloudwatch_log_group.lambda_logs]
@@ -273,6 +286,20 @@ module "api_gateway" {
 
   # v6.x uses 'routes' (not 'integrations'). Each route embeds its integration config.
   routes = {
+    # Feature 026 — coarse gateway throttle on the password-recovery request
+    # endpoint to blunt unauthenticated blanket abuse of the email-resolving
+    # Scan (mitigation M2), independent of the per-user 6/hour application limit.
+    # ~1 req/s steady with a burst of 5 is far above legitimate use.
+    "POST /api/v1/auth/forgot-password" = {
+      throttling_rate_limit  = 1
+      throttling_burst_limit = 5
+      integration = {
+        uri                    = module.lambda_function.lambda_function_arn
+        type                   = "AWS_PROXY"
+        payload_format_version = "2.0"
+      }
+    }
+
     "$default" = {
       integration = {
         uri                    = module.lambda_function.lambda_function_arn
@@ -555,6 +582,15 @@ data "aws_iam_policy_document" "preview_lambda_policy" {
     ]
     resources = ["arn:aws:logs:*:*:log-group:/aws/lambda/${var.project_name}-pr-*:*"]
   }
+
+  # Feature 026 — preview Lambdas may also send password-recovery email via SES
+  # (scoped to our verified identity). Previews without MAIL_FROM fall back to
+  # the stub sender, so this permission is only exercised when SES is wired in.
+  statement {
+    effect    = "Allow"
+    actions   = ["ses:SendEmail", "ses:SendRawEmail"]
+    resources = [aws_sesv2_email_identity.domain.arn]
+  }
 }
 
 resource "aws_iam_role" "preview_lambda" {
@@ -610,6 +646,68 @@ resource "cloudflare_dns_record" "routing" {
   name    = "cocktails"
   type    = "CNAME"
   content = module.cdn.cloudfront_distribution_domain_name
+  proxied = false
+  ttl     = 300
+}
+
+# ─────────────────────────────────────────────
+# Feature 026 — Transactional email (Amazon SES v2)
+# Domain identity + Easy DKIM + custom MAIL FROM for the password-recovery
+# emails. DKIM/SPF/MX records are published via the existing Cloudflare
+# provider so the domain (and thus DMARC alignment) verifies automatically.
+# NOTE: SES starts in the sandbox; production access must be requested
+# separately (feature 026 task T029) before real users receive email.
+# ─────────────────────────────────────────────
+
+locals {
+  # Sender address for password-recovery email; consumed by the Lambda as MAIL_FROM.
+  ses_sender_address   = "no-reply@${var.domain_name}"
+  ses_mail_from_domain = "mail.${var.domain_name}"
+}
+
+resource "aws_sesv2_email_identity" "domain" {
+  email_identity = var.domain_name
+
+  dkim_signing_attributes {
+    next_signing_key_length = "RSA_2048_BIT"
+  }
+}
+
+# Publish the three Easy DKIM CNAME tokens so SES can verify the domain.
+resource "cloudflare_dns_record" "ses_dkim" {
+  count = 3
+
+  zone_id = var.cloudflare_zone_id
+  name    = "${aws_sesv2_email_identity.domain.dkim_signing_attributes[0].tokens[count.index]}._domainkey.${var.domain_name}"
+  type    = "CNAME"
+  content = "${aws_sesv2_email_identity.domain.dkim_signing_attributes[0].tokens[count.index]}.dkim.amazonses.com"
+  proxied = false
+  ttl     = 300
+}
+
+# Custom MAIL FROM domain aligns the Return-Path with our domain (improves
+# deliverability / DMARC). Falls back to the amazonses.com default on MX failure.
+resource "aws_sesv2_email_identity_mail_from_attributes" "domain" {
+  email_identity         = aws_sesv2_email_identity.domain.email_identity
+  mail_from_domain       = local.ses_mail_from_domain
+  behavior_on_mx_failure = "USE_DEFAULT_VALUE"
+}
+
+resource "cloudflare_dns_record" "ses_mail_from_mx" {
+  zone_id  = var.cloudflare_zone_id
+  name     = local.ses_mail_from_domain
+  type     = "MX"
+  content  = "feedback-smtp.${var.aws_region}.amazonses.com"
+  priority = 10
+  proxied  = false
+  ttl      = 300
+}
+
+resource "cloudflare_dns_record" "ses_mail_from_spf" {
+  zone_id = var.cloudflare_zone_id
+  name    = local.ses_mail_from_domain
+  type    = "TXT"
+  content = "v=spf1 include:amazonses.com ~all"
   proxied = false
   ttl     = 300
 }

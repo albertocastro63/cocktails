@@ -35,6 +35,11 @@ type userItem struct {
 	Email        string `dynamodbav:"email"`
 	TokenVersion int    `dynamodbav:"token_version"`
 	CreatedAt    string `dynamodbav:"created_at"`
+
+	ResetTokenHash    string `dynamodbav:"reset_token_hash,omitempty"`
+	ResetTokenExpires int64  `dynamodbav:"reset_token_expires,omitempty"`
+	ResetWindowStart  int64  `dynamodbav:"reset_window_start,omitempty"`
+	ResetRequestCount int    `dynamodbav:"reset_request_count,omitempty"`
 }
 
 func (s *UserStore) Create(u *model.User) error {
@@ -48,6 +53,11 @@ func (s *UserStore) Create(u *model.User) error {
 		Email:        u.Email,
 		TokenVersion: u.TokenVersion,
 		CreatedAt:    u.CreatedAt.UTC().Format(time.RFC3339Nano),
+
+		ResetTokenHash:    u.ResetTokenHash,
+		ResetTokenExpires: u.ResetTokenExpires,
+		ResetWindowStart:  u.ResetWindowStart,
+		ResetRequestCount: u.ResetRequestCount,
 	}
 	av, err := attributevalue.MarshalMap(item)
 	if err != nil {
@@ -145,16 +155,20 @@ func (s *UserStore) Update(u *model.User) error {
 		Key: map[string]types.AttributeValue{
 			"id": &types.AttributeValueMemberS{Value: u.ID},
 		},
-		UpdateExpression: aws.String("SET first_name = :fn, last_name = :ln, #em = :e, password_hash = :ph, token_version = :tv"),
+		UpdateExpression: aws.String("SET first_name = :fn, last_name = :ln, #em = :e, password_hash = :ph, token_version = :tv, reset_token_hash = :rth, reset_token_expires = :rte, reset_window_start = :rws, reset_request_count = :rrc"),
 		ExpressionAttributeNames: map[string]string{
 			"#em": "email",
 		},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":fn": &types.AttributeValueMemberS{Value: u.FirstName},
-			":ln": &types.AttributeValueMemberS{Value: u.LastName},
-			":e":  &types.AttributeValueMemberS{Value: u.Email},
-			":ph": &types.AttributeValueMemberS{Value: u.PasswordHash},
-			":tv": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", u.TokenVersion)},
+			":fn":  &types.AttributeValueMemberS{Value: u.FirstName},
+			":ln":  &types.AttributeValueMemberS{Value: u.LastName},
+			":e":   &types.AttributeValueMemberS{Value: u.Email},
+			":ph":  &types.AttributeValueMemberS{Value: u.PasswordHash},
+			":tv":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", u.TokenVersion)},
+			":rth": &types.AttributeValueMemberS{Value: u.ResetTokenHash},
+			":rte": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", u.ResetTokenExpires)},
+			":rws": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", u.ResetWindowStart)},
+			":rrc": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", u.ResetRequestCount)},
 		},
 		ConditionExpression: aws.String("attribute_exists(id)"),
 	})
@@ -196,7 +210,11 @@ func (s *UserStore) GetByEmail(email string) (*model.User, error) {
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":e": &types.AttributeValueMemberS{Value: email},
 		},
-		Limit: aws.Int32(1),
+		// NOTE: do NOT set Limit here. On a Scan, Limit caps the items DynamoDB
+		// evaluates *before* applying FilterExpression — so Limit:1 reads a single
+		// item, tests the email filter against only that one, and returns nothing
+		// if it isn't the match (leaving the real user unfound). Emails are unique
+		// and the users table is small (single scan page), so filter the full page.
 	})
 	if err != nil {
 		return nil, err
@@ -223,5 +241,10 @@ func unmarshalUser(av map[string]types.AttributeValue) (*model.User, error) {
 		Email:        item.Email,
 		TokenVersion: item.TokenVersion,
 		CreatedAt:    createdAt,
+
+		ResetTokenHash:    item.ResetTokenHash,
+		ResetTokenExpires: item.ResetTokenExpires,
+		ResetWindowStart:  item.ResetWindowStart,
+		ResetRequestCount: item.ResetRequestCount,
 	}, nil
 }

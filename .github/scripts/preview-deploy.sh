@@ -166,6 +166,13 @@ provision_lambda() {
   local ZIP="backend/bin/bootstrap.zip"
   [[ -f "${ZIP}" ]] || ZIP="bootstrap.zip"
 
+  # Preview Lambda environment. MAIL_FROM enables the real SES sender so
+  # previews exercise the full password-recovery email flow (the preview Lambda
+  # role already has scoped ses:SendEmail); APP_BASE_URL makes the reset link in
+  # the email point back to this preview (no trailing slash — the handler adds
+  # the /#/reset path).
+  local ENV_VARS="Variables={STORE_BACKEND=dynamodb,RECIPES_TABLE=${RECIPES_TABLE},USERS_TABLE=${USERS_TABLE},FAVORITES_TABLE=${FAVORITES_TABLE},JWT_SECRET=${JWT_SECRET},STRIP_PATH_PREFIX=/${PR_ID},MAIL_FROM=no-reply@cocktails.albertomcastro.com,APP_BASE_URL=https://cocktails.albertomcastro.com/${PR_ID}}"
+
   if aws lambda get-function --function-name "${FUNCTION_NAME}" \
       --region "${AWS_REGION}" > /dev/null 2>&1; then
     log "Updating Lambda code for ${FUNCTION_NAME}..."
@@ -173,6 +180,28 @@ provision_lambda() {
       --function-name "${FUNCTION_NAME}" \
       --zip-file "fileb://${ZIP}" \
       --region "${AWS_REGION}" > /dev/null
+
+    # update-function-code does not touch configuration, so an already-existing
+    # preview Lambda would keep stale env vars (e.g. no MAIL_FROM). Sync the
+    # environment explicitly. A code update briefly locks the function
+    # (ResourceConflictException); retry until it settles. We poll via the
+    # config update itself rather than `aws lambda wait`, which needs
+    # lambda:GetFunctionConfiguration (not granted to the CI role).
+    log "Syncing Lambda environment for ${FUNCTION_NAME}..."
+    local attempt=1 max=30 err
+    until err=$(aws lambda update-function-configuration \
+        --function-name "${FUNCTION_NAME}" \
+        --environment "${ENV_VARS}" \
+        --region "${AWS_REGION}" 2>&1 >/dev/null); do
+      if [[ "${err}" == *ResourceConflictException* && ${attempt} -lt ${max} ]]; then
+        log "  code update in progress, retrying env sync (${attempt}/${max})..."
+        sleep 2
+        attempt=$((attempt + 1))
+      else
+        log "  update-function-configuration failed: ${err}"
+        return 1
+      fi
+    done
   else
     log "Creating Lambda function ${FUNCTION_NAME}..."
     aws lambda create-function \
@@ -182,7 +211,7 @@ provision_lambda() {
       --role "${LAMBDA_ROLE_ARN}" \
       --handler bootstrap \
       --zip-file "fileb://${ZIP}" \
-      --environment "Variables={STORE_BACKEND=dynamodb,RECIPES_TABLE=${RECIPES_TABLE},USERS_TABLE=${USERS_TABLE},FAVORITES_TABLE=${FAVORITES_TABLE},JWT_SECRET=${JWT_SECRET},STRIP_PATH_PREFIX=/${PR_ID}}" \
+      --environment "${ENV_VARS}" \
       --region "${AWS_REGION}" > /dev/null
   fi
 }

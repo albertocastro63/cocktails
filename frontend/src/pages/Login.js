@@ -30,6 +30,7 @@ export function Login({ onSuccess } = {}) {
       class="w-full bg-amber-500 text-stone-900 rounded-xl px-4 py-2 font-semibold hover:bg-amber-600 transition-colors">
       Sign In
     </button>
+    <p class="text-center text-sm"><a href="#/forgot" class="text-amber-700 hover:text-amber-800">Forgot password?</a></p>
   `;
   card.appendChild(form);
   el.appendChild(card);

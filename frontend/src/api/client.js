@@ -47,6 +47,14 @@ export function login(username, password) {
   return request('POST', `${apiPrefix()}/v1/auth/login`, { username, password });
 }
 
+export function requestPasswordReset(email) {
+  return request('POST', `${apiPrefix()}/v1/auth/forgot-password`, { email });
+}
+
+export function resetPassword(uid, token, password) {
+  return request('POST', `${apiPrefix()}/v1/auth/reset-password`, { uid, token, password });
+}
+
 export function createRecipe(recipe, token) {
   return request('POST', `${apiPrefix()}/v1/recipes`, recipe, token);
 }
