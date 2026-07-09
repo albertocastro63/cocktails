@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -93,12 +94,18 @@ func (h *PasswordResetHandler) Forgot(w http.ResponseWriter, r *http.Request) {
 	user.ResetTokenHash = auth.HashResetToken(token)
 	user.ResetTokenExpires = now + resetExpiryMins*60
 	if err := h.users.Update(user); err != nil {
+		// Log (no PII) so a persistence failure isn't invisible; response stays neutral.
+		log.Printf("password reset: store update failed for user %s: %v", user.ID, err)
 		neutral()
 		return
 	}
 
 	link := fmt.Sprintf("%s/#/reset?uid=%s&token=%s", h.baseURL, url.QueryEscape(user.ID), url.QueryEscape(token))
-	_ = h.sender.SendPasswordReset(user.Email, email.PasswordResetData{ResetURL: link, ExpiryMins: resetExpiryMins})
+	if err := h.sender.SendPasswordReset(user.Email, email.PasswordResetData{ResetURL: link, ExpiryMins: resetExpiryMins}); err != nil {
+		// Same: surface send failures in logs (SES errors, throttling) without
+		// leaking to the caller — the response is neutral regardless.
+		log.Printf("password reset: send failed for user %s: %v", user.ID, err)
+	}
 	neutral()
 }
 

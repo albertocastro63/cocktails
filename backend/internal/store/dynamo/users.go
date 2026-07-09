@@ -210,7 +210,11 @@ func (s *UserStore) GetByEmail(email string) (*model.User, error) {
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":e": &types.AttributeValueMemberS{Value: email},
 		},
-		Limit: aws.Int32(1),
+		// NOTE: do NOT set Limit here. On a Scan, Limit caps the items DynamoDB
+		// evaluates *before* applying FilterExpression — so Limit:1 reads a single
+		// item, tests the email filter against only that one, and returns nothing
+		// if it isn't the match (leaving the real user unfound). Emails are unique
+		// and the users table is small (single scan page), so filter the full page.
 	})
 	if err != nil {
 		return nil, err
