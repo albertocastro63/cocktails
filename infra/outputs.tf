@@ -37,3 +37,27 @@ output "cloudfront_distribution_id" {
   description = "CloudFront distribution ID — set as the CLOUDFRONT_DISTRIBUTION_ID GitHub Actions variable"
   value       = module.cdn.cloudfront_distribution_id
 }
+
+# ─────────────────────────────────────────────
+# Feature 026 — Password-recovery email (SES)
+# ─────────────────────────────────────────────
+
+output "ses_sender_address" {
+  description = "From address used for password-recovery email (Lambda MAIL_FROM)"
+  value       = local.ses_sender_address
+}
+
+output "ses_domain_identity_arn" {
+  description = "ARN of the SES domain identity used for transactional email"
+  value       = aws_sesv2_email_identity.domain.arn
+}
+
+output "ses_dkim_verification_status" {
+  description = "SES Easy DKIM verification status for the domain identity (PENDING until DNS propagates)"
+  value       = aws_sesv2_email_identity.domain.dkim_signing_attributes[0].status
+}
+
+output "ses_mail_from_domain" {
+  description = "Custom MAIL FROM domain (Return-Path) for SES-sent email"
+  value       = aws_sesv2_email_identity_mail_from_attributes.domain.mail_from_domain
+}

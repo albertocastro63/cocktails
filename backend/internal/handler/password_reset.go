@@ -22,6 +22,17 @@ const (
 	neutralResetReply = "If an account exists for that email, a password reset link has been sent."
 )
 
+// Timing-neutrality mitigation (feature 026, research Decision 5): the Forgot
+// handler enforces a uniform minimum wall-clock duration before responding, so
+// the response time does not leak whether an account exists (the real-account
+// path performs an extra DynamoDB Update + SES send). Package-level so tests can
+// disable it via a TestMain. Overridable in prod is unnecessary — 250ms floors
+// well above the observable difference while staying imperceptible to users.
+var (
+	forgotMinDuration = 250 * time.Millisecond
+	forgotSleep       = time.Sleep
+)
+
 // PasswordResetHandler serves the public forgot/reset endpoints.
 type PasswordResetHandler struct {
 	users   store.UserStore
@@ -45,7 +56,16 @@ func (h *PasswordResetHandler) Forgot(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "email is required")
 		return
 	}
-	neutral := func() { writeJSON(w, http.StatusOK, map[string]any{"message": neutralResetReply}) }
+	// Floor the total handler time so account-existence isn't observable via latency.
+	start := h.now()
+	neutral := func() {
+		if forgotMinDuration > 0 {
+			if elapsed := h.now().Sub(start); elapsed < forgotMinDuration {
+				forgotSleep(forgotMinDuration - elapsed)
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"message": neutralResetReply})
+	}
 
 	user, err := h.users.GetByEmail(strings.TrimSpace(body.Email))
 	if err != nil {
