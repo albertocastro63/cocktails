@@ -100,6 +100,7 @@ describe('responsive nav contract (US3)', () => {
   it('desktop top nav is hidden below md; bottom bar + brand header are md:hidden (N1/N2, SC-004)', () => {
     isLoggedIn.mockReturnValue(false);
     isAdmin.mockReturnValue(false);
+    window.location.hash = '#/recipes'; // non-home page: brand header shows on phones
     const nav = buildNav();
 
     const topNav = nav.querySelector('nav.md\\:flex');
@@ -112,6 +113,15 @@ describe('responsive nav contract (US3)', () => {
     const brand = nav.querySelector('header');
     expect(brand.className).toContain('md:hidden');
     expect(brand.querySelector('[href="#/"]')).toBeTruthy(); // Home reachable on mobile
+  });
+
+  it('hides the mobile brand header on the landing page (home route)', () => {
+    isLoggedIn.mockReturnValue(false);
+    isAdmin.mockReturnValue(false);
+    window.location.hash = '#/'; // landing page
+    const brand = buildNav().querySelector('header');
+    expect(brand.className).toContain('hidden');
+    expect(brand.className).not.toContain('flex'); // fully hidden, not phone-visible
   });
 
   it('visitor bottom bar shows only visitor destinations (N3)', () => {

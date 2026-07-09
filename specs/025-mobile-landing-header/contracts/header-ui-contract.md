@@ -13,8 +13,11 @@ The observable contract is the hero element's responsive classes and content. Ro
 | H3 | subtitle `p` | `text-sm` and `md:text-lg` | smaller subtitle on phones, today's at md+ | FR-001, FR-003 |
 | H4 | title `h1` | text = "Cocktail Recipes" | content unchanged | FR-002 |
 | H5 | subtitle `p` | text = "Discover your next favorite drink" | content unchanged | FR-002 |
-| H6 | CTA `a` | href `#/recipes`, text "All Recipes" | CTA unchanged | FR-005 |
+| H6 | CTA `a` | href `#/recipes`, text "All Recipes" | CTA target/label unchanged | FR-005 |
 | H7 | title/subtitle | keep `text-white` / `text-amber-400` tokens | visual style unchanged | FR-005 |
+| H8 | hero inner | `flex` and `md:block` | phone: text + CTA on one row; md+: stacked (today) | FR-009 |
+| H9 | CTA `a` | `px-4 py-1.5 text-sm` and `md:px-6 md:py-2 md:text-base` | smaller CTA on phones, today's size at md+ | FR-010 |
+| H10 | mobile brand header (nav) | on home route → `hidden` (no `flex`); on other routes → `flex md:hidden` | landing hides the "Cocktails" brand on phones | FR-008 |
 
 ## Viewport contract (manual)
 

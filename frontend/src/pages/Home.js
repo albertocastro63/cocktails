@@ -10,19 +10,25 @@ export function Home() {
   const hero = document.createElement('div');
   hero.className = 'bg-gradient-to-br from-stone-900 to-stone-800 text-white py-4 md:py-16 px-4';
   const heroInner = document.createElement('div');
-  heroInner.className = 'max-w-2xl mx-auto';
+  // On phones: text on the left, CTA on the right (one row). On md+: stacked
+  // (block), exactly as today.
+  heroInner.className = 'max-w-2xl mx-auto flex items-center justify-between md:block';
+  const heroText = document.createElement('div');
   const heroHeading = document.createElement('h1');
   heroHeading.className = 'text-xl md:text-4xl font-bold mb-0.5 md:mb-3';
   heroHeading.textContent = 'Cocktail Recipes';
   const heroSub = document.createElement('p');
-  heroSub.className = 'text-amber-400 text-sm md:text-lg mb-3 md:mb-6';
+  heroSub.className = 'text-amber-400 text-sm md:text-lg mb-0 md:mb-6';
   heroSub.textContent = 'Discover your next favorite drink';
+  heroText.appendChild(heroHeading);
+  heroText.appendChild(heroSub);
   const heroCTA = document.createElement('a');
   heroCTA.href = '#/recipes';
-  heroCTA.className = 'inline-block bg-amber-500 text-stone-900 font-semibold px-6 py-2 rounded-xl hover:bg-amber-600 transition-colors';
+  // Smaller on phones (~25% less padding + smaller font); restores to today's
+  // size at md+. shrink-0/whitespace-nowrap keep it intact in the phone row.
+  heroCTA.className = 'inline-block shrink-0 whitespace-nowrap ml-4 md:ml-0 bg-amber-500 text-stone-900 font-semibold px-4 py-1.5 text-sm md:px-6 md:py-2 md:text-base rounded-xl hover:bg-amber-600 transition-colors';
   heroCTA.textContent = 'All Recipes';
-  heroInner.appendChild(heroHeading);
-  heroInner.appendChild(heroSub);
+  heroInner.appendChild(heroText);
   heroInner.appendChild(heroCTA);
   hero.appendChild(heroInner);
   el.appendChild(hero);

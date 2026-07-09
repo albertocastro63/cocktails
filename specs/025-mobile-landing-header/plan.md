@@ -24,9 +24,11 @@ The landing (home) page hero uses fixed sizes (`py-16`, `text-4xl` title, `text-
 | Element | Today | Planned (mobile default → `md:` restores desktop) |
 |---------|-------|---------------------------------------------------|
 | hero wrapper | `... py-16 px-4` | `... py-4 md:py-16 px-4` |
+| hero inner | (block) | `flex items-center justify-between md:block` (phone: text left, CTA right; md+: stacked) |
 | title `h1` | `text-4xl font-bold mb-3` | `text-xl md:text-4xl font-bold mb-0.5 md:mb-3` |
-| subtitle `p` | `text-amber-400 text-lg mb-6` | `text-amber-400 text-sm md:text-lg mb-3 md:mb-6` |
-| CTA `a` | (unchanged) | (unchanged) |
+| subtitle `p` | `text-amber-400 text-lg mb-6` | `text-amber-400 text-sm md:text-lg mb-0 md:mb-6` |
+| CTA `a` | `... px-6 py-2 ...` | `... shrink-0 whitespace-nowrap ml-4 md:ml-0 px-4 py-1.5 text-sm md:px-6 md:py-2 md:text-base ...` (smaller on phones) |
+| mobile brand header (`main.js`) | `flex md:hidden` | on the home route → `hidden` (landing hides the "Cocktails" brand on phones) |
 
 At `md` and above every value equals today's, so desktop/tablet render identically (SC-003). On phones the banner's vertical footprint drops by roughly 50% (quarter padding vs. today's `py-16`, smaller title/subtitle, tighter margins), meeting SC-001 and surfacing the CTA sooner (SC-002). Exact values are tunable while staying legible.
 
@@ -61,8 +63,11 @@ specs/025-mobile-landing-header/
 
 ```text
 frontend/src/pages/
-├── Home.js         # EDIT — responsive classes on the hero wrapper, title, subtitle
-└── Home.test.js    # EDIT — assert the responsive header class contract + unchanged text
+├── Home.js         # EDIT — responsive hero: sizes, phone row layout, smaller CTA
+└── Home.test.js    # EDIT — responsive header + layout + CTA class contract
+frontend/src/
+├── main.js         # EDIT — hide the mobile brand header on the home (landing) route
+└── main.test.js    # EDIT — landing hides brand; non-landing keeps it (phone-only)
 ```
 
 **Structure Decision**: Frontend-only, single-file change. Desktop parity is guaranteed by making the `md:` variants equal to today's fixed values; only the mobile defaults shrink.

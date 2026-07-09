@@ -149,9 +149,23 @@ describe('compact landing header on mobile (responsive classes)', () => {
     expect(sub.textContent).toBe('Discover your next favorite drink');
   });
 
-  it('CTA is unchanged (H6)', () => {
+  it('lays out text + CTA in a row on phones, stacked at md+ (H8)', () => {
+    const heroInner = Home().querySelector('.from-stone-900 > div');
+    expect(heroInner.className).toContain('flex');
+    expect(heroInner.className).toContain('md:block');
+  });
+
+  it('CTA keeps href/text but is smaller on phones and restored at md+ (H6/H9)', () => {
     const cta = Home().querySelector('a[href="#/recipes"]');
     expect(cta).not.toBeNull();
     expect(cta.textContent).toBe('All Recipes');
+    // smaller padding + font on phones
+    expect(cta.className).toContain('px-4');
+    expect(cta.className).toContain('py-1.5');
+    expect(cta.className).toContain('text-sm');
+    // restored to today's size at md+
+    expect(cta.className).toContain('md:px-6');
+    expect(cta.className).toContain('md:py-2');
+    expect(cta.className).toContain('md:text-base');
   });
 });

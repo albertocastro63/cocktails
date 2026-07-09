@@ -41,7 +41,10 @@ Someone opens the landing (home) page on a phone. Today the header banner — th
 - **FR-004**: The compact header MUST NOT clip content, wrap awkwardly, or cause horizontal overflow on phone-sized viewports, including narrow and short (landscape) screens.
 - **FR-005**: The header MUST retain the site's existing visual style (colors, typography family, call-to-action) — only the size/spacing changes on phones.
 - **FR-006**: Switching across the phone/large-screen boundary (rotation or window resize) MUST update the header presentation without a page reload.
-- **FR-007**: The change MUST be limited to the landing (home) page header; no other page or component is altered.
+- **FR-007**: The change MUST be limited to the landing (home) page header; no other page or component is altered on non-phone sizes.
+- **FR-008**: On phone-sized viewports, the landing (home) page MUST NOT show the separate top brand ("Cocktails") header/link — the hero title provides the branding there; on non-landing pages and on larger screens the brand header/nav is unchanged.
+- **FR-009**: On phone-sized viewports, the landing hero MUST place the title/subtitle and the primary call-to-action on a single row (text on the left, CTA on the right); on tablet/desktop the hero keeps the current stacked layout.
+- **FR-010**: On phone-sized viewports, the primary call-to-action MUST be visually smaller than on larger screens (reduced padding — roughly 25% less — and a smaller font); at tablet/desktop the CTA is unchanged.
 
 ### Key Entities
 

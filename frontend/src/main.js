@@ -116,7 +116,11 @@ export function buildNav() {
   container.appendChild(buildTopNav());
 
   const brand = document.createElement('header');
-  brand.className = 'bg-stone-900 px-4 py-3 flex md:hidden items-center';
+  // On the landing page (home route) the hero title is the branding, so the
+  // slim mobile brand header is hidden there to save vertical space; on other
+  // pages it shows on phones only (flex md:hidden). Desktop uses the top nav.
+  const brandVisibility = getPath() === '/' ? 'hidden' : 'flex md:hidden';
+  brand.className = `bg-stone-900 px-4 py-3 ${brandVisibility} items-center`;
   brand.innerHTML =
     '<a href="#/" class="text-stone-100 font-semibold text-lg hover:text-amber-400">Cocktails</a>';
   container.appendChild(brand);
