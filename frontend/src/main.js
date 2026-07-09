@@ -143,7 +143,7 @@ function buildTopNav() {
       const recipesLink = document.createElement('a');
       recipesLink.href = '#/admin/recipes';
       recipesLink.className = 'text-stone-100 hover:text-amber-400';
-      recipesLink.textContent = 'Recipes';
+      recipesLink.textContent = 'Manage Recipes';
       nav.appendChild(recipesLink);
     }
 

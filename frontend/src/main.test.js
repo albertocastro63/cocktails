@@ -94,6 +94,13 @@ describe('admin nav link', () => {
     expect(nav.querySelector('[href="#/admin/users"]')).toBeTruthy();
     expect(nav.querySelector('[href="#/admin/recipes"]')).toBeTruthy();
   });
+
+  it('admin recipes top-nav link is labelled "Manage Recipes"', () => {
+    isLoggedIn.mockReturnValue(true);
+    isAdmin.mockReturnValue(true);
+    const link = buildNav().querySelector('[href="#/admin/recipes"]');
+    expect(link.textContent).toBe('Manage Recipes');
+  });
 });
 
 describe('responsive nav contract (US3)', () => {
