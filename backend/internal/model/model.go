@@ -38,4 +38,10 @@ type User struct {
 	Email        string    `json:"email"`
 	TokenVersion int       `json:"token_version"`
 	CreatedAt    time.Time `json:"created_at"`
+
+	// Password-recovery state (never serialized to clients).
+	ResetTokenHash    string `json:"-"` // SHA-256 hex of the active reset token
+	ResetTokenExpires int64  `json:"-"` // unix seconds; 0 when no active token
+	ResetWindowStart  int64  `json:"-"` // unix seconds; start of the rate-limit window
+	ResetRequestCount int    `json:"-"` // requests made in the current window
 }

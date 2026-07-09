@@ -10,9 +10,11 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/almc/cocktails/internal/email"
 	"github.com/almc/cocktails/internal/handler"
 	"github.com/almc/cocktails/internal/model"
 	"github.com/almc/cocktails/internal/store"
@@ -61,6 +63,28 @@ func openStore() (store.RecipeStore, store.UserStore, store.FavoriteStore) {
 	return rs, us, fs
 }
 
+// newEmailSender returns an SES-backed sender when MAIL_FROM is configured
+// (production/Lambda), otherwise a no-op stub (local/dev) so the app runs
+// without email configured.
+func newEmailSender() email.Sender {
+	from := os.Getenv("MAIL_FROM")
+	if from == "" {
+		return &email.StubSender{}
+	}
+	cfg, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		log.Fatalf("load aws config for SES: %v", err)
+	}
+	return email.NewSESSender(sesv2.NewFromConfig(cfg), from)
+}
+
+func appBaseURL() string {
+	if v := os.Getenv("APP_BASE_URL"); v != "" {
+		return v
+	}
+	return "https://cocktails.albertomcastro.com"
+}
+
 func buildHandler(rs store.RecipeStore, us store.UserStore, fs store.FavoriteStore) http.Handler {
 	recipes := handler.NewRecipeHandler(rs)
 	authH := handler.NewAuthHandler(us)
@@ -82,6 +106,10 @@ func buildHandler(rs store.RecipeStore, us store.UserStore, fs store.FavoriteSto
 	mux.Handle("PUT /api/v1/recipes/{id}", handler.RequireAuth(http.HandlerFunc(recipes.Update)))
 	mux.Handle("DELETE /api/v1/recipes/{id}", handler.RequireAuth(http.HandlerFunc(recipes.Delete)))
 	mux.HandleFunc("POST /api/v1/auth/login", authH.Login)
+
+	resetH := handler.NewPasswordResetHandler(us, newEmailSender(), appBaseURL())
+	mux.HandleFunc("POST /api/v1/auth/forgot-password", resetH.Forgot)
+	mux.HandleFunc("POST /api/v1/auth/reset-password", resetH.Reset)
 	mux.Handle("GET /api/v1/admin/users",
 		handler.RequireAuth(handler.RequireAdmin(http.HandlerFunc(adminH.ListUsers))))
 	mux.Handle("POST /api/v1/admin/users",

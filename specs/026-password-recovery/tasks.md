@@ -23,12 +23,12 @@
 
 **⚠ §II**: each test task precedes its implementation.
 
-- [ ] T004 Add reset + rate-limit fields (`ResetTokenHash`, `ResetTokenExpires`, `ResetWindowStart`, `ResetRequestCount`, all `omitempty`) to `backend/internal/model/model.go` `User`, and map them in `backend/internal/store/dynamo/users.go` (persisted by the existing `Update`).
-- [ ] T005 [P] Write failing tests in `backend/internal/auth/password_test.go` for `ValidateComplexity`: rejects < 12 bytes, rejects > 72 bytes, rejects missing upper/lower/digit/symbol (one case each), accepts a compliant password, and treats a boundary symbol (e.g. `~` or `_`) as a valid symbol.
-- [ ] T006 [P] Implement `ValidateComplexity(pw) error` in `backend/internal/auth/password.go` — length 12–72 bytes and ≥ 1 upper, lower, digit, and symbol (symbol = any non-alphanumeric printable ASCII), returning the unmet rule(s) — making T005 pass.
-- [ ] T007 [P] Write failing tests in `backend/internal/auth/reset_test.go`: `GenerateToken` returns a high-entropy base64url string; `HashToken` is SHA-256; a constant-time verify accepts the matching token and rejects others.
-- [ ] T008 [P] Implement `GenerateToken()`, `HashToken(token)`, and `VerifyToken(token, hash)` (constant-time) in `backend/internal/auth/reset.go` — making T007 pass.
-- [ ] T009 [P] Create `backend/internal/email/email.go` (`Sender` interface + `PasswordResetData`) and `backend/internal/email/stub.go` (recording no-op sender) with a stub test — the seam that lets handlers be tested without SES.
+- [X] T004 Add reset + rate-limit fields (`ResetTokenHash`, `ResetTokenExpires`, `ResetWindowStart`, `ResetRequestCount`, all `omitempty`) to `backend/internal/model/model.go` `User`, and map them in `backend/internal/store/dynamo/users.go` (persisted by the existing `Update`).
+- [X] T005 [P] Write failing tests in `backend/internal/auth/password_test.go` for `ValidateComplexity`: rejects < 12 bytes, rejects > 72 bytes, rejects missing upper/lower/digit/symbol (one case each), accepts a compliant password, and treats a boundary symbol (e.g. `~` or `_`) as a valid symbol.
+- [X] T006 [P] Implement `ValidateComplexity(pw) error` in `backend/internal/auth/password.go` — length 12–72 bytes and ≥ 1 upper, lower, digit, and symbol (symbol = any non-alphanumeric printable ASCII), returning the unmet rule(s) — making T005 pass.
+- [X] T007 [P] Write failing tests in `backend/internal/auth/reset_test.go`: `GenerateToken` returns a high-entropy base64url string; `HashToken` is SHA-256; a constant-time verify accepts the matching token and rejects others.
+- [X] T008 [P] Implement `GenerateToken()`, `HashToken(token)`, and `VerifyToken(token, hash)` (constant-time) in `backend/internal/auth/reset.go` — making T007 pass.
+- [X] T009 [P] Create `backend/internal/email/email.go` (`Sender` interface + `PasswordResetData`) and `backend/internal/email/stub.go` (recording no-op sender) with a stub test — the seam that lets handlers be tested without SES.
 - [ ] T010 [P] Create `frontend/src/utils/password.js` (+ `password.test.js`) — a shared JS complexity validator mirroring the backend rules, for live UX feedback.
 
 **Checkpoint**: validator, token helpers, email seam, and model fields exist and are tested.
@@ -41,10 +41,10 @@
 
 **Independent Test**: Submit a registered email → neutral message + email sent (stub records it); submit an unregistered email → identical message, nothing sent; exceed 6/hour → identical message, nothing sent.
 
-- [ ] T011 [US1] Write failing handler tests in `backend/internal/handler/password_reset_test.go` for `ForgotPassword` using a stub sender: F1 (registered→token fields set + email recorded), F2 (unknown→neutral, no send), F3 (≥6 requests/hour→neutral, no send), F4 (missing/invalid email→400), F5 (identical body across F1–F3).
-- [ ] T012 [US1] Implement `ForgotPassword` in `backend/internal/handler/password_reset.go`: `GetByEmail`; fixed-window rate check (6/hour via `ResetWindowStart`/`ResetRequestCount`); on allow, `GenerateToken`+store `HashToken`/expiry via `Update` and call `Sender`; always return the neutral 200 — making T011 pass.
-- [ ] T013 [US1] Implement the reset email in `backend/internal/email/`: a pure `BuildResetEmail(data) (subject, html, text)` in `email.go` with a test (`email_test.go`) asserting the content contract (single `.../#/reset?uid=&token=` link, 15-minute note, NO credential, brand markers per `contracts/email-contract.md`); and a thin SES v2 `SendEmail` wrapper in `ses.go` that sends the built message from `MAIL_FROM` (link base = `APP_BASE_URL`).
-- [ ] T014 [US1] Wire the sender (SES in prod from env, stub otherwise) and register `POST /api/v1/auth/forgot-password` in `backend/cmd/lambda/main.go`.
+- [X] T011 [US1] Write failing handler tests in `backend/internal/handler/password_reset_test.go` for `ForgotPassword` using a stub sender: F1 (registered→token fields set + email recorded), F2 (unknown→neutral, no send), F3 (≥6 requests/hour→neutral, no send), F4 (missing/invalid email→400), F5 (identical body across F1–F3).
+- [X] T012 [US1] Implement `ForgotPassword` in `backend/internal/handler/password_reset.go`: `GetByEmail`; fixed-window rate check (6/hour via `ResetWindowStart`/`ResetRequestCount`); on allow, `GenerateToken`+store `HashToken`/expiry via `Update` and call `Sender`; always return the neutral 200 — making T011 pass.
+- [X] T013 [US1] Implement the reset email in `backend/internal/email/`: a pure `BuildResetEmail(data) (subject, html, text)` in `email.go` with a test (`email_test.go`) asserting the content contract (single `.../#/reset?uid=&token=` link, 15-minute note, NO credential, brand markers per `contracts/email-contract.md`); and a thin SES v2 `SendEmail` wrapper in `ses.go` that sends the built message from `MAIL_FROM` (link base = `APP_BASE_URL`).
+- [X] T014 [US1] Wire the sender (SES in prod from env, stub otherwise) and register `POST /api/v1/auth/forgot-password` in `backend/cmd/lambda/main.go`.
 - [ ] T015 [US1] Write failing Vitest in `frontend/src/pages/ForgotPassword.test.js` (submitting an email calls the client and shows the neutral confirmation) and add a `requestPasswordReset` case in `frontend/src/api/client.test.js`.
 - [ ] T016 [US1] Implement `frontend/src/pages/ForgotPassword.js` (email form → neutral confirmation), add the "Forgot password?" link to `frontend/src/pages/Login.js`, register route `#/forgot` in `frontend/src/main.js`, and add `requestPasswordReset(email)` to `frontend/src/api/client.js` — making T015 pass.
 
@@ -58,9 +58,9 @@
 
 **Independent Test**: With a valid token, submit a matching strong password → password updated, old password fails, pre-reset session rejected; submit a weak password → rejected naming the rule.
 
-- [ ] T017 [US2] Write failing handler tests in `backend/internal/handler/password_reset_test.go` for `ResetPassword`: R1 (valid uid+token+strong pw → 200, `PasswordHash` changed, `TokenVersion` incremented, token cleared), R3 (weak pw → 422 naming the unmet rule), R5 (after reset the old password no longer verifies and a JWT with the old `token_version` is rejected by `RequireAuthWithStore`).
-- [ ] T018 [US2] Implement `ResetPassword` in `backend/internal/handler/password_reset.go`: `GetByID(uid)`, verify token (`VerifyToken` + `now < ResetTokenExpires` + non-empty hash), `ValidateComplexity`, set `bcrypt(password)`, `TokenVersion++`, clear reset fields, `Update` — making T017 pass.
-- [ ] T019 [US2] Register `POST /api/v1/auth/reset-password` in `backend/cmd/lambda/main.go`.
+- [X] T017 [US2] Write failing handler tests in `backend/internal/handler/password_reset_test.go` for `ResetPassword`: R1 (valid uid+token+strong pw → 200, `PasswordHash` changed, `TokenVersion` incremented, token cleared), R3 (weak pw → 422 naming the unmet rule), R5 (after reset the old password no longer verifies and a JWT with the old `token_version` is rejected by `RequireAuthWithStore`).
+- [X] T018 [US2] Implement `ResetPassword` in `backend/internal/handler/password_reset.go`: `GetByID(uid)`, verify token (`VerifyToken` + `now < ResetTokenExpires` + non-empty hash), `ValidateComplexity`, set `bcrypt(password)`, `TokenVersion++`, clear reset fields, `Update` — making T017 pass.
+- [X] T019 [US2] Register `POST /api/v1/auth/reset-password` in `backend/cmd/lambda/main.go`.
 - [ ] T020 [US2] Write failing Vitest in `frontend/src/pages/ResetPassword.test.js` (two password fields; mismatch shows an error and does not submit; live complexity feedback via `utils/password.js`; a matching strong pair submits via the client) and a `resetPassword` case in `frontend/src/api/client.test.js`.
 - [ ] T021 [US2] Implement `frontend/src/pages/ResetPassword.js` (parse `uid`/`token` from `location.hash`; two inputs; live complexity checklist; match check; submit → success then redirect to sign-in), register route `#/reset` in `frontend/src/main.js`, and add `resetPassword(uid, token, password)` to `frontend/src/api/client.js` — making T020 pass.
 
@@ -74,8 +74,8 @@
 
 **Independent Test**: Try an expired, a used, a superseded, and a tampered token → each returns the generic error and no password change; the reset page shows a friendly "invalid or expired" message with a link to request again.
 
-- [ ] T022 [US3] Write failing handler tests in `backend/internal/handler/password_reset_test.go`: expired token, already-used (cleared) token, superseded (overwritten hash) token, and tampered/unknown token all return the **same generic 400** with no password change and no disclosure of the cause (R2).
-- [ ] T023 [US3] Ensure `ResetPassword` in `backend/internal/handler/password_reset.go` returns the single generic error for every invalid case (add any missing branches) — making T022 pass.
+- [X] T022 [US3] Write failing handler tests in `backend/internal/handler/password_reset_test.go`: expired token, already-used (cleared) token, superseded (overwritten hash) token, and tampered/unknown token all return the **same generic 400** with no password change and no disclosure of the cause (R2).
+- [X] T023 [US3] Ensure `ResetPassword` in `backend/internal/handler/password_reset.go` returns the single generic error for every invalid case (add any missing branches) — making T022 pass.
 - [ ] T024 [US3] Update `frontend/src/pages/ResetPassword.js` to render a generic "This reset link is invalid or has expired" message with a link to `#/forgot` when the API returns the invalid-link error; assert it in `frontend/src/pages/ResetPassword.test.js`.
 
 **Checkpoint**: the security model (time-limited, single-use, generic errors) is enforced and surfaced clearly.
