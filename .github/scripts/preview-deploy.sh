@@ -182,15 +182,26 @@ provision_lambda() {
       --region "${AWS_REGION}" > /dev/null
 
     # update-function-code does not touch configuration, so an already-existing
-    # preview Lambda would keep stale env vars (e.g. no MAIL_FROM). Wait for the
-    # code update to settle, then sync the environment explicitly.
+    # preview Lambda would keep stale env vars (e.g. no MAIL_FROM). Sync the
+    # environment explicitly. A code update briefly locks the function
+    # (ResourceConflictException); retry until it settles. We poll via the
+    # config update itself rather than `aws lambda wait`, which needs
+    # lambda:GetFunctionConfiguration (not granted to the CI role).
     log "Syncing Lambda environment for ${FUNCTION_NAME}..."
-    aws lambda wait function-updated \
-      --function-name "${FUNCTION_NAME}" --region "${AWS_REGION}"
-    aws lambda update-function-configuration \
-      --function-name "${FUNCTION_NAME}" \
-      --environment "${ENV_VARS}" \
-      --region "${AWS_REGION}" > /dev/null
+    local attempt=1 max=30 err
+    until err=$(aws lambda update-function-configuration \
+        --function-name "${FUNCTION_NAME}" \
+        --environment "${ENV_VARS}" \
+        --region "${AWS_REGION}" 2>&1 >/dev/null); do
+      if [[ "${err}" == *ResourceConflictException* && ${attempt} -lt ${max} ]]; then
+        log "  code update in progress, retrying env sync (${attempt}/${max})..."
+        sleep 2
+        attempt=$((attempt + 1))
+      else
+        log "  update-function-configuration failed: ${err}"
+        return 1
+      fi
+    done
   else
     log "Creating Lambda function ${FUNCTION_NAME}..."
     aws lambda create-function \
