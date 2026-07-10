@@ -11,9 +11,9 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 [P] Create the `backend/internal/logging/` package directory with a `doc.go` (package comment describing the structured-logging contract and linking the action catalog).
-- [ ] T002 [P] Add `LOG_LEVEL = "warn"` to the production Lambda `environment_variables` block in `infra/main.tf`; run `terraform fmt` + `terraform validate`.
-- [ ] T003 [P] Add `LOG_LEVEL=debug` to the preview Lambda env in `.github/scripts/preview-deploy.sh` (append to the `Variables={...}` set used by both the create-function and update-function-configuration paths); `bash -n` the script.
+- [X] T001 [P] Create the `backend/internal/logging/` package directory with a `doc.go` (package comment describing the structured-logging contract and linking the action catalog).
+- [X] T002 [P] Add `LOG_LEVEL = "warn"` to the production Lambda `environment_variables` block in `infra/main.tf`; run `terraform fmt` + `terraform validate`.
+- [X] T003 [P] Add `LOG_LEVEL=debug` to the preview Lambda env in `.github/scripts/preview-deploy.sh` (append to the `Variables={...}` set used by both the create-function and update-function-configuration paths); `bash -n` the script.
 
 ---
 
@@ -21,10 +21,10 @@
 
 **Goal**: The logger plumbing every story relies on — JSON logger construction, request-scoped context propagation, and the request/recover middleware — independent of level parsing (which is US1).
 
-- [ ] T004 Write failing tests in `backend/internal/logging/logging_test.go` for: `New(level)` returns a slog logger whose JSON output includes `time`/`level`/`msg`; `IntoContext`/`FromContext` round-trip; and `FromContext` returns the package default logger (never nil) when none was set.
-- [ ] T005 Implement `backend/internal/logging/logging.go`: `New(level slog.Leveler) *slog.Logger` using `slog.NewJSONHandler(os.Stdout, ...)`; a package-level default logger + `SetDefault`; and `IntoContext(ctx, *slog.Logger)` / `FromContext(ctx) *slog.Logger` (default-logger fallback). Make T004 pass.
-- [ ] T006 Write failing tests in `backend/internal/handler/middleware_test.go` for `RequestLogger` (child logger carries `rid` + `req="<METHOD> <path>"`, retrievable via `logging.FromContext`) and `Recover` (a panicking handler yields one ERROR entry and a 500 response with no stack in the body). Use `httptest` and a buffer-backed logger.
-- [ ] T007 Implement `RequestLogger` and `Recover` middleware in `backend/internal/handler/middleware.go`: `RequestLogger` derives the correlation id from `core.GetAPIGatewayV2ContextFromContext` → Lambda `lambdacontext` → generated fallback (research Decision 3), builds `base.With("rid", id, "req", method+" "+path)`, stores it via `logging.IntoContext`; `Recover` logs the recovered panic at ERROR and writes a generic 500. Make T006 pass.
+- [X] T004 Write failing tests in `backend/internal/logging/logging_test.go` for: `New(level)` returns a slog logger whose JSON output includes `time`/`level`/`msg`; `IntoContext`/`FromContext` round-trip; and `FromContext` returns the package default logger (never nil) when none was set.
+- [X] T005 Implement `backend/internal/logging/logging.go`: `New(level slog.Leveler) *slog.Logger` using `slog.NewJSONHandler(os.Stdout, ...)`; a package-level default logger + `SetDefault`; and `IntoContext(ctx, *slog.Logger)` / `FromContext(ctx) *slog.Logger` (default-logger fallback). Make T004 pass.
+- [X] T006 Write failing tests in `backend/internal/handler/middleware_test.go` for `RequestLogger` (child logger carries `rid` + `req="<METHOD> <path>"`, retrievable via `logging.FromContext`) and `Recover` (a panicking handler yields one ERROR entry and a 500 response with no stack in the body). Use `httptest` and a buffer-backed logger.
+- [X] T007 Implement `RequestLogger` and `Recover` middleware in `backend/internal/handler/middleware.go`: `RequestLogger` derives the correlation id from `core.GetAPIGatewayV2ContextFromContext` → Lambda `lambdacontext` → generated fallback (research Decision 3), builds `base.With("rid", id, "req", method+" "+path)`, stores it via `logging.IntoContext`; `Recover` logs the recovered panic at ERROR and writes a generic 500. Make T006 pass.
 
 **Checkpoint**: Logger + context + middleware exist and are tested, but no level control or action logs yet.
 
@@ -36,10 +36,10 @@
 
 **Independent test**: Set `LOG_LEVEL=warn`, hit an endpoint → no INFO/DEBUG lines; a failure → ERROR line. Set `LOG_LEVEL=debug` → same success now emits DEBUG. Set `LOG_LEVEL=bogus` → server still serves; ERROR notes the fallback.
 
-- [ ] T008 [P] [US1] Write failing table-driven tests in `backend/internal/logging/logging_test.go` for `ParseLevel`: `debug/info/warn/warning/error` (case-insensitive) map to the right `slog.Level`; empty and unrecognized inputs return the error-only fallback and signal that a fallback was applied.
-- [ ] T009 [US1] Implement `ParseLevel(string) (slog.Level, bool)` and `LevelFromEnv() slog.Level` (reads `LOG_LEVEL`; on missing/invalid returns `LevelError` and emits one ERROR line noting the fallback) in `backend/internal/logging/logging.go`. Make T008 pass.
-- [ ] T010 [US1] Wire startup in `backend/cmd/lambda/main.go`: build the logger via `logging.New(logging.LevelFromEnv())`, `logging.SetDefault(...)`, and wrap the handler chain with `handler.RequestLogger` + `handler.Recover` (outermost). Mirror the same init in `backend/cmd/server/main.go`.
-- [ ] T011 [US1] Add an integration-style test in `backend/internal/handler/middleware_test.go` (or a new `logging_integration_test.go`) driving a request through `New(LevelWarn)` vs `New(LevelDebug)` and asserting suppression vs emission of a DEBUG line (SC-002 behavior at the handler layer).
+- [X] T008 [P] [US1] Write failing table-driven tests in `backend/internal/logging/logging_test.go` for `ParseLevel`: `debug/info/warn/warning/error` (case-insensitive) map to the right `slog.Level`; empty and unrecognized inputs return the error-only fallback and signal that a fallback was applied.
+- [X] T009 [US1] Implement `ParseLevel(string) (slog.Level, bool)` and `LevelFromEnv() slog.Level` (reads `LOG_LEVEL`; on missing/invalid returns `LevelError` and emits one ERROR line noting the fallback) in `backend/internal/logging/logging.go`. Make T008 pass.
+- [X] T010 [US1] Wire startup in `backend/cmd/lambda/main.go`: build the logger via `logging.New(logging.LevelFromEnv())`, `logging.SetDefault(...)`, and wrap the handler chain with `handler.RequestLogger` + `handler.Recover` (outermost). Mirror the same init in `backend/cmd/server/main.go`.
+- [X] T011 [US1] Add an integration-style test in `backend/internal/handler/middleware_test.go` (or a new `logging_integration_test.go`) driving a request through `New(LevelWarn)` vs `New(LevelDebug)` and asserting suppression vs emission of a DEBUG line (SC-002 behavior at the handler layer).
 
 **Checkpoint**: Level control fully works and is env-driven. Infra defaults from T002/T003 apply. This is a shippable MVP.
 
@@ -51,12 +51,12 @@
 
 **Independent test**: With `LOG_LEVEL=debug`, exercise each action and confirm a matching entry with `action`, `outcome`, actor, and target.
 
-- [ ] T012 [US2] **(Test-first)** Write failing action-emission tests in `backend/internal/handler/{auth,recipes,favorites,admin,password_reset}_test.go` (buffer-backed logger installed via context) asserting a representative action per handler group emits the expected `action` + `outcome` + level per `contracts/action-catalog.md` (covers SC-001). These MUST be confirmed failing before T013–T017.
-- [ ] T013 [P] [US2] Instrument authentication in `backend/internal/handler/auth.go`: `auth.login` at INFO on success, WARN on rejected credentials/expired token, ERROR on unexpected failure. Handle `auth.logout` per the catalog note — instrument an existing server-side session event (e.g., token-version bump) or record it N/A in this task's completion note; do **not** invent an endpoint. Makes the auth portion of T012 pass.
-- [ ] T014 [P] [US2] Instrument `backend/internal/handler/recipes.go`: `recipe.create`/`update`/`delete` at INFO (`user_id`, `recipe_id`); `recipe.get`/`list`/`random`, `ingredients.list`, `search.ingredients`, `search.base_spirit` at DEBUG (`count`, query params); failures at ERROR. Makes the recipes portion of T012 pass.
-- [ ] T015 [P] [US2] Instrument `backend/internal/handler/favorites.go`: `favorite.add`/`remove` at INFO; `favorite.check`/`list` at DEBUG; failures at ERROR. Makes the favorites portion of T012 pass.
-- [ ] T016 [P] [US2] Instrument `backend/internal/handler/admin.go`: `admin.user.create`/`update`/`delete` at INFO (actor `user_id`, `target_id`); `admin.user.list`/`get` at DEBUG; failures at ERROR. Makes the admin portion of T012 pass.
-- [ ] T017 [P] [US2] Refactor `backend/internal/handler/password_reset.go`: replace the existing ad-hoc `log.Printf` calls with `password.reset_request` / `password.reset` slog action events (INFO success, ERROR failure) using `logging.FromContext`. Makes the password-reset portion of T012 pass.
+- [X] T012 [US2] **(Test-first)** Write failing action-emission tests in `backend/internal/handler/{auth,recipes,favorites,admin,password_reset}_test.go` (buffer-backed logger installed via context) asserting a representative action per handler group emits the expected `action` + `outcome` + level per `contracts/action-catalog.md` (covers SC-001). These MUST be confirmed failing before T013–T017.
+- [X] T013 [P] [US2] Instrument authentication in `backend/internal/handler/auth.go`: `auth.login` at INFO on success, WARN on rejected credentials/expired token, ERROR on unexpected failure. Handle `auth.logout` per the catalog note — instrument an existing server-side session event (e.g., token-version bump) or record it N/A in this task's completion note; do **not** invent an endpoint. Makes the auth portion of T012 pass.
+- [X] T014 [P] [US2] Instrument `backend/internal/handler/recipes.go`: `recipe.create`/`update`/`delete` at INFO (`user_id`, `recipe_id`); `recipe.get`/`list`/`random`, `ingredients.list`, `search.ingredients`, `search.base_spirit` at DEBUG (`count`, query params); failures at ERROR. Makes the recipes portion of T012 pass.
+- [X] T015 [P] [US2] Instrument `backend/internal/handler/favorites.go`: `favorite.add`/`remove` at INFO; `favorite.check`/`list` at DEBUG; failures at ERROR. Makes the favorites portion of T012 pass.
+- [X] T016 [P] [US2] Instrument `backend/internal/handler/admin.go`: `admin.user.create`/`update`/`delete` at INFO (actor `user_id`, `target_id`); `admin.user.list`/`get` at DEBUG; failures at ERROR. Makes the admin portion of T012 pass.
+- [X] T017 [P] [US2] Refactor `backend/internal/handler/password_reset.go`: replace the existing ad-hoc `log.Printf` calls with `password.reset_request` / `password.reset` slog action events (INFO success, ERROR failure) using `logging.FromContext`. Makes the password-reset portion of T012 pass.
 
 **Checkpoint**: Action-emission tests were written and confirmed failing first (T012), then satisfied by T013–T017. All catalog actions logged and verified. US1 + US2 together deliver the core value.
 
@@ -68,9 +68,9 @@
 
 **Independent test**: Trigger varied actions/failures; confirm filter-by-level and filter-by-`rid` grouping work, and no secret/token appears at any level.
 
-- [ ] T018 [P] [US3] Add a redaction test in `backend/internal/handler/password_reset_test.go` and `auth_test.go`: capture entries from login and password-reset flows and assert the serialized JSON contains none of `password`, the JWT, or `reset_token` values at DEBUG level (SC-004).
-- [ ] T019 [P] [US3] Add a correlation test (`backend/internal/handler/middleware_test.go`): drive one request that produces multiple log lines and assert they all share the same `rid` and carry `req` (SC-005).
-- [ ] T020 [US3] Consistency sweep: verify every instrumented call site uses the canonical `action` names and safe field keys from `contracts/action-catalog.md` (no `password`/token keys anywhere); fix any drift. Cross-check the field set against `contracts/log-entry.md`.
+- [X] T018 [P] [US3] Add a redaction test in `backend/internal/handler/password_reset_test.go` and `auth_test.go`: capture entries from login and password-reset flows and assert the serialized JSON contains none of `password`, the JWT, or `reset_token` values at DEBUG level (SC-004).
+- [X] T019 [P] [US3] Add a correlation test (`backend/internal/handler/middleware_test.go`): drive one request that produces multiple log lines and assert they all share the same `rid` and carry `req` (SC-005).
+- [X] T020 [US3] Consistency sweep: verify every instrumented call site uses the canonical `action` names and safe field keys from `contracts/action-catalog.md` (no `password`/token keys anywhere); fix any drift. Cross-check the field set against `contracts/log-entry.md`.
 
 **Checkpoint**: All three user stories independently testable and complete.
 
@@ -78,10 +78,10 @@
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T021 [P] Coverage: `cd backend && go test -p 1 -coverprofile=coverage.out -coverpkg=./internal/... ./...`; confirm `internal/logging` and the new middleware are ≥ 75% and no regressions.
-- [ ] T022 [P] Lint/format/vet: `gofmt -l` (zero output), `go vet ./...` clean (constitution I: zero warnings).
-- [ ] T023 [P] Document `LOG_LEVEL` (values, per-environment defaults, how to change it in the AWS console) in `README.md` under backend/operations.
-- [ ] T024 Run the `quickstart.md` verification checklist end-to-end locally (`cmd/server`, sqlite) for SC-001, SC-002, SC-006; note results.
+- [X] T021 [P] Coverage: `cd backend && go test -p 1 -coverprofile=coverage.out -coverpkg=./internal/... ./...`; confirm `internal/logging` and the new middleware are ≥ 75% and no regressions.
+- [X] T022 [P] Lint/format/vet: `gofmt -l` (zero output), `go vet ./...` clean (constitution I: zero warnings).
+- [X] T023 [P] Document `LOG_LEVEL` (values, per-environment defaults, how to change it in the AWS console) in `README.md` under backend/operations.
+- [X] T024 Run the `quickstart.md` verification checklist end-to-end locally (`cmd/server`, sqlite) for SC-001, SC-002, SC-006; note results.
 - [ ] T025 Deploy/verify (after merge): confirm `LOG_LEVEL` on prod (`warn`) and a preview (`debug`) via `aws lambda get-function-configuration`; exercise one failing request and locate its lines by `rid` in Logs Insights (SC-005); toggle the level in the console and confirm effect < 1 min (SC-003), then restore.
 
 ---

@@ -16,6 +16,7 @@ import (
 
 	"github.com/almc/cocktails/internal/email"
 	"github.com/almc/cocktails/internal/handler"
+	"github.com/almc/cocktails/internal/logging"
 	"github.com/almc/cocktails/internal/model"
 	"github.com/almc/cocktails/internal/store"
 	dynstore "github.com/almc/cocktails/internal/store/dynamo"
@@ -24,12 +25,16 @@ import (
 )
 
 func main() {
+	logging.SetDefault(logging.New(logging.LevelFromEnv()))
+
 	recipeStore, userStore, favoriteStore := openStore()
 	bootstrapAdmin(userStore)
 	h := buildHandler(recipeStore, userStore, favoriteStore)
 	if prefix := os.Getenv("STRIP_PATH_PREFIX"); prefix != "" {
 		h = http.StripPrefix(prefix, h)
 	}
+	// Outermost: bind a request-scoped logger (rid+req) and recover panics.
+	h = handler.RequestLogger(handler.Recover(h))
 	lambda.Start(httpadapter.NewV2(h).ProxyWithContext)
 }
 

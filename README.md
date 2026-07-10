@@ -115,6 +115,23 @@ go run ./cmd/server
 | `DB_PATH` | `cocktails.db` | SQLite database file |
 | `STORE_BACKEND` | `sqlite` | Set to `dynamodb` to use DynamoDB instead |
 | `ADMIN_BOOTSTRAP_PASSWORD` | — | If set and no users exist, creates an `admin` account on startup |
+| `LOG_LEVEL` | `error` (fallback) | Minimum log severity: `debug`, `info`, `warn`, `error` (see below) |
+
+#### Logging
+
+The backend emits **structured JSON logs** (one object per line) to stdout — on AWS these land in the Lambda's CloudWatch log group. Verbosity is controlled by the `LOG_LEVEL` environment variable, with ordered levels `debug < info < warn < error` (setting a level includes all higher-severity entries):
+
+- **Production Lambda** defaults to `warn` (warnings + errors only) — set in `infra/main.tf`.
+- **Preview Lambdas** default to `debug` (everything) — set in `.github/scripts/preview-deploy.sh`.
+- **Missing or invalid** value → safe fallback to `error`-only, with one ERROR line noting the fallback.
+
+Successful writes (login, recipe create/edit/delete, favorite add/remove, password reset) log at `INFO`; reads/searches at `DEBUG`; recoverable anomalies (rate-limit, auth rejected) at `WARN`; handled failures at `ERROR`. Every request-scoped entry carries a correlation id (`rid`, the API Gateway request id) and the request line (`req`), so all logs for one request can be grouped in CloudWatch Logs Insights:
+
+```text
+fields @timestamp, level, action, outcome, msg | filter rid = "<request id>" | sort @timestamp asc
+```
+
+To change verbosity in production without a redeploy, edit `LOG_LEVEL` on the Lambda function in the AWS console — it applies to subsequent invocations. Secrets (passwords, tokens) are never logged at any level.
 
 ### 2. Frontend
 

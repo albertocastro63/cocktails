@@ -171,7 +171,8 @@ provision_lambda() {
   # role already has scoped ses:SendEmail); APP_BASE_URL makes the reset link in
   # the email point back to this preview (no trailing slash — the handler adds
   # the /#/reset path).
-  local ENV_VARS="Variables={STORE_BACKEND=dynamodb,RECIPES_TABLE=${RECIPES_TABLE},USERS_TABLE=${USERS_TABLE},FAVORITES_TABLE=${FAVORITES_TABLE},JWT_SECRET=${JWT_SECRET},STRIP_PATH_PREFIX=/${PR_ID},MAIL_FROM=no-reply@cocktails.albertomcastro.com,APP_BASE_URL=https://cocktails.albertomcastro.com/${PR_ID}}"
+  # LOG_LEVEL=debug (feature 027): previews log everything for debugging.
+  local ENV_VARS="Variables={STORE_BACKEND=dynamodb,RECIPES_TABLE=${RECIPES_TABLE},USERS_TABLE=${USERS_TABLE},FAVORITES_TABLE=${FAVORITES_TABLE},JWT_SECRET=${JWT_SECRET},STRIP_PATH_PREFIX=/${PR_ID},MAIL_FROM=no-reply@cocktails.albertomcastro.com,APP_BASE_URL=https://cocktails.albertomcastro.com/${PR_ID},LOG_LEVEL=debug}"
 
   if aws lambda get-function --function-name "${FUNCTION_NAME}" \
       --region "${AWS_REGION}" > /dev/null 2>&1; then

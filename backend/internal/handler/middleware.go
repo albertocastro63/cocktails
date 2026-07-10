@@ -2,12 +2,59 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/aws/aws-lambda-go/lambdacontext"
+	"github.com/awslabs/aws-lambda-go-api-proxy/core"
+	"github.com/google/uuid"
+
 	"github.com/almc/cocktails/internal/auth"
+	"github.com/almc/cocktails/internal/logging"
 	"github.com/almc/cocktails/internal/store"
 )
+
+// RequestLogger installs a request-scoped structured logger into the request
+// context, bound to a correlation id (rid) and the request line (method+path),
+// so every entry a handler emits while serving the request can be grouped.
+func RequestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		l := logging.FromContext(r.Context()).With(
+			"rid", requestID(r.Context()),
+			"req", r.Method+" "+r.URL.Path,
+		)
+		next.ServeHTTP(w, r.WithContext(logging.IntoContext(r.Context(), l)))
+	})
+}
+
+// requestID reuses the platform-provided request id (API Gateway v2, then the
+// Lambda request id), falling back to a generated id off-Lambda / in tests.
+func requestID(ctx context.Context) string {
+	if pc, ok := core.GetAPIGatewayV2ContextFromContext(ctx); ok && pc.RequestID != "" {
+		return pc.RequestID
+	}
+	if lc, ok := lambdacontext.FromContext(ctx); ok && lc.AwsRequestID != "" {
+		return lc.AwsRequestID
+	}
+	return uuid.NewString()
+}
+
+// Recover turns an unhandled panic into one ERROR log entry (with request
+// correlation) and a generic 500, so an uncaught failure is captured and never
+// leaks a stack trace to the client.
+func Recover(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				logging.FromContext(r.Context()).Error("panic recovered",
+					"action", "panic", "outcome", "failure", "error", fmt.Sprint(rec))
+				writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
 
 type contextKey string
 

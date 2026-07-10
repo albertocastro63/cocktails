@@ -23,3 +23,12 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, errorBody{Error: errorDetail{Code: code, Message: message}})
 }
+
+// actorID returns the authenticated user's id from the request context, or ""
+// when unauthenticated. Used to attribute log entries to the acting user.
+func actorID(r *http.Request) string {
+	if c := ClaimsFromContext(r.Context()); c != nil {
+		return c.UserID
+	}
+	return ""
+}

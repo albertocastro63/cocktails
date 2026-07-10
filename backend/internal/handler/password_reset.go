@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/almc/cocktails/internal/auth"
 	"github.com/almc/cocktails/internal/email"
+	"github.com/almc/cocktails/internal/logging"
 	"github.com/almc/cocktails/internal/store"
 )
 
@@ -68,8 +68,10 @@ func (h *PasswordResetHandler) Forgot(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"message": neutralResetReply})
 	}
 
+	lg := logging.FromContext(r.Context())
 	user, err := h.users.GetByEmail(strings.TrimSpace(body.Email))
 	if err != nil {
+		lg.Debug("reset requested for unknown email", "action", "password.reset_request", "outcome", "no_account")
 		neutral() // unknown email — same response, no email
 		return
 	}
@@ -82,30 +84,38 @@ func (h *PasswordResetHandler) Forgot(w http.ResponseWriter, r *http.Request) {
 	case user.ResetRequestCount < resetRateLimit:
 		user.ResetRequestCount++
 	default:
+		lg.Warn("reset request rate limited", "action", "password.reset_request", "outcome", "failure",
+			"user_id", user.ID, "reason", "rate_limited")
 		neutral() // over the rate limit — same response, no email
 		return
 	}
 
 	token, err := auth.GenerateResetToken()
 	if err != nil {
+		lg.Error("reset token generation failed", "action", "password.reset_request", "outcome", "failure",
+			"user_id", user.ID, "error", err.Error())
 		neutral()
 		return
 	}
 	user.ResetTokenHash = auth.HashResetToken(token)
 	user.ResetTokenExpires = now + resetExpiryMins*60
 	if err := h.users.Update(user); err != nil {
-		// Log (no PII) so a persistence failure isn't invisible; response stays neutral.
-		log.Printf("password reset: store update failed for user %s: %v", user.ID, err)
+		lg.Error("reset store update failed", "action", "password.reset_request", "outcome", "failure",
+			"user_id", user.ID, "error", err.Error())
 		neutral()
 		return
 	}
 
 	link := fmt.Sprintf("%s/#/reset?uid=%s&token=%s", h.baseURL, url.QueryEscape(user.ID), url.QueryEscape(token))
 	if err := h.sender.SendPasswordReset(user.Email, email.PasswordResetData{ResetURL: link, ExpiryMins: resetExpiryMins}); err != nil {
-		// Same: surface send failures in logs (SES errors, throttling) without
-		// leaking to the caller — the response is neutral regardless.
-		log.Printf("password reset: send failed for user %s: %v", user.ID, err)
+		// Surface send failures (SES errors, throttling) without leaking to the
+		// caller — the response is neutral regardless.
+		lg.Error("reset email send failed", "action", "password.reset_request", "outcome", "failure",
+			"user_id", user.ID, "error", err.Error())
+		neutral()
+		return
 	}
+	lg.Info("reset email sent", "action", "password.reset_request", "outcome", "success", "user_id", user.ID)
 	neutral()
 }
 
@@ -122,18 +132,21 @@ func (h *PasswordResetHandler) Reset(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
-	invalid := func() {
+	lg := logging.FromContext(r.Context())
+	invalid := func(userID string) {
+		lg.Warn("password reset rejected", "action", "password.reset", "outcome", "failure",
+			"user_id", userID, "reason", "invalid_or_expired_token")
 		writeError(w, http.StatusBadRequest, "INVALID_RESET", "this reset link is invalid or has expired")
 	}
 
 	user, err := h.users.GetByID(body.UID)
 	if err != nil {
-		invalid()
+		invalid(body.UID)
 		return
 	}
 	now := h.now().Unix()
 	if user.ResetTokenExpires < now || !auth.VerifyResetToken(body.Token, user.ResetTokenHash) {
-		invalid()
+		invalid(user.ID)
 		return
 	}
 	if err := auth.ValidateComplexity(body.Password); err != nil {
@@ -151,8 +164,11 @@ func (h *PasswordResetHandler) Reset(w http.ResponseWriter, r *http.Request) {
 	user.ResetTokenHash = ""
 	user.ResetTokenExpires = 0
 	if err := h.users.Update(user); err != nil {
+		lg.Error("password reset persist failed", "action", "password.reset", "outcome", "failure",
+			"user_id", user.ID, "error", err.Error())
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to set password")
 		return
 	}
+	lg.Info("password reset", "action", "password.reset", "outcome", "success", "user_id", user.ID)
 	writeJSON(w, http.StatusOK, map[string]any{"message": "Your password has been reset. You can now sign in."})
 }
