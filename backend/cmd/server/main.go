@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 
 	"github.com/almc/cocktails/internal/handler"
+	"github.com/almc/cocktails/internal/logging"
 	"github.com/almc/cocktails/internal/model"
 	"github.com/almc/cocktails/internal/store"
 	dynstore "github.com/almc/cocktails/internal/store/dynamo"
@@ -21,6 +22,8 @@ import (
 )
 
 func main() {
+	logging.SetDefault(logging.New(logging.LevelFromEnv()))
+
 	var recipeStore store.RecipeStore
 	var userStore store.UserStore
 	var favoriteStore store.FavoriteStore
@@ -49,6 +52,8 @@ func main() {
 	bootstrapAdmin(userStore)
 
 	h := buildHandler(recipeStore, userStore, favoriteStore)
+	// Outermost: bind a request-scoped logger (rid+req) and recover panics.
+	h = handler.RequestLogger(handler.Recover(h))
 
 	port := envOr("PORT", "8080")
 	log.Printf("listening on :%s", port)

@@ -197,6 +197,8 @@ module "lambda_function" {
     # Feature 026 — transactional email (password recovery)
     MAIL_FROM    = local.ses_sender_address
     APP_BASE_URL = "https://${var.domain_name}"
+    # Feature 027 — backend logging: production defaults to warnings + errors.
+    LOG_LEVEL = "warn"
   }
 
   # IAM: least-privilege access to DynamoDB tables and CloudWatch logs.

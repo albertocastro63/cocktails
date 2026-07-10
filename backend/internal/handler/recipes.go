@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/almc/cocktails/internal/logging"
 	"github.com/almc/cocktails/internal/model"
 	"github.com/almc/cocktails/internal/store"
 	"github.com/google/uuid"
@@ -65,13 +66,24 @@ func (h *RecipeHandler) List(w http.ResponseWriter, r *http.Request) {
 	default:
 		recipes, total, err = h.recipes.List(page, limit)
 	}
+	log := logging.FromContext(r.Context())
 	if err != nil {
+		log.Error("recipe list failed", "action", "recipe.list", "outcome", "failure", "error", err.Error())
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to retrieve recipes")
 		return
 	}
 	if recipes == nil {
 		recipes = []*model.Recipe{}
 	}
+	action := "recipe.list"
+	switch {
+	case baseSpirit != "":
+		action = "search.base_spirit"
+	case len(tokens) >= 1:
+		action = "search.ingredients"
+	}
+	log.Debug("recipes listed", "action", action, "outcome", "success",
+		"count", total, "q", q, "base_spirit", baseSpirit)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"data":  recipes,
 		"total": total,
@@ -81,8 +93,10 @@ func (h *RecipeHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RecipeHandler) Random(w http.ResponseWriter, r *http.Request) {
+	log := logging.FromContext(r.Context())
 	recipe, err := h.recipes.Random()
 	if err != nil {
+		log.Error("random recipe failed", "action", "recipe.random", "outcome", "failure", "error", err.Error())
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to retrieve recipe")
 		return
 	}
@@ -90,16 +104,20 @@ func (h *RecipeHandler) Random(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+	log.Debug("random recipe served", "action", "recipe.random", "outcome", "success", "recipe_id", recipe.ID)
 	writeJSON(w, http.StatusOK, recipe)
 }
 
 func (h *RecipeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	log := logging.FromContext(r.Context())
 	id := r.PathValue("id")
 	recipe, err := h.recipes.GetByID(id)
 	if err != nil {
+		log.Debug("recipe not found", "action", "recipe.get", "outcome", "failure", "recipe_id", id, "reason", "not_found")
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "recipe not found")
 		return
 	}
+	log.Debug("recipe served", "action", "recipe.get", "outcome", "success", "recipe_id", id)
 	writeJSON(w, http.StatusOK, recipe)
 }
 
@@ -167,10 +185,15 @@ func (h *RecipeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		recipe.Properties = map[string]string{}
 	}
 
+	log := logging.FromContext(r.Context())
 	if err := h.recipes.Create(recipe); err != nil {
+		log.Error("recipe create failed", "action", "recipe.create", "outcome", "failure",
+			"user_id", claims.UserID, "error", err.Error())
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create recipe")
 		return
 	}
+	log.Info("recipe created", "action", "recipe.create", "outcome", "success",
+		"user_id", claims.UserID, "recipe_id", recipe.ID)
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"data":     recipe,
 		"warnings": warnings,
@@ -235,10 +258,15 @@ func (h *RecipeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		existing.Garnishes = garnishes
 	}
 
+	log := logging.FromContext(r.Context())
 	if err := h.recipes.Update(existing); err != nil {
+		log.Error("recipe update failed", "action", "recipe.update", "outcome", "failure",
+			"user_id", claims.UserID, "recipe_id", id, "error", err.Error())
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update recipe")
 		return
 	}
+	log.Info("recipe updated", "action", "recipe.update", "outcome", "success",
+		"user_id", claims.UserID, "recipe_id", id)
 	writeJSON(w, http.StatusOK, existing)
 }
 
@@ -256,9 +284,13 @@ func (h *RecipeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.recipes.Delete(id); err != nil {
+		logging.FromContext(r.Context()).Error("recipe delete failed", "action", "recipe.delete",
+			"outcome", "failure", "user_id", claims.UserID, "recipe_id", id, "error", err.Error())
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to delete recipe")
 		return
 	}
+	logging.FromContext(r.Context()).Info("recipe deleted", "action", "recipe.delete",
+		"outcome", "success", "user_id", claims.UserID, "recipe_id", id)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -269,14 +301,19 @@ func (h *RecipeHandler) Mine(w http.ResponseWriter, r *http.Request) {
 	if limit > 100 {
 		limit = 100
 	}
+	log := logging.FromContext(r.Context())
 	recipes, total, err := h.recipes.ListByCreator(claims.UserID, page, limit)
 	if err != nil {
+		log.Error("list own recipes failed", "action", "recipe.list", "outcome", "failure",
+			"user_id", claims.UserID, "error", err.Error())
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to retrieve recipes")
 		return
 	}
 	if recipes == nil {
 		recipes = []*model.Recipe{}
 	}
+	log.Debug("own recipes listed", "action", "recipe.list", "outcome", "success",
+		"user_id", claims.UserID, "count", total)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"data":  recipes,
 		"total": total,
