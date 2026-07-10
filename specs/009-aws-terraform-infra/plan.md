@@ -16,7 +16,7 @@ Deploy the full cocktails application to AWS using Terraform with serverless.tf 
 - `terraform-aws-modules/dynamodb-table/aws ~> 4.0`
 - `terraform-aws-modules/s3-bucket/aws ~> 4.0`
 - `terraform-aws-modules/cloudfront/aws ~> 3.4`
-- `hashicorp/aws ~> 5.0`
+- `hashicorp/aws ~> 6.0`
 **Storage**: DynamoDB (application data); S3 (Lambda artifacts, frontend assets, Terraform state)
 **Testing**: `terraform validate`, `terraform plan` review, SAM local invocation, `checkov` static analysis
 **Target Platform**: AWS `us-east-1`, Lambda `provided.al2023` runtime, arm64 architecture
