@@ -35,13 +35,14 @@ type recipeItem struct {
 	CreatorID   string            `dynamodbav:"creator_id"`
 	CreatedAt   string            `dynamodbav:"created_at"`
 	UpdatedAt   string            `dynamodbav:"updated_at"`
+	RelatedIDs  []string          `dynamodbav:"related_ids,omitempty"`
 }
 
 type ingItem struct {
-	Name         string `dynamodbav:"name"`
-	Quantity     string `dynamodbav:"quantity"`
-	Unit         string `dynamodbav:"unit"`
-	BaseSpirit   bool   `dynamodbav:"is_base_spirit,omitempty"`
+	Name       string `dynamodbav:"name"`
+	Quantity   string `dynamodbav:"quantity"`
+	Unit       string `dynamodbav:"unit"`
+	BaseSpirit bool   `dynamodbav:"is_base_spirit,omitempty"`
 }
 
 func (s *RecipeStore) Create(r *model.Recipe) error {
@@ -146,6 +147,14 @@ func (s *RecipeStore) Update(r *model.Recipe) error {
 }
 
 func (s *RecipeStore) Delete(id string) error {
+	// Feature 028: strip this recipe from its counterparts' related sets first.
+	if r, err := s.GetByID(id); err == nil {
+		for _, b := range r.RelatedIDs {
+			if err := s.mutateCounterpart(b, id, false); err != nil {
+				return err
+			}
+		}
+	}
 	_, err := s.client.DeleteItem(context.Background(), &dynamodb.DeleteItemInput{
 		TableName: aws.String(s.tableName),
 		Key: map[string]types.AttributeValue{
@@ -378,6 +387,7 @@ func toItem(r *model.Recipe) recipeItem {
 		CreatorID:   r.CreatorID,
 		CreatedAt:   r.CreatedAt.UTC().Format(time.RFC3339Nano),
 		UpdatedAt:   r.UpdatedAt.UTC().Format(time.RFC3339Nano),
+		RelatedIDs:  r.RelatedIDs,
 	}
 }
 
@@ -403,6 +413,7 @@ func unmarshalRecipe(av map[string]types.AttributeValue) (*model.Recipe, error) 
 		CreatorID:   item.CreatorID,
 		CreatedAt:   createdAt,
 		UpdatedAt:   updatedAt,
+		RelatedIDs:  item.RelatedIDs,
 	}, nil
 }
 

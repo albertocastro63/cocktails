@@ -91,8 +91,80 @@ func (s *stubRecipeStore) Delete(id string) error {
 	if s.err != nil {
 		return s.err
 	}
+	// Symmetric cleanup: drop id from every counterpart's related set.
+	if r, ok := s.recipes[id]; ok {
+		for _, b := range r.RelatedIDs {
+			s.removeRel(b, id)
+		}
+	}
 	delete(s.recipes, id)
 	return nil
+}
+
+// SetRelated reconciles symmetric relations (mirrors the real store semantics)
+// so handler tests can assert two-sided behavior.
+func (s *stubRecipeStore) SetRelated(recipeID string, requested []string) error {
+	if s.err != nil {
+		return s.err
+	}
+	self, ok := s.recipes[recipeID]
+	if !ok {
+		return errors.New("not found")
+	}
+	seen := map[string]bool{}
+	next := []string{}
+	for _, id := range requested {
+		if id == "" || id == recipeID || seen[id] {
+			continue
+		}
+		if _, exists := s.recipes[id]; !exists {
+			continue
+		}
+		seen[id] = true
+		next = append(next, id)
+	}
+	old := self.RelatedIDs
+	self.RelatedIDs = next
+	for _, b := range next {
+		if !contains(old, b) {
+			s.addRel(b, recipeID)
+		}
+	}
+	for _, b := range old {
+		if !contains(next, b) {
+			s.removeRel(b, recipeID)
+		}
+	}
+	return nil
+}
+
+func (s *stubRecipeStore) addRel(id, other string) {
+	if r, ok := s.recipes[id]; ok && !contains(r.RelatedIDs, other) {
+		r.RelatedIDs = append(r.RelatedIDs, other)
+	}
+}
+
+func (s *stubRecipeStore) removeRel(id, other string) {
+	r, ok := s.recipes[id]
+	if !ok {
+		return
+	}
+	out := make([]string, 0, len(r.RelatedIDs))
+	for _, x := range r.RelatedIDs {
+		if x != other {
+			out = append(out, x)
+		}
+	}
+	r.RelatedIDs = out
+}
+
+func contains(xs []string, v string) bool {
+	for _, x := range xs {
+		if x == v {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *stubRecipeStore) ExistsByName(name string) (bool, error) {

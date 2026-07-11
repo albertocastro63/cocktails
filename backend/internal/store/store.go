@@ -19,6 +19,10 @@ type RecipeStore interface {
 	Random() (*model.Recipe, error)
 	Update(recipe *model.Recipe) error
 	Delete(id string) error
+	// SetRelated sets recipeID's related set to relatedIDs (normalized: deduped,
+	// self dropped, non-existent dropped) and reconciles the symmetric reverse
+	// relation on each counterpart. Non-transactional: returns any write error.
+	SetRelated(recipeID string, relatedIDs []string) error
 	ExistsByName(name string) (bool, error)
 	ListAll() ([]*model.Recipe, error)
 	ImportBatch(recipes []*model.Recipe, creatorID string) (created, skipped int, err error)

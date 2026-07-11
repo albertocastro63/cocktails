@@ -145,6 +145,27 @@ export function RecipeDetail({ id }) {
       content.appendChild(h2);
       content.appendChild(PropertyTable({ properties: recipe.properties }));
     }
+
+    // Related cocktails (feature 028) — shown only here, at the bottom, when any
+    // exist. Server returns them alphabetically as {id, name}. Never on Home.
+    if (recipe.related && recipe.related.length > 0) {
+      const h2 = document.createElement('h2');
+      h2.className = 'text-sm font-semibold uppercase tracking-widest text-amber-700 mt-8 mb-2';
+      h2.textContent = 'Related cocktails';
+      content.appendChild(h2);
+      const ul = document.createElement('ul');
+      ul.className = 'flex flex-wrap gap-x-4 gap-y-1';
+      recipe.related.forEach((r) => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = `#/recipes/${r.id}`;
+        a.textContent = r.name;
+        a.className = 'text-amber-700 hover:text-amber-800 underline';
+        li.appendChild(a);
+        ul.appendChild(li);
+      });
+      content.appendChild(ul);
+    }
   }).catch((err) => {
     content.innerHTML = '';
     const errP = document.createElement('p');

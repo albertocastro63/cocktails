@@ -3,10 +3,10 @@ package model
 import "time"
 
 type Ingredient struct {
-	Name          string `json:"name"`
-	Quantity      string `json:"quantity"`
-	Unit          string `json:"unit,omitempty"`
-	IsBaseSpirit  bool   `json:"is_base_spirit,omitempty"`
+	Name         string `json:"name"`
+	Quantity     string `json:"quantity"`
+	Unit         string `json:"unit,omitempty"`
+	IsBaseSpirit bool   `json:"is_base_spirit,omitempty"`
 }
 
 type Recipe struct {
@@ -20,6 +20,18 @@ type Recipe struct {
 	CreatorID   string            `json:"creator_id"`
 	CreatedAt   time.Time         `json:"created_at"`
 	UpdatedAt   time.Time         `json:"updated_at"`
+
+	// RelatedIDs is the set of related recipe IDs (symmetric, non-transitive).
+	RelatedIDs []string `json:"related_ids,omitempty"`
+	// Related is a read-only enrichment (id + name, alphabetical) populated only
+	// for the single-recipe detail read; never persisted.
+	Related []RelatedRef `json:"related,omitempty"`
+}
+
+// RelatedRef is a lightweight reference to a related cocktail for display/links.
+type RelatedRef struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 type Favorite struct {
