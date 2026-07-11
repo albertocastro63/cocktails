@@ -1,6 +1,7 @@
-import { createRecipe, updateRecipe, getRecipe } from '../api/client.js';
+import { createRecipe, updateRecipe, getRecipe, getRecipeNames } from '../api/client.js';
 import { getToken } from '../api/auth.js';
 import { MarkdownEditor } from '../components/MarkdownEditor.js';
+import { RelatedCocktailPicker } from '../components/RelatedCocktailPicker.js';
 
 export function RecipeForm({ id, onSave } = {}) {
   const el = document.createElement('div');
@@ -118,6 +119,25 @@ export function RecipeForm({ id, onSave } = {}) {
   );
   form.appendChild(propertiesSection);
 
+  // Related cocktails (feature 028). The picker mounts once names load; the
+  // initial chips come from the recipe's related_ids resolved against the names
+  // list (client-side) — no dependency on the detail-only `related` enrichment.
+  const relatedContainer = document.createElement('div');
+  form.appendChild(relatedContainer);
+
+  let getSelectedRelated = () => [];
+  async function mountPicker(selectedIds) {
+    try {
+      const names = await getRecipeNames();
+      const picker = RelatedCocktailPicker({ names, selectedIds, currentId: id || null });
+      relatedContainer.innerHTML = '';
+      relatedContainer.appendChild(picker);
+      getSelectedRelated = () => picker.getSelectedIds();
+    } catch {
+      // Names failed to load — the picker is skipped; saving the rest still works.
+    }
+  }
+
   const errorMsg = document.createElement('p');
   errorMsg.className = 'text-red-600 text-sm hidden';
   form.appendChild(errorMsg);
@@ -157,7 +177,10 @@ export function RecipeForm({ id, onSave } = {}) {
       const newEditor = MarkdownEditor({ name: 'notes', placeholder: 'Personal notes, substitutions, tips…', value: recipe.notes || '' });
       form.replaceChild(newEditor, editorEl);
       editorEl = newEditor;
+      mountPicker(recipe.related_ids || []);
     }).catch(() => {});
+  } else {
+    mountPicker([]);
   }
 
   form.addEventListener('submit', async (e) => {
@@ -200,7 +223,7 @@ export function RecipeForm({ id, onSave } = {}) {
       return input ? input.value.trim() : '';
     }).filter(Boolean);
 
-    const payload = { name, ingredients, steps, properties, notes, garnishes };
+    const payload = { name, ingredients, steps, properties, notes, garnishes, related_ids: getSelectedRelated() };
     const token = getToken();
 
     try {

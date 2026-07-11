@@ -25,6 +25,7 @@ func (noopRecipeStore) SearchByBaseSpiritAndIngredients(string, []string, int, i
 func (noopRecipeStore) Random() (*model.Recipe, error)                                                 { return nil, nil }
 func (noopRecipeStore) Update(*model.Recipe) error                                           { return nil }
 func (noopRecipeStore) Delete(string) error                                                  { return nil }
+func (noopRecipeStore) SetRelated(string, []string) error                                    { return nil }
 func (noopRecipeStore) ExistsByName(string) (bool, error)                                    { return false, nil }
 func (noopRecipeStore) ListAll() ([]*model.Recipe, error)                                    { return nil, nil }
 func (noopRecipeStore) ImportBatch([]*model.Recipe, string) (int, int, error)                { return 0, 0, nil }

@@ -50,7 +50,7 @@ func (s *RecipeStore) Create(r *model.Recipe) error {
 
 func (s *RecipeStore) GetByID(id string) (*model.Recipe, error) {
 	row := s.db.QueryRow(
-		`SELECT id, name, ingredients, steps, properties, notes, garnishes, creator_id, created_at, updated_at
+		`SELECT id, name, ingredients, steps, properties, notes, garnishes, creator_id, created_at, updated_at, related_ids
 		 FROM recipes WHERE id = ?`, id)
 	r, err := scanRecipe(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -102,7 +102,7 @@ func (s *RecipeStore) Search(query string, page, limit int) ([]*model.Recipe, in
 
 func (s *RecipeStore) Random() (*model.Recipe, error) {
 	row := s.db.QueryRow(
-		`SELECT id, name, ingredients, steps, properties, notes, garnishes, creator_id, created_at, updated_at
+		`SELECT id, name, ingredients, steps, properties, notes, garnishes, creator_id, created_at, updated_at, related_ids
 		 FROM recipes ORDER BY RANDOM() LIMIT 1`)
 	r, err := scanRecipe(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -148,6 +148,15 @@ func (s *RecipeStore) Update(r *model.Recipe) error {
 }
 
 func (s *RecipeStore) Delete(id string) error {
+	// Feature 028: strip this recipe from its counterparts' related sets.
+	// A symmetric relation means these are exactly the recipes that reference it.
+	if related, err := s.relatedIDs(id); err == nil {
+		for _, b := range related {
+			if err := s.removeCounterpart(b, id); err != nil {
+				return err
+			}
+		}
+	}
 	_, err := s.db.Exec(`DELETE FROM recipes_fts WHERE recipe_id = ?`, id)
 	if err != nil {
 		return err
@@ -357,10 +366,10 @@ func (s *RecipeStore) upsertFTS(r *model.Recipe) error {
 
 func scanRecipe(row *sql.Row) (*model.Recipe, error) {
 	var r model.Recipe
-	var ing, steps, props, garnishes []byte
+	var ing, steps, props, garnishes, relatedIDs []byte
 	var creatorID sql.NullString
 	var createdAt, updatedAt string
-	err := row.Scan(&r.ID, &r.Name, &ing, &steps, &props, &r.Notes, &garnishes, &creatorID, &createdAt, &updatedAt)
+	err := row.Scan(&r.ID, &r.Name, &ing, &steps, &props, &r.Notes, &garnishes, &creatorID, &createdAt, &updatedAt, &relatedIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -379,6 +388,11 @@ func scanRecipe(row *sql.Row) (*model.Recipe, error) {
 	}
 	if r.Garnishes == nil {
 		r.Garnishes = []string{}
+	}
+	if len(relatedIDs) > 0 {
+		if err := json.Unmarshal(relatedIDs, &r.RelatedIDs); err != nil {
+			return nil, err
+		}
 	}
 	r.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	r.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)

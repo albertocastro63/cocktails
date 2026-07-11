@@ -334,3 +334,43 @@ describe('RecipeDetail — garnishes section (T013)', () => {
     expect(h2s).not.toContain('Garnishes');
   });
 });
+
+// T015: RecipeDetail related cocktails section (US2)
+describe('RecipeDetail — related cocktails section', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = '';
+    getFavoriteStatus.mockResolvedValue({ is_favorite: false });
+    getUserID.mockReturnValue(null);
+  });
+  afterEach(() => { document.body.innerHTML = ''; });
+
+  it('renders a Related cocktails section at the bottom with alphabetical links', async () => {
+    getRecipe.mockResolvedValue({
+      id: 'r1', name: 'Mojito', ingredients: [], steps: [], properties: {},
+      related: [
+        { id: 'lh', name: 'Left Hand' },
+        { id: 'rh', name: 'Right Hand' },
+      ],
+    });
+    const el = RecipeDetail({ id: 'r1' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => {
+      expect([...document.body.querySelectorAll('h2')].map(h => h.textContent)).toContain('Related cocktails');
+    });
+    const relatedLinks = [...document.body.querySelectorAll('a')]
+      .filter(a => ['Left Hand', 'Right Hand'].includes(a.textContent));
+    expect(relatedLinks.map(a => a.textContent)).toEqual(['Left Hand', 'Right Hand']);
+    expect(relatedLinks[0].getAttribute('href')).toBe('#/recipes/lh');
+    const h2s = [...document.body.querySelectorAll('h2')].map(h => h.textContent);
+    expect(h2s[h2s.length - 1]).toBe('Related cocktails'); // last section
+  });
+
+  it('renders no Related cocktails section when there are none', async () => {
+    getRecipe.mockResolvedValue({ id: 'r1', name: 'Mojito', ingredients: [], steps: [], properties: {}, related: [] });
+    const el = RecipeDetail({ id: 'r1' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Mojito'));
+    expect([...document.body.querySelectorAll('h2')].map(h => h.textContent)).not.toContain('Related cocktails');
+  });
+});

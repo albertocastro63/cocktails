@@ -4,18 +4,25 @@ vi.mock('../api/client.js', () => ({
   createRecipe: vi.fn(),
   updateRecipe: vi.fn(),
   getRecipe: vi.fn(),
+  getRecipeNames: vi.fn(),
 }));
 vi.mock('../api/auth.js', () => ({
   getToken: vi.fn(() => 'tok'),
   isLoggedIn: vi.fn(() => true),
 }));
 
-import { createRecipe, updateRecipe, getRecipe } from '../api/client.js';
+import { createRecipe, updateRecipe, getRecipe, getRecipeNames } from '../api/client.js';
 import { RecipeForm } from './RecipeForm.js';
+
+const NAMES = [
+  { id: 'lh', name: 'Left Hand' },
+  { id: 'rh', name: 'Right Hand' },
+];
 
 describe('RecipeForm page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getRecipeNames.mockResolvedValue(NAMES);
     document.body.innerHTML = '';
   });
   afterEach(() => { document.body.innerHTML = ''; });
@@ -351,5 +358,41 @@ describe('RecipeForm — base spirit toggle', () => {
     const vermouth = payload.ingredients.find(i => i.name === 'Vermouth');
     expect(rye.is_base_spirit).toBe(true);
     expect(vermouth.is_base_spirit).toBeFalsy();
+  });
+
+  it('submits related_ids chosen via the picker on create', async () => {
+    createRecipe.mockResolvedValue({ data: { id: 'new' } });
+    const el = RecipeForm({});
+    document.body.appendChild(el);
+    await vi.waitFor(() => expect(el.querySelector('input[role="combobox"]')).toBeTruthy());
+
+    el.querySelector('[name="name"]').value = 'Negroni';
+    const combo = el.querySelector('input[role="combobox"]');
+    combo.value = 'left';
+    combo.dispatchEvent(new Event('input', { bubbles: true }));
+    combo.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    combo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    el.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(createRecipe).toHaveBeenCalled());
+    expect(createRecipe.mock.calls[0][0].related_ids).toContain('lh');
+  });
+
+  it('removing a related chip drops it from the submitted related_ids on edit', async () => {
+    getRecipe.mockResolvedValue({
+      id: 'a', name: 'Negroni', ingredients: [], steps: [], properties: {},
+      garnishes: [], notes: '', related_ids: ['lh', 'rh'],
+    });
+    updateRecipe.mockResolvedValue({});
+    const el = RecipeForm({ id: 'a' });
+    document.body.appendChild(el);
+    await vi.waitFor(() => expect(el.querySelector('[data-chip="lh"]')).toBeTruthy());
+
+    el.querySelector('[data-chip="lh"] button').click();
+    el.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(updateRecipe).toHaveBeenCalled());
+    const payload = updateRecipe.mock.calls[0][1];
+    expect(payload.related_ids).not.toContain('lh');
+    expect(payload.related_ids).toContain('rh');
   });
 });

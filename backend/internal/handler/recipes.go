@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -108,6 +109,25 @@ func (h *RecipeHandler) Random(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, recipe)
 }
 
+// Names returns a lightweight [{id, name}] list of all recipes for the
+// related-cocktails type-ahead (client-side substring filtering).
+func (h *RecipeHandler) Names(w http.ResponseWriter, r *http.Request) {
+	all, err := h.recipes.ListAll()
+	if err != nil {
+		logging.FromContext(r.Context()).Error("recipe names failed", "action", "recipe.names",
+			"outcome", "failure", "error", err.Error())
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list recipes")
+		return
+	}
+	names := make([]model.RelatedRef, 0, len(all))
+	for _, rec := range all {
+		names = append(names, model.RelatedRef{ID: rec.ID, Name: rec.Name})
+	}
+	logging.FromContext(r.Context()).Debug("recipe names served", "action", "recipe.names",
+		"outcome", "success", "count", len(names))
+	writeJSON(w, http.StatusOK, names)
+}
+
 func (h *RecipeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	log := logging.FromContext(r.Context())
 	id := r.PathValue("id")
@@ -117,8 +137,24 @@ func (h *RecipeHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "recipe not found")
 		return
 	}
+	recipe.Related = h.resolveRelated(recipe.RelatedIDs)
 	log.Debug("recipe served", "action", "recipe.get", "outcome", "success", "recipe_id", id)
 	writeJSON(w, http.StatusOK, recipe)
+}
+
+// resolveRelated turns a set of related recipe IDs into {id, name} references
+// for display, sorted alphabetically by name (FR-017). Missing ids are skipped.
+func (h *RecipeHandler) resolveRelated(ids []string) []model.RelatedRef {
+	refs := make([]model.RelatedRef, 0, len(ids))
+	for _, rid := range ids {
+		if r, err := h.recipes.GetByID(rid); err == nil {
+			refs = append(refs, model.RelatedRef{ID: r.ID, Name: r.Name})
+		}
+	}
+	sort.Slice(refs, func(i, j int) bool {
+		return strings.ToLower(refs[i].Name) < strings.ToLower(refs[j].Name)
+	})
+	return refs
 }
 
 func (h *RecipeHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -131,6 +167,7 @@ func (h *RecipeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Properties  map[string]string  `json:"properties"`
 		Notes       *string            `json:"notes"`
 		Garnishes   []string           `json:"garnishes"`
+		RelatedIDs  []string           `json:"related_ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
@@ -192,6 +229,15 @@ func (h *RecipeHandler) Create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create recipe")
 		return
 	}
+	if len(body.RelatedIDs) > 0 {
+		if err := h.recipes.SetRelated(recipe.ID, body.RelatedIDs); err != nil {
+			log.Error("recipe relations set failed", "action", "recipe.create", "outcome", "failure",
+				"user_id", claims.UserID, "recipe_id", recipe.ID, "error", err.Error())
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to set related cocktails")
+			return
+		}
+		recipe.RelatedIDs = body.RelatedIDs
+	}
 	log.Info("recipe created", "action", "recipe.create", "outcome", "success",
 		"user_id", claims.UserID, "recipe_id", recipe.ID)
 	writeJSON(w, http.StatusCreated, map[string]any{
@@ -221,6 +267,7 @@ func (h *RecipeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Properties  map[string]string  `json:"properties"`
 		Notes       *string            `json:"notes"`
 		Garnishes   []string           `json:"garnishes"`
+		RelatedIDs  *[]string          `json:"related_ids"` // nil = leave unchanged
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
@@ -264,6 +311,17 @@ func (h *RecipeHandler) Update(w http.ResponseWriter, r *http.Request) {
 			"user_id", claims.UserID, "recipe_id", id, "error", err.Error())
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update recipe")
 		return
+	}
+	if body.RelatedIDs != nil {
+		if err := h.recipes.SetRelated(id, *body.RelatedIDs); err != nil {
+			log.Error("recipe relations set failed", "action", "recipe.update", "outcome", "failure",
+				"user_id", claims.UserID, "recipe_id", id, "error", err.Error())
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to set related cocktails")
+			return
+		}
+		if reloaded, err := h.recipes.GetByID(id); err == nil {
+			existing = reloaded
+		}
 	}
 	log.Info("recipe updated", "action", "recipe.update", "outcome", "success",
 		"user_id", claims.UserID, "recipe_id", id)

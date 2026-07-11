@@ -100,6 +100,7 @@ func buildHandler(rs store.RecipeStore, us store.UserStore, fs store.FavoriteSto
 
 	mux.HandleFunc("GET /api/v1/recipes", recipes.List)
 	mux.HandleFunc("GET /api/v1/recipes/random", recipes.Random)
+	mux.HandleFunc("GET /api/v1/recipes/names", recipes.Names)
 	mux.Handle("GET /api/v1/recipes/mine", handler.RequireAuth(http.HandlerFunc(recipes.Mine)))
 	// Favorites routes must be registered before the {id} wildcard
 	mux.Handle("GET /api/v1/recipes/favorites", handler.RequireAuth(http.HandlerFunc(favH.List)))

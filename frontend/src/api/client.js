@@ -43,6 +43,12 @@ export function getRecipe(id) {
   return request('GET', `${apiPrefix()}/v1/recipes/${id}`);
 }
 
+// getRecipeNames returns a lightweight [{id, name}] list for the related-cocktails
+// type-ahead (filtered client-side).
+export function getRecipeNames() {
+  return request('GET', `${apiPrefix()}/v1/recipes/names`);
+}
+
 export function login(username, password) {
   return request('POST', `${apiPrefix()}/v1/auth/login`, { username, password });
 }

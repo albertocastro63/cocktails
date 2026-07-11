@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import {
-  getRecipes, getRandomRecipe, getMyRecipes, getRecipe,
+  getRecipes, getRandomRecipe, getMyRecipes, getRecipe, getRecipeNames,
   login, createRecipe, updateRecipe, deleteRecipe,
   listUsers, createUser, getUser, updateUser, deleteUser,
   downloadRecipeSchema, exportRecipes, importRecipes,
@@ -49,6 +49,16 @@ describe('request() — core behaviour', () => {
       status: 404,
       code: 'NOT_FOUND',
     });
+  });
+
+  it('getRecipeNames GETs the names endpoint and returns [{id,name}]', async () => {
+    mockFetch(200, [{ id: 'a', name: 'Negroni' }]);
+    const out = await getRecipeNames();
+    expect(out).toEqual([{ id: 'a', name: 'Negroni' }]);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/v1/recipes/names'),
+      expect.objectContaining({ method: 'GET' }),
+    );
   });
 
   it('falls back to a generic message when error body cannot be parsed', async () => {

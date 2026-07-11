@@ -168,4 +168,16 @@ describe('compact landing header on mobile (responsive classes)', () => {
     expect(cta.className).toContain('md:py-2');
     expect(cta.className).toContain('md:text-base');
   });
+
+  // FR-011: the random featured cocktail must never show a related-cocktails list.
+  it('does not render a Related cocktails section for the random cocktail', async () => {
+    getRandomRecipe.mockResolvedValue({
+      id: 'r1', name: 'Mojito', ingredients: [], steps: [], properties: {},
+      related: [{ id: 'lh', name: 'Left Hand' }], // even if present, Home must ignore it
+    });
+    const el = Home();
+    document.body.appendChild(el);
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Mojito'));
+    expect(document.body.textContent).not.toContain('Related cocktails');
+  });
 });
