@@ -3,6 +3,7 @@ package auth_test
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/almc/cocktails/internal/auth"
 )
@@ -78,6 +79,41 @@ func TestIssue_EmbedTokenVersion(t *testing.T) {
 	}
 	if claims.TokenVersion != 3 {
 		t.Errorf("TokenVersion: got %d want 3", claims.TokenVersion)
+	}
+}
+
+func TestIssue_DefaultDuration(t *testing.T) {
+	_, expiresAt, err := auth.Issue("user-1", "alice", false, 0)
+	if err != nil {
+		t.Fatalf("Issue: %v", err)
+	}
+	got := time.Until(expiresAt)
+	if got < 23*time.Hour || got > 25*time.Hour {
+		t.Errorf("default expiry: got ~%v, want ~24h", got)
+	}
+}
+
+func TestIssue_TokenDurationOverride(t *testing.T) {
+	t.Setenv("JWT_TOKEN_DURATION", "30s")
+	_, expiresAt, err := auth.Issue("user-1", "alice", false, 0)
+	if err != nil {
+		t.Fatalf("Issue: %v", err)
+	}
+	got := time.Until(expiresAt)
+	if got < 25*time.Second || got > 35*time.Second {
+		t.Errorf("overridden expiry: got ~%v, want ~30s", got)
+	}
+}
+
+func TestIssue_TokenDurationOverride_InvalidFallsBack(t *testing.T) {
+	t.Setenv("JWT_TOKEN_DURATION", "not-a-duration")
+	_, expiresAt, err := auth.Issue("user-1", "alice", false, 0)
+	if err != nil {
+		t.Fatalf("Issue: %v", err)
+	}
+	got := time.Until(expiresAt)
+	if got < 23*time.Hour || got > 25*time.Hour {
+		t.Errorf("invalid override should fall back to 24h: got ~%v", got)
 	}
 }
 
