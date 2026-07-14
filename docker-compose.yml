@@ -1,0 +1,10 @@
+# Local development dependencies. The DynamoDB Local container mirrors the
+# `amazon/dynamodb-local` image CI already uses, so local == CI == (closely)
+# production. Data is in-memory and ephemeral: `docker compose down` discards it.
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local
+    container_name: cocktails-dynamodb-local
+    command: "-jar DynamoDBLocal.jar -inMemory -sharedDb"
+    ports:
+      - "8000:8000"

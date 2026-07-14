@@ -101,10 +101,20 @@ module "users_table" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
 
+  # username-index (feature 029): declares the GSI login queries via
+  # GetByUsername. The live table already carries this index (it was created
+  # out-of-band), so this reconciles the definition with reality — Terraform
+  # refreshes the GSI into state from the live table, making apply a no-op.
   attributes = [
+    { name = "id", type = "S" },
+    { name = "username", type = "S" },
+  ]
+
+  global_secondary_indexes = [
     {
-      name = "id"
-      type = "S"
+      name            = "username-index"
+      hash_key        = "username"
+      projection_type = "ALL"
     }
   ]
 

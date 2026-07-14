@@ -1,4 +1,4 @@
-package sqlite_test
+package dynamo_test
 
 import (
 	"sort"
@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/almc/cocktails/internal/model"
-	sqstore "github.com/almc/cocktails/internal/store/sqlite"
+	dynstore "github.com/almc/cocktails/internal/store/dynamo"
 	"github.com/google/uuid"
 )
 
-func relRecipe(t *testing.T, rs *sqstore.RecipeStore, name string) string {
+func relRecipe(t *testing.T, rs *dynstore.RecipeStore, name string) string {
 	t.Helper()
 	id := uuid.NewString()
 	if err := rs.Create(&model.Recipe{
@@ -23,7 +23,7 @@ func relRecipe(t *testing.T, rs *sqstore.RecipeStore, name string) string {
 	return id
 }
 
-func relatedOf(t *testing.T, rs *sqstore.RecipeStore, id string) []string {
+func relatedOf(t *testing.T, rs *dynstore.RecipeStore, id string) []string {
 	t.Helper()
 	r, err := rs.GetByID(id)
 	if err != nil {
@@ -34,8 +34,15 @@ func relatedOf(t *testing.T, rs *sqstore.RecipeStore, id string) []string {
 	return got
 }
 
-func TestSetRelated_Symmetric(t *testing.T) {
-	rs, _ := newTestStores(t)
+func newRelatedStore(t *testing.T) *dynstore.RecipeStore {
+	t.Helper()
+	client := testClient(t)
+	names := provision(t, client)
+	return dynstore.NewRecipeStore(client, names.Recipes)
+}
+
+func TestDynamo_SetRelated_Symmetric(t *testing.T) {
+	rs := newRelatedStore(t)
 	a := relRecipe(t, rs, "Negroni")
 	b := relRecipe(t, rs, "Left Hand")
 
@@ -50,8 +57,8 @@ func TestSetRelated_Symmetric(t *testing.T) {
 	}
 }
 
-func TestSetRelated_DedupeAndNoSelf(t *testing.T) {
-	rs, _ := newTestStores(t)
+func TestDynamo_SetRelated_DedupeAndNoSelf(t *testing.T) {
+	rs := newRelatedStore(t)
 	a := relRecipe(t, rs, "Negroni")
 	b := relRecipe(t, rs, "Left Hand")
 
@@ -63,8 +70,8 @@ func TestSetRelated_DedupeAndNoSelf(t *testing.T) {
 	}
 }
 
-func TestSetRelated_DropsNonExistent(t *testing.T) {
-	rs, _ := newTestStores(t)
+func TestDynamo_SetRelated_DropsNonExistent(t *testing.T) {
+	rs := newRelatedStore(t)
 	a := relRecipe(t, rs, "Negroni")
 	b := relRecipe(t, rs, "Left Hand")
 
@@ -76,8 +83,8 @@ func TestSetRelated_DropsNonExistent(t *testing.T) {
 	}
 }
 
-func TestSetRelated_RemovalIsSymmetric(t *testing.T) {
-	rs, _ := newTestStores(t)
+func TestDynamo_SetRelated_RemovalIsSymmetric(t *testing.T) {
+	rs := newRelatedStore(t)
 	a := relRecipe(t, rs, "Negroni")
 	b := relRecipe(t, rs, "Left Hand")
 
@@ -95,8 +102,8 @@ func TestSetRelated_RemovalIsSymmetric(t *testing.T) {
 	}
 }
 
-func TestDelete_RemovesFromCounterparts(t *testing.T) {
-	rs, _ := newTestStores(t)
+func TestDynamo_Delete_RemovesFromCounterparts(t *testing.T) {
+	rs := newRelatedStore(t)
 	a := relRecipe(t, rs, "Negroni")
 	b := relRecipe(t, rs, "Left Hand")
 	if err := rs.SetRelated(a, []string{b}); err != nil {
@@ -105,18 +112,13 @@ func TestDelete_RemovesFromCounterparts(t *testing.T) {
 	if err := rs.Delete(a); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
-	for _, id := range relatedOf(t, rs, b) {
-		if id == a {
-			t.Errorf("B still lists deleted A: %v", relatedOf(t, rs, b))
-		}
-	}
 	if got := relatedOf(t, rs, b); len(got) != 0 {
 		t.Errorf("B.related = %v, want empty after A deleted", got)
 	}
 }
 
-func TestSetRelated_NonTransitive(t *testing.T) {
-	rs, _ := newTestStores(t)
+func TestDynamo_SetRelated_NonTransitive(t *testing.T) {
+	rs := newRelatedStore(t)
 	a := relRecipe(t, rs, "A")
 	b := relRecipe(t, rs, "B")
 	c := relRecipe(t, rs, "C")
@@ -127,7 +129,6 @@ func TestSetRelated_NonTransitive(t *testing.T) {
 	if err := rs.SetRelated(b, []string{a, c}); err != nil {
 		t.Fatalf("B-C: %v", err)
 	}
-	// A relates only to B; C must not have leaked in.
 	for _, id := range relatedOf(t, rs, a) {
 		if id == c {
 			t.Errorf("A must not be related to C (non-transitive)")
