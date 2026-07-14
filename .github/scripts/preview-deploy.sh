@@ -172,7 +172,9 @@ provision_lambda() {
   # the email point back to this preview (no trailing slash — the handler adds
   # the /#/reset path).
   # LOG_LEVEL=debug (feature 027): previews log everything for debugging.
-  local ENV_VARS="Variables={STORE_BACKEND=dynamodb,RECIPES_TABLE=${RECIPES_TABLE},USERS_TABLE=${USERS_TABLE},FAVORITES_TABLE=${FAVORITES_TABLE},JWT_SECRET=${JWT_SECRET},STRIP_PATH_PREFIX=/${PR_ID},MAIL_FROM=no-reply@cocktails.albertomcastro.com,APP_BASE_URL=https://cocktails.albertomcastro.com/${PR_ID},LOG_LEVEL=debug}"
+  # JWT_TOKEN_DURATION: session lifetime; defaults to 24h to match prod, but can
+  # be overridden (e.g. a short value) to exercise the auto-logout flow.
+  local ENV_VARS="Variables={STORE_BACKEND=dynamodb,RECIPES_TABLE=${RECIPES_TABLE},USERS_TABLE=${USERS_TABLE},FAVORITES_TABLE=${FAVORITES_TABLE},JWT_SECRET=${JWT_SECRET},JWT_TOKEN_DURATION=${JWT_TOKEN_DURATION:-24h},STRIP_PATH_PREFIX=/${PR_ID},MAIL_FROM=no-reply@cocktails.albertomcastro.com,APP_BASE_URL=https://cocktails.albertomcastro.com/${PR_ID},LOG_LEVEL=debug}"
 
   if aws lambda get-function --function-name "${FUNCTION_NAME}" \
       --region "${AWS_REGION}" > /dev/null 2>&1; then
