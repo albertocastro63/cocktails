@@ -1,7 +1,19 @@
+import { clearToken } from './auth.js';
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 function apiPrefix() {
   return import.meta.env.VITE_API_PATH_PREFIX || '/api';
+}
+
+// handleSessionExpired drops the stale token and sends the user to sign in.
+// Called when an authenticated request comes back 401 — the token has expired
+// or been invalidated, so the UI must not keep pretending the session is live.
+function handleSessionExpired() {
+  clearToken();
+  if (typeof window !== 'undefined' && !window.location.hash.startsWith('#/login')) {
+    window.location.hash = '#/login';
+  }
 }
 
 async function request(method, path, body, token) {
@@ -16,6 +28,13 @@ async function request(method, path, body, token) {
   });
   if (res.status === 204) return null;
   if (!res.ok) {
+    // A 401 on a request that carried a token means the session is no longer
+    // valid (expired or invalidated). Log out so a stale token can't linger and
+    // surface confusing per-page errors. Unauthenticated 401s (e.g. bad login
+    // credentials) carry no token and are left for the caller to handle.
+    if (res.status === 401 && token) {
+      handleSessionExpired();
+    }
     const err = await res.json().catch(() => ({ error: { message: 'Request failed' } }));
     const e = new Error(err.error?.message || 'Request failed');
     e.status = res.status;

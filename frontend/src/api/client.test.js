@@ -6,6 +6,7 @@ import {
   downloadRecipeSchema, exportRecipes, importRecipes,
   getMyFavorites, getFavoriteStatus, favoriteRecipe, unfavoriteRecipe,
 } from './client.js';
+import { setToken, getToken } from './auth.js';
 
 function mockFetch(status, body) {
   global.fetch = vi.fn().mockResolvedValue({
@@ -92,6 +93,46 @@ describe('request() — core behaviour', () => {
     mockFetch(200, { token: 'jwt' });
     await login('alice', 'secret');
     expect(global.fetch.mock.calls[0][1].body).toBe(JSON.stringify({ username: 'alice', password: 'secret' }));
+  });
+});
+
+describe('request() — session expiry on 401', () => {
+  beforeEach(() => {
+    setToken('stale-token');
+    window.location.hash = '#/admin/users';
+  });
+  afterEach(() => {
+    sessionStorage.clear();
+    window.location.hash = '';
+  });
+
+  it('clears the token and redirects to sign in when an authenticated request 401s', async () => {
+    mockFetchError(401, { error: { message: 'invalid or expired token', code: 'UNAUTHORIZED' } });
+    await expect(listUsers('stale-token')).rejects.toMatchObject({ status: 401 });
+    expect(getToken()).toBeNull();
+    expect(window.location.hash).toBe('#/login');
+  });
+
+  it('does not redirect when no token was sent (e.g. bad login credentials)', async () => {
+    mockFetchError(401, { error: { message: 'invalid credentials', code: 'UNAUTHORIZED' } });
+    await expect(login('alice', 'wrong')).rejects.toMatchObject({ status: 401 });
+    expect(getToken()).toBe('stale-token');
+    expect(window.location.hash).toBe('#/admin/users');
+  });
+
+  it('does not double-redirect when already on the login page', async () => {
+    window.location.hash = '#/login';
+    mockFetchError(401, { error: { message: 'invalid or expired token', code: 'UNAUTHORIZED' } });
+    await expect(getMyRecipes('stale-token')).rejects.toMatchObject({ status: 401 });
+    expect(getToken()).toBeNull();
+    expect(window.location.hash).toBe('#/login');
+  });
+
+  it('leaves the session intact for non-401 errors', async () => {
+    mockFetchError(500, { error: { message: 'boom', code: 'INTERNAL_ERROR' } });
+    await expect(listUsers('stale-token')).rejects.toMatchObject({ status: 500 });
+    expect(getToken()).toBe('stale-token');
+    expect(window.location.hash).toBe('#/admin/users');
   });
 });
 

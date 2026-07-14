@@ -194,6 +194,9 @@ module "lambda_function" {
     USERS_TABLE     = module.users_table.dynamodb_table_id
     FAVORITES_TABLE = module.favorites_table.dynamodb_table_id
     JWT_SECRET      = var.jwt_secret
+    # Session lifetime; app falls back to 24h if unset. Override per-environment
+    # (e.g. a short value on a preview) to exercise the auto-logout flow.
+    JWT_TOKEN_DURATION = var.jwt_token_duration
     # Feature 026 — transactional email (password recovery)
     MAIL_FROM    = local.ses_sender_address
     APP_BASE_URL = "https://${var.domain_name}"

@@ -27,6 +27,12 @@ variable "jwt_secret" {
   sensitive   = true
 }
 
+variable "jwt_token_duration" {
+  description = "Lifetime of issued JWTs as a Go duration string (e.g. \"24h\", \"30m\"); drives session expiry / auto-logout"
+  type        = string
+  default     = "24h"
+}
+
 # Declared so the value supplied in terraform.tfvars is recognized (silences the
 # "Value for undeclared variable" warning). Intentionally NOT wired into any
 # resource: the admin bootstrap password is provided to the running app via the

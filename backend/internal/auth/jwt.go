@@ -8,7 +8,20 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const tokenDuration = 24 * time.Hour
+const defaultTokenDuration = 24 * time.Hour
+
+// tokenDuration is how long an issued JWT stays valid. It defaults to 24h but
+// can be overridden with JWT_TOKEN_DURATION (any Go duration string, e.g. "30s",
+// "5m") — handy for exercising the session-expiry / auto-logout flow without a
+// 24h wait. An unset or unparseable value falls back to the default.
+func tokenDuration() time.Duration {
+	if v := os.Getenv("JWT_TOKEN_DURATION"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			return d
+		}
+	}
+	return defaultTokenDuration
+}
 
 type Claims struct {
 	UserID       string `json:"user_id"`
@@ -27,7 +40,7 @@ func secret() []byte {
 }
 
 func Issue(userID, username string, isAdmin bool, tokenVersion int) (string, time.Time, error) {
-	exp := time.Now().Add(tokenDuration)
+	exp := time.Now().Add(tokenDuration())
 	claims := Claims{
 		UserID:       userID,
 		Username:     username,
