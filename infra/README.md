@@ -86,10 +86,14 @@ Test the Lambda function locally without incurring AWS costs.
 ```bash
 cd infra
 
-# Copy and optionally edit the environment file
+# Copy and edit the environment file. The backend uses DynamoDB everywhere;
+# point it at a local DynamoDB Local container (docker compose up -d
+# dynamodb-local from the repo root) via DYNAMODB_ENDPOINT:
 cp env.json.example env.json
-# Default uses SQLite (offline). Edit env.json to switch to DynamoDB:
-# { "cocktails-api-prod": { "STORE_BACKEND": "dynamodb", "RECIPES_TABLE": "cocktails-recipes", ... } }
+# { "cocktails-api-prod": { "DYNAMODB_ENDPOINT": "http://host.docker.internal:8000",
+#   "AWS_REGION": "us-east-1", "AWS_ACCESS_KEY_ID": "test", "AWS_SECRET_ACCESS_KEY": "test",
+#   "RECIPES_TABLE": "cocktails-recipes", "USERS_TABLE": "cocktails-users",
+#   "FAVORITES_TABLE": "cocktails-favorites", ... } }
 
 sam local start-api --env-vars env.json
 # In a separate terminal:

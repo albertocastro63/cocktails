@@ -9,7 +9,6 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
 	"golang.org/x/crypto/bcrypt"
@@ -20,7 +19,6 @@ import (
 	"github.com/almc/cocktails/internal/model"
 	"github.com/almc/cocktails/internal/store"
 	dynstore "github.com/almc/cocktails/internal/store/dynamo"
-	sqstore "github.com/almc/cocktails/internal/store/sqlite"
 	"github.com/google/uuid"
 )
 
@@ -39,33 +37,19 @@ func main() {
 }
 
 func openStore() (store.RecipeStore, store.UserStore, store.FavoriteStore) {
-	backend := os.Getenv("STORE_BACKEND")
-	if backend == "dynamodb" {
-		cfg, err := config.LoadDefaultConfig(context.Background())
-		if err != nil {
-			log.Fatalf("load aws config: %v", err)
-		}
-		client := dynamodb.NewFromConfig(cfg)
-		recipesTable := os.Getenv("RECIPES_TABLE")
-		usersTable := os.Getenv("USERS_TABLE")
-		favoritesTable := os.Getenv("FAVORITES_TABLE")
-		if recipesTable == "" || usersTable == "" || favoritesTable == "" {
-			log.Fatal("RECIPES_TABLE, USERS_TABLE and FAVORITES_TABLE must be set when STORE_BACKEND=dynamodb")
-		}
-		return dynstore.NewRecipeStore(client, recipesTable),
-			dynstore.NewUserStore(client, usersTable),
-			dynstore.NewFavoriteStore(client, favoritesTable)
-	}
-
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "/tmp/cocktails.db"
-	}
-	rs, us, fs, err := sqstore.OpenAll(dbPath)
+	client, err := dynstore.NewClient(context.Background())
 	if err != nil {
-		log.Fatalf("open store: %v", err)
+		log.Fatalf("dynamodb client: %v", err)
 	}
-	return rs, us, fs
+	recipesTable := os.Getenv("RECIPES_TABLE")
+	usersTable := os.Getenv("USERS_TABLE")
+	favoritesTable := os.Getenv("FAVORITES_TABLE")
+	if recipesTable == "" || usersTable == "" || favoritesTable == "" {
+		log.Fatal("RECIPES_TABLE, USERS_TABLE and FAVORITES_TABLE must be set")
+	}
+	return dynstore.NewRecipeStore(client, recipesTable),
+		dynstore.NewUserStore(client, usersTable),
+		dynstore.NewFavoriteStore(client, favoritesTable)
 }
 
 // newEmailSender returns an SES-backed sender when MAIL_FROM is configured

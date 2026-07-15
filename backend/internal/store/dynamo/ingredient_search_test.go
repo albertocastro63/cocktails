@@ -25,10 +25,9 @@ func makeDynamoRecipe(name string, ingredients ...string) *model.Recipe {
 }
 
 func TestDynamo_SearchByIngredients_TwoIngredients(t *testing.T) {
-	client := newTestClient(t)
-	table := testRecipesTable + "-ing-" + uuid.NewString()[:8]
-	createTable(t, client, table, false)
-	rs := dynstore.NewRecipeStore(client, table)
+	client := testClient(t)
+	names := provision(t, client)
+	rs := dynstore.NewRecipeStore(client, names.Recipes)
 
 	if err := rs.Create(makeDynamoRecipe("Gin Fizz", "Gin", "Lemon Juice", "Sugar")); err != nil {
 		t.Fatal(err)
@@ -58,10 +57,9 @@ func TestDynamo_SearchByIngredients_TwoIngredients(t *testing.T) {
 }
 
 func TestDynamo_SearchByIngredients_NoMatch(t *testing.T) {
-	client := newTestClient(t)
-	table := testRecipesTable + "-ing-nomatch-" + uuid.NewString()[:8]
-	createTable(t, client, table, false)
-	rs := dynstore.NewRecipeStore(client, table)
+	client := testClient(t)
+	names := provision(t, client)
+	rs := dynstore.NewRecipeStore(client, names.Recipes)
 
 	if err := rs.Create(makeDynamoRecipe("Daiquiri", "Rum", "Lime Juice")); err != nil {
 		t.Fatal(err)
@@ -77,10 +75,9 @@ func TestDynamo_SearchByIngredients_NoMatch(t *testing.T) {
 }
 
 func TestDynamo_SearchByIngredients_CaseInsensitive(t *testing.T) {
-	client := newTestClient(t)
-	table := testRecipesTable + "-ing-case-" + uuid.NewString()[:8]
-	createTable(t, client, table, false)
-	rs := dynstore.NewRecipeStore(client, table)
+	client := testClient(t)
+	names := provision(t, client)
+	rs := dynstore.NewRecipeStore(client, names.Recipes)
 
 	if err := rs.Create(makeDynamoRecipe("Gin Sour", "Gin", "Lemon Juice")); err != nil {
 		t.Fatal(err)
@@ -111,10 +108,9 @@ func makeDynamoBaseSpiritRecipe(name, baseSpirit string, otherIngredients ...str
 }
 
 func TestDynamo_SearchByBaseSpirit(t *testing.T) {
-	client := newTestClient(t)
-	table := testRecipesTable + "-bs-" + uuid.NewString()[:8]
-	createTable(t, client, table, false)
-	rs := dynstore.NewRecipeStore(client, table)
+	client := testClient(t)
+	names := provision(t, client)
+	rs := dynstore.NewRecipeStore(client, names.Recipes)
 
 	recipeA := makeDynamoBaseSpiritRecipe("Gimlet", "gin", "lime juice")
 	recipeB := makeDynamoBaseSpiritRecipe("Daiquiri", "rum", "ginger beer")
@@ -168,10 +164,9 @@ func TestDynamo_SearchByBaseSpirit(t *testing.T) {
 }
 
 func TestDynamo_SearchByBaseSpiritAndIngredients(t *testing.T) {
-	client := newTestClient(t)
-	table := testRecipesTable + "-bsi-" + uuid.NewString()[:8]
-	createTable(t, client, table, false)
-	rs := dynstore.NewRecipeStore(client, table)
+	client := testClient(t)
+	names := provision(t, client)
+	rs := dynstore.NewRecipeStore(client, names.Recipes)
 
 	recipeA := makeDynamoBaseSpiritRecipe("Gimlet", "gin", "lime juice")
 	recipeB := makeDynamoBaseSpiritRecipe("Dark and Stormy", "rum", "ginger beer")

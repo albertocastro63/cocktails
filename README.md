@@ -2,7 +2,7 @@
 
 A web app to store, browse, and search cocktail recipes. Every page load shows a randomly selected recipe on the homepage. Recipes support a flexible schema — any key-value properties can be attached (base spirit, style, garnish, occasion, etc.) and are fully searchable. For more details [read here](MOTIVATION.md) for my motivation and decisions.
 
-Built with Go (net/http) on the backend and Vite + TailwindCSS on the frontend. Runs locally with SQLite; deployable to AWS via Lambda + API Gateway + S3 + CloudFront + DynamoDB. Live at [cocktails.albertomcastro.com](https://cocktails.albertomcastro.com).
+Built with Go (net/http) on the backend and Vite + TailwindCSS on the frontend. Runs locally against a DynamoDB Local container (the same store as production); deployable to AWS via Lambda + API Gateway + S3 + CloudFront + DynamoDB. Live at [cocktails.albertomcastro.com](https://cocktails.albertomcastro.com).
 
 ## Features
 
@@ -35,7 +35,7 @@ Built with Go (net/http) on the backend and Vite + TailwindCSS on the frontend. 
 - **Recipe import** — upload a JSON file to bulk-import recipes; the schema is available from the admin page
 
 ### Infrastructure
-- **Dual store** — SQLite with FTS5 for local development; DynamoDB for production; switched via `STORE_BACKEND` environment variable
+- **Single store** — DynamoDB everywhere; local development and tests run against a `amazon/dynamodb-local` container (same store code as production, selected by the `DYNAMODB_ENDPOINT` environment variable)
 - **AWS deployment** — Lambda + API Gateway + S3 + CloudFront + DynamoDB, provisioned with Terraform (serverless.tf modules); custom domain with HTTPS via ACM
 - **CI pipeline** — GitHub Actions runs Go tests, frontend Vitest tests, and builds on every PR and push to main; failing checks block merging
 - **Preview environments** — every open PR gets an isolated environment at `cocktails.albertomcastro.com/pr-{number}/`; the URL is posted as a PR comment after the `Deploy Preview` workflow completes; production deploys automatically on merge to main
@@ -92,28 +92,44 @@ Requires AWS credentials with DynamoDB access. To change which accounts are seed
 
 - Go 1.22+
 - Node.js 24+
+- Docker (runs the DynamoDB Local container for backend development and tests)
 
 ## Running Locally
 
 ### 1. Backend
 
+The backend talks to DynamoDB in every environment. Locally it targets a
+`amazon/dynamodb-local` container; the fastest path is the `make dev` target,
+which starts the emulator, provisions the tables, and runs the server:
+
 ```bash
+make dev
+# Starts DynamoDB Local (docker compose) and the API on http://localhost:8080
+```
+
+Manual equivalent (understanding the pieces):
+
+```bash
+docker compose up -d dynamodb-local        # emulator on :8000
+
 cd backend
 go mod download
-
+export DYNAMODB_ENDPOINT="http://localhost:8000"
+export AWS_REGION=us-east-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test
 export JWT_SECRET="change-me-to-a-long-random-string"
 export ADMIN_BOOTSTRAP_PASSWORD="your-admin-password"  # creates admin user on first run
 
 go run ./cmd/server
-# Server listens on http://localhost:8080
+# On startup the server auto-creates the recipes/users/favorites tables in the
+# emulator. Data is ephemeral — `docker compose down` discards it.
 ```
 
 | Variable | Default | Description |
 |---|---|---|
 | `JWT_SECRET` | — | **Required.** Secret for JWT signing |
 | `PORT` | `8080` | HTTP listen port |
-| `DB_PATH` | `cocktails.db` | SQLite database file |
-| `STORE_BACKEND` | `sqlite` | Set to `dynamodb` to use DynamoDB instead |
+| `DYNAMODB_ENDPOINT` | — | Set to the emulator (`http://localhost:8000`) for local dev; unset in production (uses the default AWS config chain). When set, the server provisions the schema on startup |
+| `RECIPES_TABLE` / `USERS_TABLE` / `FAVORITES_TABLE` | `cocktails-recipes` / `-users` / `-favorites` | DynamoDB table names |
 | `ADMIN_BOOTSTRAP_PASSWORD` | — | If set and no users exist, creates an `admin` account on startup |
 | `LOG_LEVEL` | `error` (fallback) | Minimum log severity: `debug`, `info`, `warn`, `error` (see below) |
 
@@ -174,10 +190,17 @@ curl -X POST http://localhost:8080/api/v1/recipes \
 
 ## Running Tests
 
+The backend store tests run against the emulator (they fail fast with an
+actionable message if it isn't running). `make test` starts it for you:
+
 ```bash
-# Backend
+# Backend (starts DynamoDB Local, then runs the suite)
+make test
+# or manually:
+docker compose up -d dynamodb-local
 cd backend
-go test ./...
+DYNAMODB_ENDPOINT=http://localhost:8000 AWS_REGION=us-east-1 \
+  AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test go test -p 1 ./...
 
 # Frontend
 cd frontend
@@ -190,7 +213,7 @@ npm test
 cocktails/
 ├── backend/
 │   ├── cmd/
-│   │   ├── server/main.go      # Local HTTP server (SQLite)
+│   │   ├── server/main.go      # Local HTTP server (DynamoDB Local emulator)
 │   │   └── lambda/main.go      # AWS Lambda entry point (DynamoDB)
 │   └── internal/
 │       ├── handler/            # HTTP handlers (recipes, auth, admin, favorites)
@@ -198,8 +221,7 @@ cocktails/
 │       ├── auth/               # JWT issue & parse
 │       └── store/
 │           ├── store.go        # RecipeStore / UserStore / FavoriteStore interfaces
-│           ├── sqlite/         # SQLite + FTS5 implementation (local dev)
-│           └── dynamo/         # DynamoDB implementation (AWS)
+│           └── dynamo/         # DynamoDB implementation (client, schema, stores)
 ├── frontend/
 │   └── src/
 │       ├── pages/              # Home, RecipeList, RecipeDetail, RecipeForm,
@@ -219,7 +241,7 @@ cocktails/
 
 The backend has two entry points that share identical handler code:
 
-- `cmd/server` — standard `net/http` server for local use with SQLite
+- `cmd/server` — standard `net/http` server for local use against the DynamoDB Local emulator
 - `cmd/lambda` — wraps the same router with `httpadapter` for Lambda + API Gateway
 
 ```bash
@@ -236,6 +258,6 @@ aws s3 sync dist/ s3://<frontend-bucket> --delete
 aws cloudfront create-invalidation --distribution-id <distribution-id> --paths "/*"
 ```
 
-Set `STORE_BACKEND=dynamodb` and the `RECIPES_TABLE`, `USERS_TABLE`, and `FAVORITES_TABLE` environment variables on the Lambda to switch from SQLite to DynamoDB.
+The Lambda uses DynamoDB via the default AWS config chain (no `DYNAMODB_ENDPOINT`); set the `RECIPES_TABLE`, `USERS_TABLE`, and `FAVORITES_TABLE` environment variables to the production table names. Tables are provisioned by Terraform (not by the app).
 
 Infrastructure is managed with Terraform. See [`infra/`](infra/) for the full configuration and [`specs/009-aws-terraform-infra/`](specs/009-aws-terraform-infra/) for deployment details.

@@ -9,45 +9,42 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	awscfg "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-
 	"github.com/almc/cocktails/internal/handler"
 	"github.com/almc/cocktails/internal/logging"
 	"github.com/almc/cocktails/internal/model"
 	"github.com/almc/cocktails/internal/store"
 	dynstore "github.com/almc/cocktails/internal/store/dynamo"
-	sqstore "github.com/almc/cocktails/internal/store/sqlite"
 	"github.com/google/uuid"
 )
 
 func main() {
 	logging.SetDefault(logging.New(logging.LevelFromEnv()))
 
-	var recipeStore store.RecipeStore
-	var userStore store.UserStore
-	var favoriteStore store.FavoriteStore
-
-	switch envOr("STORE_BACKEND", "sqlite") {
-	case "dynamodb":
-		cfg, err := awscfg.LoadDefaultConfig(context.Background())
-		if err != nil {
-			log.Fatalf("load aws config: %v", err)
-		}
-		client := dynamodb.NewFromConfig(cfg)
-		recipeStore = dynstore.NewRecipeStore(client, envOr("RECIPES_TABLE", "cocktails-recipes"))
-		userStore = dynstore.NewUserStore(client, envOr("USERS_TABLE", "cocktails-users"))
-		favoriteStore = dynstore.NewFavoriteStore(client, envOr("FAVORITES_TABLE", "cocktails-favorites"))
-	default:
-		dbPath := envOr("DB_PATH", "cocktails.db")
-		rs, us, fs, err := sqstore.OpenAll(dbPath)
-		if err != nil {
-			log.Fatalf("open store: %v", err)
-		}
-		recipeStore = rs
-		userStore = us
-		favoriteStore = fs
+	ctx := context.Background()
+	client, err := dynstore.NewClient(ctx)
+	if err != nil {
+		log.Fatalf("dynamodb client: %v", err)
 	}
+
+	tables := dynstore.TableNames{
+		Recipes:   envOr("RECIPES_TABLE", "cocktails-recipes"),
+		Users:     envOr("USERS_TABLE", "cocktails-users"),
+		Favorites: envOr("FAVORITES_TABLE", "cocktails-favorites"),
+	}
+
+	// Local dev/tests target the emulator via DYNAMODB_ENDPOINT; there we
+	// provision the schema on startup. Production tables are Terraform-managed,
+	// so EnsureSchema is skipped (and never has permission) without an endpoint.
+	if os.Getenv("DYNAMODB_ENDPOINT") != "" {
+		if err := dynstore.EnsureSchema(ctx, client, tables); err != nil {
+			log.Fatalf("provision local schema — is the emulator running? "+
+				"start it with `docker compose up -d dynamodb-local`: %v", err)
+		}
+	}
+
+	var recipeStore store.RecipeStore = dynstore.NewRecipeStore(client, tables.Recipes)
+	var userStore store.UserStore = dynstore.NewUserStore(client, tables.Users)
+	var favoriteStore store.FavoriteStore = dynstore.NewFavoriteStore(client, tables.Favorites)
 
 	bootstrapAdmin(userStore)
 

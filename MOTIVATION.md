@@ -36,8 +36,7 @@ Here is a summary of the choices I have made:
 - [Terraform Serverless](https://serverless.tf/)
 
 #### Databases
-- Sqlite for local development
-- DynamoDB for AWS deployment
+- DynamoDB everywhere — the AWS-managed service in production, and a DynamoDB Local container for local development and tests (originally SQLite locally, replaced in feature 029 for parity with production)
 
 #### Cloud and services
 - AWS

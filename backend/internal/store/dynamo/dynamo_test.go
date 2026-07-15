@@ -7,74 +7,57 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
 
 	"github.com/almc/cocktails/internal/model"
 	dynstore "github.com/almc/cocktails/internal/store/dynamo"
 )
 
-const (
-	testRecipesTable = "test-recipes"
-	testUsersTable   = "test-users"
-)
-
-func newTestClient(t *testing.T) *dynamodb.Client {
+// testClient builds a client against the emulator. Store tests REQUIRE the
+// emulator and fail fast (no silent skip / fallback) when it is not configured.
+func testClient(t *testing.T) *dynamodb.Client {
 	t.Helper()
-	endpoint := os.Getenv("DYNAMODB_ENDPOINT")
-	if endpoint == "" {
-		t.Skip("DYNAMODB_ENDPOINT not set; skipping DynamoDB tests")
+	if os.Getenv("DYNAMODB_ENDPOINT") == "" {
+		t.Fatal("DYNAMODB_ENDPOINT is required for DynamoDB store tests. " +
+			"Start the emulator with `docker compose up -d dynamodb-local` and set " +
+			"DYNAMODB_ENDPOINT=http://localhost:8000 " +
+			"(see specs/029-local-dynamodb-emulator/quickstart.md).")
 	}
-	cfg, err := config.LoadDefaultConfig(context.Background(),
-		config.WithRegion("us-east-1"),
-		config.WithBaseEndpoint(endpoint),
-	)
+	client, err := dynstore.NewClient(context.Background())
 	if err != nil {
-		t.Fatalf("load config: %v", err)
+		t.Fatalf("new client: %v", err)
 	}
-	return dynamodb.NewFromConfig(cfg)
+	return client
 }
 
-func createTable(t *testing.T, client *dynamodb.Client, name string, gsi bool) {
+// provision creates uniquely-named recipes/users/favorites tables via the shared
+// EnsureSchema (single schema source) and registers cleanup. Each test gets its
+// own isolated tables.
+func provision(t *testing.T, client *dynamodb.Client) dynstore.TableNames {
 	t.Helper()
-	input := &dynamodb.CreateTableInput{
-		TableName: aws.String(name),
-		AttributeDefinitions: []types.AttributeDefinition{
-			{AttributeName: aws.String("id"), AttributeType: types.ScalarAttributeTypeS},
-		},
-		KeySchema: []types.KeySchemaElement{
-			{AttributeName: aws.String("id"), KeyType: types.KeyTypeHash},
-		},
-		BillingMode: types.BillingModePayPerRequest,
+	s := uuid.NewString()[:8]
+	names := dynstore.TableNames{
+		Recipes:   "test-recipes-" + s,
+		Users:     "test-users-" + s,
+		Favorites: "test-favorites-" + s,
 	}
-	if gsi {
-		input.AttributeDefinitions = append(input.AttributeDefinitions,
-			types.AttributeDefinition{AttributeName: aws.String("username"), AttributeType: types.ScalarAttributeTypeS},
-		)
-		input.GlobalSecondaryIndexes = []types.GlobalSecondaryIndex{{
-			IndexName: aws.String("username-index"),
-			KeySchema: []types.KeySchemaElement{
-				{AttributeName: aws.String("username"), KeyType: types.KeyTypeHash},
-			},
-			Projection: &types.Projection{ProjectionType: types.ProjectionTypeAll},
-		}}
-	}
-	_, err := client.CreateTable(context.Background(), input)
-	if err != nil {
-		t.Logf("create table %s: %v (may already exist)", name, err)
+	if err := dynstore.EnsureSchema(context.Background(), client, names); err != nil {
+		t.Fatalf("EnsureSchema: %v", err)
 	}
 	t.Cleanup(func() {
-		client.DeleteTable(context.Background(), &dynamodb.DeleteTableInput{TableName: aws.String(name)})
+		for _, n := range []string{names.Recipes, names.Users, names.Favorites} {
+			_, _ = client.DeleteTable(context.Background(),
+				&dynamodb.DeleteTableInput{TableName: aws.String(n)})
+		}
 	})
+	return names
 }
 
 func TestDynamo_RecipeStore(t *testing.T) {
-	client := newTestClient(t)
-	table := testRecipesTable + "-" + uuid.NewString()[:8]
-	createTable(t, client, table, false)
-	rs := dynstore.NewRecipeStore(client, table)
+	client := testClient(t)
+	names := provision(t, client)
+	rs := dynstore.NewRecipeStore(client, names.Recipes)
 
 	recipe := &model.Recipe{
 		ID:          uuid.NewString(),
@@ -124,10 +107,9 @@ func TestDynamo_RecipeStore(t *testing.T) {
 }
 
 func TestDynamo_RecipeStore_Extended(t *testing.T) {
-	client := newTestClient(t)
-	table := testRecipesTable + "-ext-" + uuid.NewString()[:8]
-	createTable(t, client, table, false)
-	rs := dynstore.NewRecipeStore(client, table)
+	client := testClient(t)
+	names := provision(t, client)
+	rs := dynstore.NewRecipeStore(client, names.Recipes)
 
 	r1 := &model.Recipe{ID: uuid.NewString(), Name: "Mojito", CreatorID: "u1", CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
 	r2 := &model.Recipe{ID: uuid.NewString(), Name: "Daiquiri", CreatorID: "u1", CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
@@ -195,8 +177,8 @@ func TestDynamo_RecipeStore_Extended(t *testing.T) {
 	}
 
 	imported, skipped, err := rs.ImportBatch([]*model.Recipe{
-		{ID: uuid.NewString(), Name: "Mojito", CreatorID: "u1"},   // duplicate name → skip
-		{ID: uuid.NewString(), Name: "Negroni", CreatorID: "u2"},  // new → import
+		{ID: uuid.NewString(), Name: "Mojito", CreatorID: "u1"},  // duplicate name → skip
+		{ID: uuid.NewString(), Name: "Negroni", CreatorID: "u2"}, // new → import
 	}, "u3")
 	if err != nil {
 		t.Fatalf("ImportBatch: %v", err)
@@ -207,10 +189,9 @@ func TestDynamo_RecipeStore_Extended(t *testing.T) {
 }
 
 func TestDynamo_UserStore_Extended(t *testing.T) {
-	client := newTestClient(t)
-	table := testUsersTable + "-ext-" + uuid.NewString()[:8]
-	createTable(t, client, table, true)
-	us := dynstore.NewUserStore(client, table)
+	client := testClient(t)
+	names := provision(t, client)
+	us := dynstore.NewUserStore(client, names.Users)
 
 	user := &model.User{
 		ID:           uuid.NewString(),
@@ -266,29 +247,9 @@ func TestDynamo_UserStore_Extended(t *testing.T) {
 }
 
 func TestDynamo_FavoriteStore(t *testing.T) {
-	client := newTestClient(t)
-	table := "test-favorites-" + uuid.NewString()[:8]
-
-	_, err := client.CreateTable(context.Background(), &dynamodb.CreateTableInput{
-		TableName: aws.String(table),
-		AttributeDefinitions: []types.AttributeDefinition{
-			{AttributeName: aws.String("user_id"), AttributeType: types.ScalarAttributeTypeS},
-			{AttributeName: aws.String("recipe_id"), AttributeType: types.ScalarAttributeTypeS},
-		},
-		KeySchema: []types.KeySchemaElement{
-			{AttributeName: aws.String("user_id"), KeyType: types.KeyTypeHash},
-			{AttributeName: aws.String("recipe_id"), KeyType: types.KeyTypeRange},
-		},
-		BillingMode: types.BillingModePayPerRequest,
-	})
-	if err != nil {
-		t.Logf("create favorites table: %v (may already exist)", err)
-	}
-	t.Cleanup(func() {
-		client.DeleteTable(context.Background(), &dynamodb.DeleteTableInput{TableName: aws.String(table)}) //nolint:errcheck
-	})
-
-	fs := dynstore.NewFavoriteStore(client, table)
+	client := testClient(t)
+	names := provision(t, client)
+	fs := dynstore.NewFavoriteStore(client, names.Favorites)
 
 	userID := uuid.NewString()
 	recipeID := uuid.NewString()
@@ -356,16 +317,16 @@ func TestDynamo_FavoriteStore(t *testing.T) {
 }
 
 func TestDynamo_UserStore(t *testing.T) {
-	client := newTestClient(t)
-	table := testUsersTable + "-" + uuid.NewString()[:8]
-	createTable(t, client, table, true)
-	us := dynstore.NewUserStore(client, table)
+	client := testClient(t)
+	names := provision(t, client)
+	us := dynstore.NewUserStore(client, names.Users)
 
 	user := &model.User{
 		ID:           uuid.NewString(),
 		Username:     "alice-" + uuid.NewString()[:8],
 		PasswordHash: "$2a$12$placeholder",
 		IsAdmin:      false,
+		Email:        "alice-" + uuid.NewString()[:8] + "@example.com",
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -379,6 +340,15 @@ func TestDynamo_UserStore(t *testing.T) {
 	}
 	if got.ID != user.ID {
 		t.Errorf("id mismatch")
+	}
+
+	// GetByEmail (Scan + filter) — exercised by the password-recovery flow.
+	byEmail, err := us.GetByEmail(user.Email)
+	if err != nil {
+		t.Fatalf("GetByEmail: %v", err)
+	}
+	if byEmail.ID != user.ID {
+		t.Errorf("GetByEmail: id mismatch")
 	}
 
 	n, err := us.Count()
