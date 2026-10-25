@@ -39,7 +39,7 @@ func TestDynamo_SearchByIngredients_TwoIngredients(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, total, err := rs.SearchByIngredients([]string{"gin", "lemon juice"}, 1, 20)
+	got, total, err := rs.SearchByIngredients([]string{"gin", "lemon juice"}, 1, 20, "")
 	if err != nil {
 		t.Fatalf("SearchByIngredients: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestDynamo_SearchByIngredients_NoMatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, total, err := rs.SearchByIngredients([]string{"gin", "rum"}, 1, 20)
+	got, total, err := rs.SearchByIngredients([]string{"gin", "rum"}, 1, 20, "")
 	if err != nil {
 		t.Fatalf("SearchByIngredients: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestDynamo_SearchByIngredients_CaseInsensitive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, _, err := rs.SearchByIngredients([]string{"GIN", "LEMON JUICE"}, 1, 20)
+	got, _, err := rs.SearchByIngredients([]string{"GIN", "LEMON JUICE"}, 1, 20, "")
 	if err != nil {
 		t.Fatalf("SearchByIngredients: %v", err)
 	}
@@ -123,7 +123,7 @@ func TestDynamo_SearchByBaseSpirit(t *testing.T) {
 	}
 
 	t.Run("returns only gin-based recipe", func(t *testing.T) {
-		got, total, err := rs.SearchByBaseSpirit("gin", 1, 20)
+		got, total, err := rs.SearchByBaseSpirit("gin", 1, 20, "")
 		if err != nil {
 			t.Fatalf("SearchByBaseSpirit: %v", err)
 		}
@@ -133,7 +133,7 @@ func TestDynamo_SearchByBaseSpirit(t *testing.T) {
 	})
 
 	t.Run("case-insensitive", func(t *testing.T) {
-		got, total, err := rs.SearchByBaseSpirit("GIN", 1, 20)
+		got, total, err := rs.SearchByBaseSpirit("GIN", 1, 20, "")
 		if err != nil {
 			t.Fatalf("SearchByBaseSpirit: %v", err)
 		}
@@ -143,7 +143,7 @@ func TestDynamo_SearchByBaseSpirit(t *testing.T) {
 	})
 
 	t.Run("no match returns empty", func(t *testing.T) {
-		got, total, err := rs.SearchByBaseSpirit("whis", 1, 20)
+		got, total, err := rs.SearchByBaseSpirit("whis", 1, 20, "")
 		if err != nil {
 			t.Fatalf("SearchByBaseSpirit: %v", err)
 		}
@@ -153,7 +153,7 @@ func TestDynamo_SearchByBaseSpirit(t *testing.T) {
 	})
 
 	t.Run("empty filter falls through to List", func(t *testing.T) {
-		_, total, err := rs.SearchByBaseSpirit("", 1, 20)
+		_, total, err := rs.SearchByBaseSpirit("", 1, 20, "")
 		if err != nil {
 			t.Fatalf("SearchByBaseSpirit empty: %v", err)
 		}
@@ -178,7 +178,7 @@ func TestDynamo_SearchByBaseSpiritAndIngredients(t *testing.T) {
 	}
 
 	t.Run("gin base and lime ingredient returns recipeA", func(t *testing.T) {
-		got, total, err := rs.SearchByBaseSpiritAndIngredients("gin", []string{"lime"}, 1, 20)
+		got, total, err := rs.SearchByBaseSpiritAndIngredients("gin", []string{"lime"}, 1, 20, "")
 		if err != nil {
 			t.Fatalf("SearchByBaseSpiritAndIngredients: %v", err)
 		}
@@ -188,7 +188,7 @@ func TestDynamo_SearchByBaseSpiritAndIngredients(t *testing.T) {
 	})
 
 	t.Run("gin base but wrong ingredient returns empty", func(t *testing.T) {
-		got, total, err := rs.SearchByBaseSpiritAndIngredients("gin", []string{"rum"}, 1, 20)
+		got, total, err := rs.SearchByBaseSpiritAndIngredients("gin", []string{"rum"}, 1, 20, "")
 		if err != nil {
 			t.Fatalf("SearchByBaseSpiritAndIngredients: %v", err)
 		}
@@ -198,7 +198,7 @@ func TestDynamo_SearchByBaseSpiritAndIngredients(t *testing.T) {
 	})
 
 	t.Run("rum base and ginger ingredient returns recipeB", func(t *testing.T) {
-		got, total, err := rs.SearchByBaseSpiritAndIngredients("rum", []string{"ginger"}, 1, 20)
+		got, total, err := rs.SearchByBaseSpiritAndIngredients("rum", []string{"ginger"}, 1, 20, "")
 		if err != nil {
 			t.Fatalf("SearchByBaseSpiritAndIngredients: %v", err)
 		}
@@ -208,7 +208,7 @@ func TestDynamo_SearchByBaseSpiritAndIngredients(t *testing.T) {
 	})
 
 	t.Run("rum base but no lime ingredient returns empty", func(t *testing.T) {
-		got, total, err := rs.SearchByBaseSpiritAndIngredients("rum", []string{"lime"}, 1, 20)
+		got, total, err := rs.SearchByBaseSpiritAndIngredients("rum", []string{"lime"}, 1, 20, "")
 		if err != nil {
 			t.Fatalf("SearchByBaseSpiritAndIngredients: %v", err)
 		}

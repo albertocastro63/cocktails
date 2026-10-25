@@ -3,7 +3,10 @@ import { RecipeCard } from '../components/RecipeCard.js';
 import { EmptyState } from '../components/EmptyState.js';
 import { SearchBar } from '../components/SearchBar.js';
 import { SortButtonGroup } from '../components/SortButtonGroup.js';
+import { Pagination } from '../components/Pagination.js';
 import { getUserID, isAdmin, getToken } from '../api/auth.js';
+
+const PAGE_SIZE = 20;
 
 export function normaliseWhisky(q) {
   return q.replace(/\bwhisky\b/gi, (m) => m.slice(0, -1) + 'ey');
@@ -16,12 +19,13 @@ export function parseBaseSpirit(rawQ) {
   return { baseSpirit, q };
 }
 
-export function sortRecipes(recipes, direction) {
-  return recipes.slice().sort((a, b) =>
-    direction === 'asc'
-      ? a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-      : b.name.localeCompare(a.name, undefined, { sensitivity: 'base' })
-  );
+// sortParam maps the A→Z / Z→A control direction to the API sort value. Sorting
+// is server-side so that order is consistent across page boundaries, not just
+// within the recipes currently on screen.
+function sortParam(dir) {
+  if (dir === 'asc') return 'name_asc';
+  if (dir === 'desc') return 'name_desc';
+  return '';
 }
 
 export function RecipeList() {
@@ -41,27 +45,51 @@ export function RecipeList() {
   sortWrap.className = 'mb-4';
   el.appendChild(sortWrap);
 
+  const totalLabel = document.createElement('p');
+  totalLabel.className = 'text-stone-500 text-sm mb-3';
+  totalLabel.dataset.testid = 'total-count';
+  el.appendChild(totalLabel);
+
   const content = document.createElement('div');
   content.textContent = 'Loading…';
   el.appendChild(content);
 
+  const pageWrap = document.createElement('div');
+  el.appendChild(pageWrap);
+
   let currentQ = '';
+  let currentSearchQ = '';
+  let currentBaseSpirit = '';
   let currentSortDir = null;
-  let loadedData = [];
+  let currentPage = 1;
   let favoriteIds = new Set();
 
-  function renderGrid(data, q) {
+  function renderGrid(data) {
     const currentUser = getUserID() ? { id: getUserID(), isAdmin: isAdmin() } : null;
     content.innerHTML = '';
     if (!data || data.length === 0) {
-      content.appendChild(EmptyState({ message: q ? 'No recipes match your search.' : 'No recipes yet. Add one!' }));
-    } else {
-      const displayData = currentSortDir ? sortRecipes(data, currentSortDir) : data;
-      const grid = document.createElement('div');
-      grid.className = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
-      displayData.forEach((recipe) => grid.appendChild(RecipeCard({ recipe, currentUser, isFavorite: favoriteIds.has(recipe.id) })));
-      content.appendChild(grid);
+      const searching = currentSearchQ || currentBaseSpirit;
+      content.appendChild(EmptyState({ message: searching ? 'No recipes match your search.' : 'No recipes yet. Add one!' }));
+      return;
     }
+    const grid = document.createElement('div');
+    grid.className = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
+    data.forEach((recipe) => grid.appendChild(RecipeCard({ recipe, currentUser, isFavorite: favoriteIds.has(recipe.id) })));
+    content.appendChild(grid);
+  }
+
+  function renderTotal(total) {
+    if (!total) {
+      totalLabel.textContent = '';
+      return;
+    }
+    totalLabel.textContent = `${total} recipe${total === 1 ? '' : 's'}`;
+  }
+
+  function renderPagination(total) {
+    pageWrap.innerHTML = '';
+    const totalPages = Math.max(1, Math.ceil((total || 0) / PAGE_SIZE));
+    pageWrap.appendChild(Pagination({ page: currentPage, totalPages, onPage: goToPage }));
   }
 
   function renderSortButtons() {
@@ -69,32 +97,48 @@ export function RecipeList() {
     sortWrap.appendChild(SortButtonGroup({ currentDir: currentSortDir, onSort }));
   }
 
-  function onSort(dir) {
-    currentSortDir = dir;
-    renderSortButtons();
-    renderGrid(loadedData, currentQ);
+  function goToPage(page) {
+    currentPage = page;
+    loadRecipes();
   }
 
-  function loadRecipes(q = '', baseSpirit = '') {
+  function onSort(dir) {
+    currentSortDir = dir;
+    currentPage = 1; // a new ordering starts from the first page
+    renderSortButtons();
+    loadRecipes();
+  }
+
+  // loadRecipes fetches the current page for the active query/filter/sort and
+  // renders the grid, total, and page controls from the server response.
+  function loadRecipes() {
     content.innerHTML = '';
     const loadingP = document.createElement('p');
     loadingP.className = 'text-stone-500 animate-pulse py-4 text-center';
     loadingP.textContent = 'Loading…';
     content.appendChild(loadingP);
-    const params = {};
-    if (q) params.q = q;
-    if (baseSpirit) params.base_spirit = baseSpirit;
+
+    const params = { page: currentPage, limit: PAGE_SIZE };
+    if (currentSearchQ) params.q = currentSearchQ;
+    if (currentBaseSpirit) params.base_spirit = currentBaseSpirit;
+    const sort = sortParam(currentSortDir);
+    if (sort) params.sort = sort;
 
     const token = getToken();
     const favoritesPromise = token
       ? getMyFavorites(token).then(({ data }) => { favoriteIds = new Set((data || []).map((r) => r.id)); }).catch(() => {})
       : Promise.resolve();
 
-    Promise.all([getRecipes(params), favoritesPromise]).then(([{ data }]) => {
-      loadedData = data || [];
-      renderGrid(loadedData, q || baseSpirit);
+    Promise.all([getRecipes(params), favoritesPromise]).then(([resp]) => {
+      const data = resp.data || [];
+      const total = resp.total || 0;
+      renderGrid(data);
+      renderTotal(total);
+      renderPagination(total);
     }).catch(() => {
       content.textContent = 'Failed to load recipes.';
+      pageWrap.innerHTML = '';
+      totalLabel.textContent = '';
     });
   }
 
@@ -103,7 +147,10 @@ export function RecipeList() {
       const normQ = normaliseWhisky(raw);
       const { baseSpirit, q } = parseBaseSpirit(normQ);
       currentQ = raw;
-      loadRecipes(q, baseSpirit);
+      currentSearchQ = q;
+      currentBaseSpirit = baseSpirit;
+      currentPage = 1; // a changed query resets to the first page of results
+      loadRecipes();
     },
     value: currentQ,
   });

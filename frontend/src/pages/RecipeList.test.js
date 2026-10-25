@@ -53,6 +53,21 @@ describe('RecipeList sort controls', () => {
     { id: 'r3', name: 'Margarita', ingredients: [] },
   ];
 
+  // Sorting is server-side: the API returns rows already ordered by the `sort`
+  // param. This mock models that so the component only has to render what it
+  // receives (and re-fetch when the sort changes).
+  function mockSortedApi(rows = recipes) {
+    getRecipes.mockImplementation((params = {}) => {
+      let data = rows.slice();
+      if (params.sort === 'name_asc') {
+        data.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+      } else if (params.sort === 'name_desc') {
+        data.sort((a, b) => b.name.localeCompare(a.name, undefined, { sensitivity: 'base' }));
+      }
+      return Promise.resolve({ data, total: rows.length, page: params.page || 1, limit: 20 });
+    });
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     document.body.innerHTML = '';
@@ -63,7 +78,7 @@ describe('RecipeList sort controls', () => {
   });
 
   it('renders an "A→Z" and a "Z→A" button on load', async () => {
-    getRecipes.mockResolvedValue({ data: recipes, total: 3, page: 1, limit: 20 });
+    mockSortedApi();
     document.body.appendChild(RecipeList());
     await vi.waitFor(() => {
       const buttons = document.body.querySelectorAll('button[data-dir]');
@@ -74,7 +89,7 @@ describe('RecipeList sort controls', () => {
   });
 
   it('neither sort button has aria-pressed="true" on initial render', async () => {
-    getRecipes.mockResolvedValue({ data: recipes, total: 3, page: 1, limit: 20 });
+    mockSortedApi();
     document.body.appendChild(RecipeList());
     await vi.waitFor(() => {
       expect(document.body.querySelectorAll('button[data-dir]')).toHaveLength(2);
@@ -84,54 +99,46 @@ describe('RecipeList sort controls', () => {
     });
   });
 
-  it('clicking "A→Z" shows recipes in ascending alphabetical order', async () => {
-    getRecipes.mockResolvedValue({ data: recipes, total: 3, page: 1, limit: 20 });
+  it('clicking "A→Z" requests a name_asc sort and shows ascending order', async () => {
+    mockSortedApi();
     document.body.appendChild(RecipeList());
     await vi.waitFor(() => {
       expect(document.body.querySelectorAll('h2')).toHaveLength(3);
     });
     document.body.querySelector('button[data-dir="asc"]').click();
-    const names = [...document.body.querySelectorAll('h2')].map(h => h.textContent.trim());
-    expect(names).toEqual(['Aperol Spritz', 'Margarita', 'Zombie']);
+    await vi.waitFor(() => {
+      const names = [...document.body.querySelectorAll('h2')].map(h => h.textContent.trim());
+      expect(names).toEqual(['Aperol Spritz', 'Margarita', 'Zombie']);
+    });
+    expect(getRecipes).toHaveBeenCalledWith(expect.objectContaining({ sort: 'name_asc', page: 1 }));
   });
 
-  it('clicking "Z→A" shows recipes in descending alphabetical order', async () => {
-    getRecipes.mockResolvedValue({ data: recipes, total: 3, page: 1, limit: 20 });
+  it('clicking "Z→A" requests a name_desc sort and shows descending order', async () => {
+    mockSortedApi();
     document.body.appendChild(RecipeList());
     await vi.waitFor(() => {
       expect(document.body.querySelectorAll('h2')).toHaveLength(3);
     });
     document.body.querySelector('button[data-dir="desc"]').click();
-    const names = [...document.body.querySelectorAll('h2')].map(h => h.textContent.trim());
-    expect(names).toEqual(['Zombie', 'Margarita', 'Aperol Spritz']);
+    await vi.waitFor(() => {
+      const names = [...document.body.querySelectorAll('h2')].map(h => h.textContent.trim());
+      expect(names).toEqual(['Zombie', 'Margarita', 'Aperol Spritz']);
+    });
+    expect(getRecipes).toHaveBeenCalledWith(expect.objectContaining({ sort: 'name_desc' }));
   });
 
-  it('switching from "A→Z" to "Z→A" immediately updates the order', async () => {
-    getRecipes.mockResolvedValue({ data: recipes, total: 3, page: 1, limit: 20 });
+  it('switching from "A→Z" to "Z→A" updates the order', async () => {
+    mockSortedApi();
     document.body.appendChild(RecipeList());
     await vi.waitFor(() => {
       expect(document.body.querySelectorAll('h2')).toHaveLength(3);
     });
     document.body.querySelector('button[data-dir="asc"]').click();
     document.body.querySelector('button[data-dir="desc"]').click();
-    const names = [...document.body.querySelectorAll('h2')].map(h => h.textContent.trim());
-    expect(names).toEqual(['Zombie', 'Margarita', 'Aperol Spritz']);
-  });
-
-  it('sorts case-insensitively: "margarita" (lowercase) sorts between Aperol Spritz and Zombie', async () => {
-    const mixedCase = [
-      { id: 'r1', name: 'Zombie', ingredients: [] },
-      { id: 'r2', name: 'Aperol Spritz', ingredients: [] },
-      { id: 'r3', name: 'margarita', ingredients: [] },
-    ];
-    getRecipes.mockResolvedValue({ data: mixedCase, total: 3, page: 1, limit: 20 });
-    document.body.appendChild(RecipeList());
     await vi.waitFor(() => {
-      expect(document.body.querySelectorAll('h2')).toHaveLength(3);
+      const names = [...document.body.querySelectorAll('h2')].map(h => h.textContent.trim());
+      expect(names).toEqual(['Zombie', 'Margarita', 'Aperol Spritz']);
     });
-    document.body.querySelector('button[data-dir="asc"]').click();
-    const names = [...document.body.querySelectorAll('h2')].map(h => h.textContent.trim());
-    expect(names).toEqual(['Aperol Spritz', 'margarita', 'Zombie']);
   });
 
   it('clicking "A→Z" on an empty list causes no error and keeps the empty state visible', async () => {
@@ -143,6 +150,8 @@ describe('RecipeList sort controls', () => {
     expect(() => {
       document.body.querySelector('button[data-dir="asc"]').click();
     }).not.toThrow();
-    expect(document.body.textContent.toLowerCase()).toMatch(/no recipe|empty|nothing|add one/);
+    await vi.waitFor(() => {
+      expect(document.body.textContent.toLowerCase()).toMatch(/no recipe|empty|nothing|add one/);
+    });
   });
 });

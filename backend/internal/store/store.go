@@ -11,11 +11,13 @@ var ErrDuplicate = errors.New("duplicate")
 type RecipeStore interface {
 	Create(recipe *model.Recipe) error
 	GetByID(id string) (*model.Recipe, error)
-	List(page, limit int) ([]*model.Recipe, int, error)
-	Search(query string, page, limit int) ([]*model.Recipe, int, error)
-	SearchByIngredients(ingredients []string, page, limit int) ([]*model.Recipe, int, error)
-	SearchByBaseSpirit(baseSpirit string, page, limit int) ([]*model.Recipe, int, error)
-	SearchByBaseSpiritAndIngredients(baseSpirit string, ingredients []string, page, limit int) ([]*model.Recipe, int, error)
+	// The trailing sort is "" (storage order), "name_asc", or "name_desc" and is
+	// applied over the full result set before the page is sliced.
+	List(page, limit int, sort string) ([]*model.Recipe, int, error)
+	Search(query string, page, limit int, sort string) ([]*model.Recipe, int, error)
+	SearchByIngredients(ingredients []string, page, limit int, sort string) ([]*model.Recipe, int, error)
+	SearchByBaseSpirit(baseSpirit string, page, limit int, sort string) ([]*model.Recipe, int, error)
+	SearchByBaseSpiritAndIngredients(baseSpirit string, ingredients []string, page, limit int, sort string) ([]*model.Recipe, int, error)
 	Random() (*model.Recipe, error)
 	Update(recipe *model.Recipe) error
 	Delete(id string) error

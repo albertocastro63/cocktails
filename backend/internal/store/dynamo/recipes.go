@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/rand"
+	"slices"
 	"strings"
 	"time"
 
@@ -74,38 +75,28 @@ func (s *RecipeStore) GetByID(id string) (*model.Recipe, error) {
 	return unmarshalRecipe(out.Item)
 }
 
-func (s *RecipeStore) List(page, limit int) ([]*model.Recipe, int, error) {
-	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
-		TableName: aws.String(s.tableName),
-	})
+func (s *RecipeStore) List(page, limit int, sort string) ([]*model.Recipe, int, error) {
+	all, err := s.scanRecipes()
 	if err != nil {
 		return nil, 0, err
 	}
-	all, err := scanToRecipes(out.Items)
-	if err != nil {
-		return nil, 0, err
-	}
-	total := len(all)
-	start := (page - 1) * limit
-	if start >= total {
-		return []*model.Recipe{}, total, nil
-	}
-	end := start + limit
-	if end > total {
-		end = total
-	}
-	return all[start:end], total, nil
+	return paginate(all, page, limit, sort)
 }
 
-func (s *RecipeStore) Search(query string, page, limit int) ([]*model.Recipe, int, error) {
-	q := strings.ToLower(query)
-	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
+// scanRecipes reads every recipe in the table, paging through all Scan batches.
+func (s *RecipeStore) scanRecipes() ([]*model.Recipe, error) {
+	items, err := scanAll(context.Background(), s.client, &dynamodb.ScanInput{
 		TableName: aws.String(s.tableName),
 	})
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	all, err := scanToRecipes(out.Items)
+	return scanToRecipes(items)
+}
+
+func (s *RecipeStore) Search(query string, page, limit int, sort string) ([]*model.Recipe, int, error) {
+	q := strings.ToLower(query)
+	all, err := s.scanRecipes()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -115,29 +106,20 @@ func (s *RecipeStore) Search(query string, page, limit int) ([]*model.Recipe, in
 			matches = append(matches, r)
 		}
 	}
-	total := len(matches)
-	start := (page - 1) * limit
-	if start >= total {
-		return []*model.Recipe{}, total, nil
-	}
-	end := start + limit
-	if end > total {
-		end = total
-	}
-	return matches[start:end], total, nil
+	return paginate(matches, page, limit, sort)
 }
 
 func (s *RecipeStore) Random() (*model.Recipe, error) {
-	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
+	items, err := scanAll(context.Background(), s.client, &dynamodb.ScanInput{
 		TableName: aws.String(s.tableName),
 	})
 	if err != nil {
 		return nil, err
 	}
-	if len(out.Items) == 0 {
+	if len(items) == 0 {
 		return nil, nil
 	}
-	item := out.Items[rand.Intn(len(out.Items))]
+	item := items[rand.Intn(len(items))]
 	return unmarshalRecipe(item)
 }
 
@@ -166,13 +148,13 @@ func (s *RecipeStore) Delete(id string) error {
 
 func (s *RecipeStore) ExistsByName(name string) (bool, error) {
 	n := strings.ToLower(name)
-	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
+	items, err := scanAll(context.Background(), s.client, &dynamodb.ScanInput{
 		TableName: aws.String(s.tableName),
 	})
 	if err != nil {
 		return false, err
 	}
-	for _, av := range out.Items {
+	for _, av := range items {
 		var item recipeItem
 		if err := attributevalue.UnmarshalMap(av, &item); err != nil {
 			continue
@@ -185,7 +167,7 @@ func (s *RecipeStore) ExistsByName(name string) (bool, error) {
 }
 
 func (s *RecipeStore) ListByCreator(creatorID string, page, limit int) ([]*model.Recipe, int, error) {
-	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
+	items, err := scanAll(context.Background(), s.client, &dynamodb.ScanInput{
 		TableName:        aws.String(s.tableName),
 		FilterExpression: aws.String("creator_id = :cid AND creator_id <> :empty"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
@@ -196,30 +178,15 @@ func (s *RecipeStore) ListByCreator(creatorID string, page, limit int) ([]*model
 	if err != nil {
 		return nil, 0, err
 	}
-	all, err := scanToRecipes(out.Items)
+	all, err := scanToRecipes(items)
 	if err != nil {
 		return nil, 0, err
 	}
-	total := len(all)
-	start := (page - 1) * limit
-	if start >= total {
-		return []*model.Recipe{}, total, nil
-	}
-	end := start + limit
-	if end > total {
-		end = total
-	}
-	return all[start:end], total, nil
+	return paginate(all, page, limit, "")
 }
 
 func (s *RecipeStore) ListAll() ([]*model.Recipe, error) {
-	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
-		TableName: aws.String(s.tableName),
-	})
-	if err != nil {
-		return nil, err
-	}
-	return scanToRecipes(out.Items)
+	return s.scanRecipes()
 }
 
 func (s *RecipeStore) ImportBatch(recipes []*model.Recipe, _ string) (int, int, error) {
@@ -250,17 +217,11 @@ func (s *RecipeStore) ImportBatch(recipes []*model.Recipe, _ string) (int, int, 
 	return created, skipped, nil
 }
 
-func (s *RecipeStore) SearchByIngredients(ingredients []string, page, limit int) ([]*model.Recipe, int, error) {
+func (s *RecipeStore) SearchByIngredients(ingredients []string, page, limit int, sort string) ([]*model.Recipe, int, error) {
 	if len(ingredients) == 0 {
-		return s.List(page, limit)
+		return s.List(page, limit, sort)
 	}
-	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
-		TableName: aws.String(s.tableName),
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	all, err := scanToRecipes(out.Items)
+	all, err := s.scanRecipes()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -270,8 +231,21 @@ func (s *RecipeStore) SearchByIngredients(ingredients []string, page, limit int)
 			matches = append(matches, r)
 		}
 	}
-	total := len(matches)
+	return paginate(matches, page, limit, sort)
+}
+
+// paginate applies an optional name sort over the full result set, then returns
+// the requested 1-based page along with the total count of the full set. The
+// sort is applied before slicing so ordering is consistent across page
+// boundaries (never per-page). An out-of-range page yields an empty slice with
+// the correct total.
+func paginate(all []*model.Recipe, page, limit int, sort string) ([]*model.Recipe, int, error) {
+	sortRecipes(all, sort)
+	total := len(all)
 	start := (page - 1) * limit
+	if start < 0 {
+		start = 0
+	}
 	if start >= total {
 		return []*model.Recipe{}, total, nil
 	}
@@ -279,7 +253,23 @@ func (s *RecipeStore) SearchByIngredients(ingredients []string, page, limit int)
 	if end > total {
 		end = total
 	}
-	return matches[start:end], total, nil
+	return all[start:end], total, nil
+}
+
+// sortRecipes orders recipes in place by name (case-insensitive). sort is
+// "name_asc" or "name_desc"; any other value (including "") leaves the existing
+// order untouched.
+func sortRecipes(recipes []*model.Recipe, sort string) {
+	switch sort {
+	case "name_asc":
+		slices.SortStableFunc(recipes, func(a, b *model.Recipe) int {
+			return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
+		})
+	case "name_desc":
+		slices.SortStableFunc(recipes, func(a, b *model.Recipe) int {
+			return strings.Compare(strings.ToLower(b.Name), strings.ToLower(a.Name))
+		})
+	}
 }
 
 func matchesBaseSpirit(r *model.Recipe, q string) bool {
@@ -291,18 +281,12 @@ func matchesBaseSpirit(r *model.Recipe, q string) bool {
 	return false
 }
 
-func (s *RecipeStore) SearchByBaseSpirit(baseSpirit string, page, limit int) ([]*model.Recipe, int, error) {
+func (s *RecipeStore) SearchByBaseSpirit(baseSpirit string, page, limit int, sort string) ([]*model.Recipe, int, error) {
 	if strings.TrimSpace(baseSpirit) == "" {
-		return s.List(page, limit)
+		return s.List(page, limit, sort)
 	}
 	q := strings.ToLower(baseSpirit)
-	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
-		TableName: aws.String(s.tableName),
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	all, err := scanToRecipes(out.Items)
+	all, err := s.scanRecipes()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -312,27 +296,12 @@ func (s *RecipeStore) SearchByBaseSpirit(baseSpirit string, page, limit int) ([]
 			matches = append(matches, r)
 		}
 	}
-	total := len(matches)
-	start := (page - 1) * limit
-	if start >= total {
-		return []*model.Recipe{}, total, nil
-	}
-	end := start + limit
-	if end > total {
-		end = total
-	}
-	return matches[start:end], total, nil
+	return paginate(matches, page, limit, sort)
 }
 
-func (s *RecipeStore) SearchByBaseSpiritAndIngredients(baseSpirit string, ingredients []string, page, limit int) ([]*model.Recipe, int, error) {
+func (s *RecipeStore) SearchByBaseSpiritAndIngredients(baseSpirit string, ingredients []string, page, limit int, sort string) ([]*model.Recipe, int, error) {
 	q := strings.ToLower(baseSpirit)
-	out, err := s.client.Scan(context.Background(), &dynamodb.ScanInput{
-		TableName: aws.String(s.tableName),
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-	all, err := scanToRecipes(out.Items)
+	all, err := s.scanRecipes()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -342,16 +311,7 @@ func (s *RecipeStore) SearchByBaseSpiritAndIngredients(baseSpirit string, ingred
 			matches = append(matches, r)
 		}
 	}
-	total := len(matches)
-	start := (page - 1) * limit
-	if start >= total {
-		return []*model.Recipe{}, total, nil
-	}
-	end := start + limit
-	if end > total {
-		end = total
-	}
-	return matches[start:end], total, nil
+	return paginate(matches, page, limit, sort)
 }
 
 func matchesAllIngredients(r *model.Recipe, ingredients []string) bool {

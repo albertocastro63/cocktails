@@ -181,7 +181,7 @@ func TestIngredientSearch_IngredientsOnlyMatch(t *testing.T) {
 
 // Verify stub satisfies updated interface (compile-time check moved here for clarity)
 var _ interface {
-	SearchByIngredients(ingredients []string, page, limit int) ([]*model.Recipe, int, error)
+	SearchByIngredients(ingredients []string, page, limit int, sort string) ([]*model.Recipe, int, error)
 } = (*stubRecipeStore)(nil)
 
 // helper: names of returned recipes
