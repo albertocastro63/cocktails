@@ -45,7 +45,38 @@ func (s *stubRecipeStore) GetByID(id string) (*model.Recipe, error) {
 	return r, nil
 }
 
-func (s *stubRecipeStore) List(page, limit int) ([]*model.Recipe, int, error) {
+// stubPaginate mirrors the real store: stable name sort (when requested) over
+// the whole set, then slice the requested page. With no sort it falls back to a
+// deterministic ID order so tests are reproducible across map iteration.
+func stubPaginate(matches []*model.Recipe, page, limit int, sortOrder string) ([]*model.Recipe, int, error) {
+	switch sortOrder {
+	case "name_asc":
+		sort.SliceStable(matches, func(i, j int) bool {
+			return strings.ToLower(matches[i].Name) < strings.ToLower(matches[j].Name)
+		})
+	case "name_desc":
+		sort.SliceStable(matches, func(i, j int) bool {
+			return strings.ToLower(matches[i].Name) > strings.ToLower(matches[j].Name)
+		})
+	default:
+		sort.SliceStable(matches, func(i, j int) bool { return matches[i].ID < matches[j].ID })
+	}
+	total := len(matches)
+	start := (page - 1) * limit
+	if start < 0 {
+		start = 0
+	}
+	if start >= total {
+		return []*model.Recipe{}, total, nil
+	}
+	end := start + limit
+	if end > total {
+		end = total
+	}
+	return matches[start:end], total, nil
+}
+
+func (s *stubRecipeStore) List(page, limit int, sortOrder string) ([]*model.Recipe, int, error) {
 	if s.err != nil {
 		return nil, 0, s.err
 	}
@@ -53,10 +84,10 @@ func (s *stubRecipeStore) List(page, limit int) ([]*model.Recipe, int, error) {
 	for _, r := range s.recipes {
 		all = append(all, r)
 	}
-	return all, len(all), nil
+	return stubPaginate(all, page, limit, sortOrder)
 }
 
-func (s *stubRecipeStore) Search(q string, page, limit int) ([]*model.Recipe, int, error) {
+func (s *stubRecipeStore) Search(q string, page, limit int, sortOrder string) ([]*model.Recipe, int, error) {
 	if s.err != nil {
 		return nil, 0, s.err
 	}
@@ -66,7 +97,7 @@ func (s *stubRecipeStore) Search(q string, page, limit int) ([]*model.Recipe, in
 			matches = append(matches, r)
 		}
 	}
-	return matches, len(matches), nil
+	return stubPaginate(matches, page, limit, sortOrder)
 }
 
 func (s *stubRecipeStore) Random() (*model.Recipe, error) {
@@ -212,7 +243,7 @@ func (s *stubRecipeStore) ListByCreator(creatorID string, page, limit int) ([]*m
 	return matches[start:end], total, nil
 }
 
-func (s *stubRecipeStore) SearchByIngredients(ingredients []string, page, limit int) ([]*model.Recipe, int, error) {
+func (s *stubRecipeStore) SearchByIngredients(ingredients []string, page, limit int, sortOrder string) ([]*model.Recipe, int, error) {
 	if s.err != nil {
 		return nil, 0, s.err
 	}
@@ -222,25 +253,15 @@ func (s *stubRecipeStore) SearchByIngredients(ingredients []string, page, limit 
 			matches = append(matches, r)
 		}
 	}
-	sort.Slice(matches, func(i, j int) bool { return matches[i].ID < matches[j].ID })
-	total := len(matches)
-	start := (page - 1) * limit
-	if start >= total {
-		return []*model.Recipe{}, total, nil
-	}
-	end := start + limit
-	if end > total {
-		end = total
-	}
-	return matches[start:end], total, nil
+	return stubPaginate(matches, page, limit, sortOrder)
 }
 
-func (s *stubRecipeStore) SearchByBaseSpirit(baseSpirit string, page, limit int) ([]*model.Recipe, int, error) {
+func (s *stubRecipeStore) SearchByBaseSpirit(baseSpirit string, page, limit int, sortOrder string) ([]*model.Recipe, int, error) {
 	if s.err != nil {
 		return nil, 0, s.err
 	}
 	if strings.TrimSpace(baseSpirit) == "" {
-		return s.List(page, limit)
+		return s.List(page, limit, sortOrder)
 	}
 	bs := strings.ToLower(baseSpirit)
 	var matches []*model.Recipe
@@ -252,19 +273,10 @@ func (s *stubRecipeStore) SearchByBaseSpirit(baseSpirit string, page, limit int)
 			}
 		}
 	}
-	total := len(matches)
-	start := (page - 1) * limit
-	if start >= total {
-		return []*model.Recipe{}, total, nil
-	}
-	end := start + limit
-	if end > total {
-		end = total
-	}
-	return matches[start:end], total, nil
+	return stubPaginate(matches, page, limit, sortOrder)
 }
 
-func (s *stubRecipeStore) SearchByBaseSpiritAndIngredients(baseSpirit string, ingredients []string, page, limit int) ([]*model.Recipe, int, error) {
+func (s *stubRecipeStore) SearchByBaseSpiritAndIngredients(baseSpirit string, ingredients []string, page, limit int, sortOrder string) ([]*model.Recipe, int, error) {
 	if s.err != nil {
 		return nil, 0, s.err
 	}
@@ -282,16 +294,7 @@ func (s *stubRecipeStore) SearchByBaseSpiritAndIngredients(baseSpirit string, in
 			matches = append(matches, r)
 		}
 	}
-	total := len(matches)
-	start := (page - 1) * limit
-	if start >= total {
-		return []*model.Recipe{}, total, nil
-	}
-	end := start + limit
-	if end > total {
-		end = total
-	}
-	return matches[start:end], total, nil
+	return stubPaginate(matches, page, limit, sortOrder)
 }
 
 func stubMatchesAllIngredients(r *model.Recipe, ingredients []string) bool {

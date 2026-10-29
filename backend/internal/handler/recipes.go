@@ -49,6 +49,7 @@ func (h *RecipeHandler) List(w http.ResponseWriter, r *http.Request) {
 	if limit > 100 {
 		limit = 100
 	}
+	sort := normalizeSort(r.URL.Query().Get("sort"))
 
 	var recipes []*model.Recipe
 	var total int
@@ -57,15 +58,15 @@ func (h *RecipeHandler) List(w http.ResponseWriter, r *http.Request) {
 	tokens := parseIngredientQuery(q)
 	switch {
 	case baseSpirit != "" && len(tokens) >= 1:
-		recipes, total, err = h.recipes.SearchByBaseSpiritAndIngredients(baseSpirit, tokens, page, limit)
+		recipes, total, err = h.recipes.SearchByBaseSpiritAndIngredients(baseSpirit, tokens, page, limit, sort)
 	case baseSpirit != "":
-		recipes, total, err = h.recipes.SearchByBaseSpirit(baseSpirit, page, limit)
+		recipes, total, err = h.recipes.SearchByBaseSpirit(baseSpirit, page, limit, sort)
 	case len(tokens) >= 2:
-		recipes, total, err = h.recipes.SearchByIngredients(tokens, page, limit)
+		recipes, total, err = h.recipes.SearchByIngredients(tokens, page, limit, sort)
 	case len(tokens) == 1:
-		recipes, total, err = h.recipes.Search(tokens[0], page, limit)
+		recipes, total, err = h.recipes.Search(tokens[0], page, limit, sort)
 	default:
-		recipes, total, err = h.recipes.List(page, limit)
+		recipes, total, err = h.recipes.List(page, limit, sort)
 	}
 	log := logging.FromContext(r.Context())
 	if err != nil {
@@ -390,4 +391,15 @@ func queryInt(r *http.Request, key string, def int) int {
 		return def
 	}
 	return n
+}
+
+// normalizeSort accepts only the recognized sort orders; anything else
+// (including empty) degrades to "" (storage order) rather than erroring.
+func normalizeSort(v string) string {
+	switch v {
+	case "name_asc", "name_desc":
+		return v
+	default:
+		return ""
+	}
 }

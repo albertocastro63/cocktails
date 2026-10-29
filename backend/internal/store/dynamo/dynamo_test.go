@@ -85,7 +85,7 @@ func TestDynamo_RecipeStore(t *testing.T) {
 		t.Errorf("property: got %q", got.Properties["style"])
 	}
 
-	results, _, err := rs.Search("refreshing", 1, 10)
+	results, _, err := rs.Search("refreshing", 1, 10, "")
 	if err != nil {
 		t.Fatalf("Search: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestDynamo_RecipeStore_Extended(t *testing.T) {
 		}
 	}
 
-	recipes, total, err := rs.List(1, 10)
+	recipes, total, err := rs.List(1, 10, "")
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestDynamo_RecipeStore_Extended(t *testing.T) {
 	}
 
 	// Out-of-range page returns empty slice
-	emptyPage, _, err := rs.List(999, 10)
+	emptyPage, _, err := rs.List(999, 10, "")
 	if err != nil {
 		t.Fatalf("List (out-of-range page): %v", err)
 	}

@@ -13,44 +13,52 @@ import (
 // noopRecipeStore satisfies store.RecipeStore with no-op implementations.
 type noopRecipeStore struct{}
 
-func (noopRecipeStore) Create(*model.Recipe) error                                            { return nil }
-func (noopRecipeStore) GetByID(string) (*model.Recipe, error)                                { return nil, errors.New("not found") }
-func (noopRecipeStore) List(int, int) ([]*model.Recipe, int, error)                          { return nil, 0, nil }
-func (noopRecipeStore) Search(string, int, int) ([]*model.Recipe, int, error)                { return nil, 0, nil }
-func (noopRecipeStore) SearchByIngredients([]string, int, int) ([]*model.Recipe, int, error)           { return nil, 0, nil }
-func (noopRecipeStore) SearchByBaseSpirit(string, int, int) ([]*model.Recipe, int, error)              { return nil, 0, nil }
-func (noopRecipeStore) SearchByBaseSpiritAndIngredients(string, []string, int, int) ([]*model.Recipe, int, error) {
+func (noopRecipeStore) Create(*model.Recipe) error                          { return nil }
+func (noopRecipeStore) GetByID(string) (*model.Recipe, error)               { return nil, errors.New("not found") }
+func (noopRecipeStore) List(int, int, string) ([]*model.Recipe, int, error) { return nil, 0, nil }
+func (noopRecipeStore) Search(string, int, int, string) ([]*model.Recipe, int, error) {
 	return nil, 0, nil
 }
-func (noopRecipeStore) Random() (*model.Recipe, error)                                                 { return nil, nil }
-func (noopRecipeStore) Update(*model.Recipe) error                                           { return nil }
-func (noopRecipeStore) Delete(string) error                                                  { return nil }
-func (noopRecipeStore) SetRelated(string, []string) error                                    { return nil }
-func (noopRecipeStore) ExistsByName(string) (bool, error)                                    { return false, nil }
-func (noopRecipeStore) ListAll() ([]*model.Recipe, error)                                    { return nil, nil }
-func (noopRecipeStore) ImportBatch([]*model.Recipe, string) (int, int, error)                { return 0, 0, nil }
-func (noopRecipeStore) ListByCreator(string, int, int) ([]*model.Recipe, int, error)         { return nil, 0, nil }
+func (noopRecipeStore) SearchByIngredients([]string, int, int, string) ([]*model.Recipe, int, error) {
+	return nil, 0, nil
+}
+func (noopRecipeStore) SearchByBaseSpirit(string, int, int, string) ([]*model.Recipe, int, error) {
+	return nil, 0, nil
+}
+func (noopRecipeStore) SearchByBaseSpiritAndIngredients(string, []string, int, int, string) ([]*model.Recipe, int, error) {
+	return nil, 0, nil
+}
+func (noopRecipeStore) Random() (*model.Recipe, error)                        { return nil, nil }
+func (noopRecipeStore) Update(*model.Recipe) error                            { return nil }
+func (noopRecipeStore) Delete(string) error                                   { return nil }
+func (noopRecipeStore) SetRelated(string, []string) error                     { return nil }
+func (noopRecipeStore) ExistsByName(string) (bool, error)                     { return false, nil }
+func (noopRecipeStore) ListAll() ([]*model.Recipe, error)                     { return nil, nil }
+func (noopRecipeStore) ImportBatch([]*model.Recipe, string) (int, int, error) { return 0, 0, nil }
+func (noopRecipeStore) ListByCreator(string, int, int) ([]*model.Recipe, int, error) {
+	return nil, 0, nil
+}
 
 // noopUserStore satisfies store.UserStore with no-op implementations.
 type noopUserStore struct{}
 
-func (noopUserStore) Create(*model.User) error                   { return nil }
-func (noopUserStore) GetByID(string) (*model.User, error)        { return nil, errors.New("not found") }
-func (noopUserStore) GetByUsername(string) (*model.User, error)  { return nil, errors.New("not found") }
-func (noopUserStore) Count() (int, error)                        { return 0, nil }
-func (noopUserStore) List() ([]*model.User, error)               { return nil, nil }
-func (noopUserStore) Update(*model.User) error                   { return nil }
-func (noopUserStore) Delete(string) error                        { return nil }
-func (noopUserStore) GetByEmail(string) (*model.User, error)     { return nil, errors.New("not found") }
+func (noopUserStore) Create(*model.User) error                  { return nil }
+func (noopUserStore) GetByID(string) (*model.User, error)       { return nil, errors.New("not found") }
+func (noopUserStore) GetByUsername(string) (*model.User, error) { return nil, errors.New("not found") }
+func (noopUserStore) Count() (int, error)                       { return 0, nil }
+func (noopUserStore) List() ([]*model.User, error)              { return nil, nil }
+func (noopUserStore) Update(*model.User) error                  { return nil }
+func (noopUserStore) Delete(string) error                       { return nil }
+func (noopUserStore) GetByEmail(string) (*model.User, error)    { return nil, errors.New("not found") }
 
 // noopFavoriteStore satisfies store.FavoriteStore with no-op implementations.
 type noopFavoriteStore struct{}
 
-func (noopFavoriteStore) Add(string, string) error                       { return nil }
-func (noopFavoriteStore) Remove(string, string) error                    { return nil }
-func (noopFavoriteStore) IsFavorite(string, string) (bool, error)        { return false, nil }
-func (noopFavoriteStore) ListByUser(string) ([]*model.Favorite, error)   { return nil, nil }
-func (noopFavoriteStore) CountByRecipe(string) (int, error)              { return 0, nil }
+func (noopFavoriteStore) Add(string, string) error                     { return nil }
+func (noopFavoriteStore) Remove(string, string) error                  { return nil }
+func (noopFavoriteStore) IsFavorite(string, string) (bool, error)      { return false, nil }
+func (noopFavoriteStore) ListByUser(string) ([]*model.Favorite, error) { return nil, nil }
+func (noopFavoriteStore) CountByRecipe(string) (int, error)            { return 0, nil }
 
 // TestStripPathPrefix asserts that GET /pr-42/api/v1/recipes with STRIP_PATH_PREFIX=/pr-42
 // is routed identically to GET /api/v1/recipes without the env var.
